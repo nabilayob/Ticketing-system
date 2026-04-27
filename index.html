@@ -740,9 +740,10 @@ tbody tr:hover { background:#f8f9ff; }
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-database-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
 <script>
+
 // Bridge compat to modular API names
-const firebase_app = { initializeApp: (cfg) => firebase.initializeApp(cfg) };
-const _db_mod = {
+var firebase_app = { initializeApp: (cfg) => firebase.initializeApp(cfg) };
+var _db_mod = {
   getDatabase: () => firebase.database(),
   ref: (db, path) => path ? firebase.database().ref(path) : firebase.database().ref(),
   push: (r, data) => r.push(data),
@@ -752,15 +753,15 @@ const _db_mod = {
   set: (r, data) => r.set(data),
   remove: (r) => r.remove()
 };
-const firebase_database = _db_mod;
-const firebase_auth = {
+var firebase_database = _db_mod;
+var firebase_auth = {
   getAuth: () => firebase.auth(),
   signInWithEmailAndPassword: (auth, e, p) => firebase.auth().signInWithEmailAndPassword(e, p),
   signOut: (auth) => firebase.auth().signOut(),
   createUserWithEmailAndPassword: (auth, e, p) => firebase.auth().createUserWithEmailAndPassword(e, p)
 };
-</script>
-<script>
+
+
 // Firebase loaded via CDN scripts above
 const { initializeApp } = firebase_app;
 const { getDatabase, ref, push, onValue, get, update, set, remove } = firebase_database;
@@ -2137,6 +2138,7 @@ document.addEventListener('click',e=>{
   const panel=$('notifPanel'), btn=$('notifBtn');
   if(panel&&btn&&!panel.contains(e.target)&&!btn.contains(e.target)) panel.classList.remove('open');
 });
+
 
 </script>
 </body>
