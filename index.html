@@ -735,10 +735,36 @@ tbody tr:hover { background:#f8f9ff; }
 </style>
 
 <!-- ═══════════════════════════════ FIREBASE + LOGIC ═══════════════════════════════ -->
-<script type="module">
-import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
-import { getDatabase, ref, push, onValue, get, update, set, remove } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-database.js";
-import { getAuth, signInWithEmailAndPassword, signOut, createUserWithEmailAndPassword } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
+<!-- Firebase CDN (compat version - works as global scripts) -->
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-database-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
+<script>
+// Bridge compat to modular API names
+const firebase_app = { initializeApp: (cfg) => firebase.initializeApp(cfg) };
+const _db_mod = {
+  getDatabase: () => firebase.database(),
+  ref: (db, path) => path ? firebase.database().ref(path) : firebase.database().ref(),
+  push: (r, data) => r.push(data),
+  onValue: (r, cb) => r.on('value', snap => cb(snap)),
+  get: (r) => r.once('value'),
+  update: (r, data) => r.update(data),
+  set: (r, data) => r.set(data),
+  remove: (r) => r.remove()
+};
+const firebase_database = _db_mod;
+const firebase_auth = {
+  getAuth: () => firebase.auth(),
+  signInWithEmailAndPassword: (auth, e, p) => firebase.auth().signInWithEmailAndPassword(e, p),
+  signOut: (auth) => firebase.auth().signOut(),
+  createUserWithEmailAndPassword: (auth, e, p) => firebase.auth().createUserWithEmailAndPassword(e, p)
+};
+</script>
+<script>
+// Firebase loaded via CDN scripts above
+const { initializeApp } = firebase_app;
+const { getDatabase, ref, push, onValue, get, update, set, remove } = firebase_database;
+const { getAuth, signInWithEmailAndPassword, signOut, createUserWithEmailAndPassword } = firebase_auth;
 
 const cfg = {
   apiKey: "AIzaSyCUgpm_0w-vbtShNGvHMrnQ-om1cbO8Yuo",
