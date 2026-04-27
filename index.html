@@ -1150,83 +1150,6 @@ window.filterTickets = function(val, field){
   if(tbl) tbl.innerHTML = buildTicketsTable(arr);
 };
 
-window.showTicketDetail = function(id){
-  const t = tickets[id];
-  if(!t) return;
-  $('tdTitle').textContent = `🛠️ بلاغ: ${t.type||'صيانة'} — ${t.room||''}`;
-  const canAct = (CU.role==='technician' && t.dept===CU.dept) || CU.role==='admin';
-  $('tdBody').innerHTML = `
-    <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:16px;">
-      <div><label style="font-size:11px;color:var(--text-muted);">الحالة</label><div style="margin-top:4px;">${status_badge(t.status)}</div></div>
-      <div><label style="font-size:11px;color:var(--text-muted);">الأولوية</label><div style="margin-top:4px;">${priority_span(t.priority)}</div></div>
-      <div><label style="font-size:11px;color:var(--text-muted);">القسم</label><div style="margin-top:4px;">${dept_badge(t.dept)}</div></div>
-      <div><label style="font-size:11px;color:var(--text-muted);">النوع</label><div style="margin-top:4px;font-size:13px;">${t.type||'—'}</div></div>
-      <div><label style="font-size:11px;color:var(--text-muted);">الموقع</label><div style="margin-top:4px;font-size:13px;">${[t.building,t.floor,t.room].filter(Boolean).join(' / ')||'—'}</div></div>
-      <div><label style="font-size:11px;color:var(--text-muted);">التاريخ</label><div style="margin-top:4px;font-size:13px;">${fmt_time(t.createdAt)}</div></div>
-      <div style="grid-column:1/-1;"><label style="font-size:11px;color:var(--text-muted);">وصف المشكلة</label><div style="margin-top:4px;font-size:13px;background:#f9fafb;padding:10px;border-radius:8px;">${t.desc||'—'}</div></div>
-      ${t.resolution?`<div style="grid-column:1/-1;"><label style="font-size:11px;color:var(--text-muted);">سبب الحل / ملاحظات الفني</label><div style="margin-top:4px;font-size:13px;background:#f0fdf4;padding:10px;border-radius:8px;color:var(--success);">${t.resolution}</div></div>`:''}
-      ${t.cost?`<div><label style="font-size:11px;color:var(--text-muted);">التكلفة</label><div style="margin-top:4px;"><span class="cost-tag">${parseFloat(t.cost).toLocaleString('ar-EG')} ج</span></div></div>`:''}
-    </div>
-    ${canAct && t.status!=='done'?`
-    <div style="border-top:1px solid var(--border);padding-top:14px;">
-      <div class="form-group" style="margin-bottom:10px;">
-        <label>ملاحظات الفني / سبب الحل</label>
-        <textarea id="res_note" placeholder="اكتب ملاحظاتك..." style="min-height:70px;width:100%;padding:9px 12px;border:1px solid #d1d5db;border-radius:8px;font-family:Cairo,sans-serif;font-size:13px;"></textarea>
-      </div>
-      <div class="form-group">
-        <label>التكلفة الفعلية (جنيه)</label>
-        <input id="res_cost" type="number" placeholder="0" value="${t.cost||0}" style="width:100%;padding:9px 12px;border:1px solid #d1d5db;border-radius:8px;font-family:Cairo,sans-serif;font-size:13px;">
-      </div>
-    </div>`:''}
-  `;
-  const footer = $('tdFooter');
-  footer.innerHTML = '';
-  const cancelBtn = document.createElement('button');
-  cancelBtn.className='btn btn-outline'; cancelBtn.textContent='إغلاق';
-  cancelBtn.onclick=()=>closeModal('ticketDetailModal');
-  footer.appendChild(cancelBtn);
-
-  if(canAct && t.status==='pending'){
-    const startBtn = document.createElement('button');
-    startBtn.className='btn btn-accent'; startBtn.textContent='▶ بدء العمل';
-    startBtn.onclick=()=>changeTicketStatus(id,'inprogress');
-    footer.appendChild(startBtn);
-  }
-  if(canAct && t.status==='inprogress'){
-    const doneBtn = document.createElement('button');
-    doneBtn.className='btn btn-success'; doneBtn.textContent='✅ تم الحل';
-    doneBtn.onclick=()=>resolveTicket(id);
-    footer.appendChild(doneBtn);
-  }
-  openModal('ticketDetailModal');
-};
-
-function changeTicketStatus(id, status){
-  const t = tickets[id];
-  update(ref(db,'tickets/'+id),{status, updatedAt:now()});
-  if(status==='inprogress'){
-    sendNotification(t.createdBy,'🔧 بدأ العمل على بلاغك',`الفني بدأ العمل على مشكلة ${t.type||''} في ${t.room||''}`, id);
-    // notify technicians of dept
-    Object.entries(users).filter(([,u])=>u.role==='technician'&&u.dept===t.dept).forEach(([uid])=>{
-      if(uid!==CID) sendNotification(uid,'🛠️ بلاغ جديد',`بلاغ صيانة ${t.type||''} في ${t.room||''}`, id);
-    });
-  }
-  closeModal('ticketDetailModal');
-}
-
-function resolveTicket(id){
-  const note = $('res_note')?.value||'';
-  const cost = $('res_cost')?.value||0;
-  const t = tickets[id];
-  update(ref(db,'tickets/'+id),{status:'done', resolution:note, cost:parseFloat(cost)||0, resolvedAt:now(), resolvedBy:CID});
-  sendNotification(t.createdBy,'✅ تم حل بلاغك',`تم حل مشكلة ${t.type||''} في ${t.room||''}. ${note?'السبب: '+note:''}`, id);
-  closeModal('ticketDetailModal');
-}
-
-window.deleteTicket = function(id){
-  if(confirm('حذف هذا البلاغ نهائياً؟')) remove(ref(db,'tickets/'+id));
-};
-
 // ─── OPEN TICKET MODAL ───
 window.openTicketModal = function(){
   populateSelects();
@@ -1328,22 +1251,6 @@ window.submitAsset = function(){
 
   if(!name||!cat){ alert('أدخل اسم الأصل والفئة على الأقل'); return; }
   const barcode = 'DSBA-'+ rand_id()+'-'+rand_id();
-  const newRef = push(ref(db,'assets'),{
-    name, cat, serial, brand,
-    location: [bname,room].filter(Boolean).join(' - '),
-    room, purchaseDate: date?new Date(date).getTime():null,
-    price:parseFloat(price)||0, warranty:parseInt(warranty)||1, status,
-    barcode, addedAt:now(), addedBy:CID
-  });
-  closeModal('assetModal');
-  setTimeout(()=>printBarcode(newRef.key), 300);
-};
-
-window.deleteAsset = function(id){ if(confirm('حذف هذا الأصل؟')) remove(ref(db,'assets/'+id)); };
-
-window.printBarcode = function(id){
-  const a = assets[id]; if(!a) return;
-  const bc = a.barcode||id;
   const bars = bc.split('').map(c=>{
     const code = c.charCodeAt(0);
     return `<div style="display:inline-block;width:${2+(code%3)}px;height:60px;background:${code%2===0?'#000':'#fff'};margin:0;"></div>`;
@@ -1364,63 +1271,6 @@ window.printBarcode = function(id){
 };
 
 // ─── STORE PAGE ───
-function renderStore(){
-  get(ref(db,'store_transactions')).then(snap=>{
-    const trans = snap.val()||{};
-    const arr = Object.entries(trans).map(([k,v])=>({id:k,...v})).sort((a,b)=>b.time-a.time);
-    const itCost = arr.filter(t=>t.store==='it').reduce((s,t)=>s+(t.cost||0),0);
-    const elecCost = arr.filter(t=>t.store==='elec').reduce((s,t)=>s+(t.cost||0),0);
-
-    $('mainContent').innerHTML = `
-      <div class="stats-grid" style="margin-bottom:16px;">
-        <div class="stat-card blue"><div class="stat-label">💻 مخزن IT</div><div class="stat-value">${arr.filter(t=>t.store==='it').length}</div><div class="stat-sub">عملية صرف</div></div>
-        <div class="stat-card gold"><div class="stat-label">⚡ مخزن كهرباء</div><div class="stat-value">${arr.filter(t=>t.store==='elec').length}</div><div class="stat-sub">عملية صرف</div></div>
-        <div class="stat-card red"><div class="stat-label">💰 تكلفة IT</div><div class="stat-value" style="font-size:18px;">${itCost.toLocaleString('ar-EG')}</div><div class="stat-sub">جنيه</div></div>
-        <div class="stat-card red"><div class="stat-label">💰 تكلفة كهرباء</div><div class="stat-value" style="font-size:18px;">${elecCost.toLocaleString('ar-EG')}</div><div class="stat-sub">جنيه</div></div>
-      </div>
-      <div class="card" style="display:flex;gap:10px;margin-bottom:16px;">
-        ${['admin','storekeeper','technician'].includes(CU.role)?`<button class="btn btn-primary" onclick="openModal('storeModal')">➕ صرف قطعة غيار</button>`:''}
-      </div>
-      <div class="card">
-        <div class="card-title"><span class="icon">🏪</span> سجل الصرف (${arr.length})</div>
-        <div class="tbl-wrap">
-          ${arr.length?`<table>
-            <thead><tr><th>البلاغ</th><th>المخزن</th><th>القطعة</th><th>الكمية</th><th>التكلفة</th><th>الفني</th><th>التاريخ</th><th>ملاحظات</th></tr></thead>
-            <tbody>
-              ${arr.map(t=>`<tr>
-                <td><code style="font-size:11px;">${t.ticketId||'—'}</code></td>
-                <td><span class="badge ${t.store==='it'?'badge-it':'badge-elec'}">${t.store==='it'?'💻 IT':'⚡ كهرباء'}</span></td>
-                <td>${t.item||'—'}</td>
-                <td>${t.qty||1}</td>
-                <td>${t.cost?`<span class="cost-tag">${t.cost.toLocaleString('ar-EG')} ج</span>`:'—'}</td>
-                <td style="font-size:12px;">${t.byName||'—'}</td>
-                <td style="font-size:12px;">${fmt_date(t.time)}</td>
-                <td style="font-size:12px;">${t.note||'—'}</td>
-              </tr>`).join('')}
-            </tbody>
-          </table>`:'<div class="empty"><div class="empty-icon">🏪</div><div class="empty-text">لا توجد عمليات صرف</div></div>'}
-        </div>
-      </div>
-    `;
-  });
-}
-
-window.submitStoreIssue = function(){
-  const ticketId=$('s_ticket').value, store=$('s_store').value;
-  const item=$('s_item').value, qty=parseInt($('s_qty').value)||1;
-  const cost=parseFloat($('s_cost').value)||0, note=$('s_note').value;
-  if(!item){ alert('أدخل اسم القطعة'); return; }
-  push(ref(db,'store_transactions'),{
-    ticketId, store, item, qty, cost, note,
-    time:now(), byId:CID, byName:CU.name||''
-  });
-  if(ticketId && tickets[ticketId]){
-    const oldCost = tickets[ticketId].cost||0;
-    update(ref(db,'tickets/'+ticketId),{cost:oldCost+cost});
-  }
-  closeModal('storeModal');
-};
-
 // ─── USERS PAGE ───
 function renderUsers(){
   if(CU.role!=='admin'){ $('mainContent').innerHTML='<div class="empty"><div class="empty-icon">🔒</div><div class="empty-text">غير مصرح</div></div>'; return; }
