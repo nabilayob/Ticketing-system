@@ -12,6 +12,14 @@ body{font-family:Arial;background:#f4f6f9;margin:0}
 .card{background:#fff;padding:15px;border-radius:10px;margin-bottom:15px}
 input,select,textarea{width:100%;padding:8px;margin:5px 0}
 button{padding:10px;background:#1a5276;color:#fff;border:none;border-radius:5px;cursor:pointer}
+table{width:100%;border-collapse:collapse;margin-top:10px}
+td,th{border:1px solid #ddd;padding:8px;text-align:right}
+th{background:#1a5276;color:#fff}
+.stats{display:flex;gap:10px;flex-wrap:wrap}
+.stat{flex:1;min-width:180px;background:#eef5fb;padding:15px;border-radius:10px}
+.stat h2{margin:5px 0;color:#1a5276}
+.done{background:#27ae60}
+.pending{background:#e67e22}
 </style>
 </head>
 
@@ -30,7 +38,7 @@ button{padding:10px;background:#1a5276;color:#fff;border:none;border-radius:5px;
     <button onclick="login()">Login</button>
   </div>
 
-  <div class="card" id="ticketCard">
+  <div class="card" id="ticketCard" style="display:none">
     <h3>إنشاء بلاغ</h3>
 
     <select id="dept">
@@ -41,6 +49,8 @@ button{padding:10px;background:#1a5276;color:#fff;border:none;border-radius:5px;
     <select id="type">
       <option>لمبة</option>
       <option>فيشة</option>
+      <option>كمبيوتر</option>
+      <option>إنترنت</option>
     </select>
 
     <input id="room" placeholder="A-101">
@@ -49,24 +59,58 @@ button{padding:10px;background:#1a5276;color:#fff;border:none;border-radius:5px;
     <button onclick="sendTicket()">Send Ticket</button>
   </div>
 
-  <div class="card">
-    <h3>التذاكر</h3>
-    <div id="tickets"></div>
+  <div id="adminPanel" style="display:none">
+
+    <div class="card">
+      <h2>Admin Dashboard</h2>
+
+      <div class="stats">
+        <div class="stat">
+          <h3>📊 إجمالي التذاكر</h3>
+          <h2 id="totalCount">0</h2>
+        </div>
+
+        <div class="stat">
+          <h3>🟡 التذاكر المفتوحة</h3>
+          <h2 id="pendingCount">0</h2>
+        </div>
+
+        <div class="stat">
+          <h3>✅ تم الحل</h3>
+          <h2 id="doneCount">0</h2>
+        </div>
+      </div>
+    </div>
+
+    <div class="card">
+      <h3>📋 كل التذاكر</h3>
+      <div id="adminTicketsTable"></div>
+    </div>
+
   </div>
 
-  <div id="adminPanel" class="card" style="display:none">
-    <h2>Admin Dashboard</h2>
-    <p>تم الدخول كـ Admin</p>
+  <div id="techPanel" style="display:none">
+
+    <div class="card">
+      <h2>Technician Dashboard</h2>
+      <p>التذاكر الخاصة بالقسم الفني</p>
+      <div id="techTicketsTable"></div>
+    </div>
+
   </div>
 
-  <div id="techPanel" class="card" style="display:none">
-    <h2>Technician Dashboard</h2>
-    <p>تم الدخول كـ Technician</p>
-  </div>
+  <div id="teacherPanel" style="display:none">
 
-  <div id="teacherPanel" class="card" style="display:none">
-    <h2>Teacher Dashboard</h2>
-    <p>تم الدخول كـ Teacher</p>
+    <div class="card">
+      <h2>Teacher Dashboard</h2>
+      <p>يمكنك إنشاء بلاغ ومتابعة البلاغات.</p>
+    </div>
+
+    <div class="card">
+      <h3>📋 التذاكر</h3>
+      <div id="teacherTicketsTable"></div>
+    </div>
+
   </div>
 
 </div>
@@ -74,12 +118,13 @@ button{padding:10px;background:#1a5276;color:#fff;border:none;border-radius:5px;
 <script type="module">
 
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
-import { getDatabase, ref, push, onValue, get } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-database.js";
+import { getDatabase, ref, push, onValue, get, update } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-database.js";
 import { getAuth, signInWithEmailAndPassword } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
 
 const firebaseConfig = {
   apiKey: "AIzaSyCUgpm_0w-vbtShNGvHMrnQ-om1cbO8Yuo",
   authDomain: "ticketing-system-2651c.firebaseapp.com",
+  databaseURL: "https://ticketing-system-2651c-default-rtdb.firebaseio.com",
   projectId: "ticketing-system-2651c",
   storageBucket: "ticketing-system-2651c.firebasestorage.app",
   messagingSenderId: "625229329187",
@@ -90,49 +135,51 @@ const app = initializeApp(firebaseConfig);
 const db = getDatabase(app);
 const auth = getAuth(app);
 
-function hidePanels(){
+let currentUserData = null;
+let currentUid = null;
+
+function hideAll(){
+  document.getElementById("loginCard").style.display = "none";
+  document.getElementById("ticketCard").style.display = "none";
   document.getElementById("adminPanel").style.display = "none";
   document.getElementById("techPanel").style.display = "none";
   document.getElementById("teacherPanel").style.display = "none";
 }
 
 function showAdmin(){
-  document.getElementById("loginCard").style.display="none";
-  document.getElementById("ticketCard").style.display="none";
-
-  document.getElementById("adminPanel").style.display="block";
+  hideAll();
+  document.getElementById("adminPanel").style.display = "block";
 }
 
 function showTechnician(){
-  document.getElementById("loginCard").style.display="none";
-  document.getElementById("ticketCard").style.display="none";
-
-  document.getElementById("techPanel").style.display="block";
+  hideAll();
+  document.getElementById("techPanel").style.display = "block";
 }
 
 function showTeacher(){
-  document.getElementById("loginCard").style.display="none";
-
-  document.getElementById("ticketCard").style.display="block";
-  document.getElementById("teacherPanel").style.display="block";
+  hideAll();
+  document.getElementById("ticketCard").style.display = "block";
+  document.getElementById("teacherPanel").style.display = "block";
 }
 
 function loadUserRole(uid){
   get(ref(db, "users/" + uid)).then(snap=>{
     const user = snap.val();
 
-    console.log("UID:", uid);
-    console.log("USER:", user);
-
     if(!user){
       alert("User not found in DB");
       return;
     }
 
+    currentUserData = user;
+    currentUid = uid;
+
     if(user.role === "admin") showAdmin();
     else if(user.role === "technician") showTechnician();
     else if(user.role === "teacher") showTeacher();
     else alert("Role not recognized: " + user.role);
+
+    loadTickets();
 
   }).catch(e=>{
     alert(e.message);
@@ -156,26 +203,150 @@ window.sendTicket = function(){
   const room = document.getElementById("room").value;
   const desc = document.getElementById("desc").value;
 
+  if(!room || !desc){
+    alert("من فضلك أدخل رقم الفصل ووصف المشكلة");
+    return;
+  }
+
   push(ref(db,"tickets"),{
     dept,
     type,
     room,
     desc,
     status:"pending",
-    createdAt: Date.now()
+    createdAt: Date.now(),
+    createdByUid: currentUid || "",
+    createdByName: currentUserData?.name || "",
+    createdByEmail: auth.currentUser?.email || ""
   });
+
+  document.getElementById("room").value = "";
+  document.getElementById("desc").value = "";
 
   alert("تم إرسال البلاغ");
 };
 
-onValue(ref(db,"tickets"), snap=>{
-  let html = "";
-  snap.forEach(t=>{
-    const d = t.val();
-    html += `<div>${d.room} - ${d.dept} - ${d.status}</div>`;
+window.markDone = function(ticketId){
+  update(ref(db,"tickets/" + ticketId),{
+    status:"done",
+    resolvedAt: Date.now()
   });
-  document.getElementById("tickets").innerHTML = html;
-});
+};
+
+function loadTickets(){
+  onValue(ref(db,"tickets"), snap=>{
+    let total = 0;
+    let pending = 0;
+    let done = 0;
+
+    let adminHtml = `
+      <table>
+        <tr>
+          <th>الفصل</th>
+          <th>القسم</th>
+          <th>نوع المشكلة</th>
+          <th>الوصف</th>
+          <th>الحالة</th>
+          <th>إجراء</th>
+        </tr>
+    `;
+
+    let techHtml = `
+      <table>
+        <tr>
+          <th>الفصل</th>
+          <th>القسم</th>
+          <th>نوع المشكلة</th>
+          <th>الوصف</th>
+          <th>الحالة</th>
+          <th>إجراء</th>
+        </tr>
+    `;
+
+    let teacherHtml = `
+      <table>
+        <tr>
+          <th>الفصل</th>
+          <th>القسم</th>
+          <th>نوع المشكلة</th>
+          <th>الوصف</th>
+          <th>الحالة</th>
+        </tr>
+    `;
+
+    snap.forEach(t=>{
+      const d = t.val();
+      total++;
+
+      if(d.status === "pending") pending++;
+      if(d.status === "done") done++;
+
+      const actionButton = d.status !== "done"
+        ? `<button onclick="markDone('${t.key}')">Done</button>`
+        : `تم الحل`;
+
+      adminHtml += `
+        <tr>
+          <td>${d.room || ""}</td>
+          <td>${d.dept || ""}</td>
+          <td>${d.type || ""}</td>
+          <td>${d.desc || ""}</td>
+          <td>${d.status || ""}</td>
+          <td>${actionButton}</td>
+        </tr>
+      `;
+
+      if(currentUserData && currentUserData.role === "technician"){
+        if(d.dept === currentUserData.dept){
+          techHtml += `
+            <tr>
+              <td>${d.room || ""}</td>
+              <td>${d.dept || ""}</td>
+              <td>${d.type || ""}</td>
+              <td>${d.desc || ""}</td>
+              <td>${d.status || ""}</td>
+              <td>${actionButton}</td>
+            </tr>
+          `;
+        }
+      }
+
+      if(currentUserData && currentUserData.role === "teacher"){
+        if(d.createdByUid === currentUid || !d.createdByUid){
+          teacherHtml += `
+            <tr>
+              <td>${d.room || ""}</td>
+              <td>${d.dept || ""}</td>
+              <td>${d.type || ""}</td>
+              <td>${d.desc || ""}</td>
+              <td>${d.status || ""}</td>
+            </tr>
+          `;
+        }
+      }
+    });
+
+    adminHtml += "</table>";
+    techHtml += "</table>";
+    teacherHtml += "</table>";
+
+    const adminTable = document.getElementById("adminTicketsTable");
+    const techTable = document.getElementById("techTicketsTable");
+    const teacherTable = document.getElementById("teacherTicketsTable");
+
+    if(adminTable) adminTable.innerHTML = adminHtml;
+    if(techTable) techTable.innerHTML = techHtml;
+    if(teacherTable) teacherTable.innerHTML = teacherHtml;
+
+    const totalEl = document.getElementById("totalCount");
+    const pendingEl = document.getElementById("pendingCount");
+    const doneEl = document.getElementById("doneCount");
+
+    if(totalEl) totalEl.innerText = total;
+    if(pendingEl) pendingEl.innerText = pending;
+    if(doneEl) doneEl.innerText = done;
+  });
+}
 
 </script>
 
