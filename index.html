@@ -1916,12 +1916,121 @@ window.assignTicket=function(ticketId, techId, techName){
   closeModal('assignModal');
 };
 
-// ─── SHOW TICKET DETAIL (Updated with Assign button) ───
+// ─── TICKET STATUS FUNCTIONS ───
+function changeTicketStatus(id, status){
+  const t=tickets[id]; if(!t) return;
+  update(ref(db,'tickets/'+id),{status, updatedAt:Date.now()});
+  if(status==='inprogress'){
+    sendNotification(t.createdBy,'🔧 بدأ العمل على بلاغك',`الفني بدأ العمل على مشكلة ${t.type||''} في ${t.room||''}`,id);
+  }
+  closeModal('ticketDetailModal');
+}
+
+function resolveTicket(id){
+  const note=$('res_note')?.value||'';
+  const cost=parseFloat($('res_cost')?.value)||0;
+  const t=tickets[id]; if(!t) return;
+  update(ref(db,'tickets/'+id),{
+    status:'done', resolution:note, cost,
+    resolvedAt:Date.now(), resolvedBy:CID, resolvedByName:CU.name||''
+  });
+  sendNotification(t.createdBy,'✅ تم حل بلاغك',
+    `تم حل مشكلة ${t.type||''} في ${t.room||''}${note?' — السبب: '+note:''}`,id);
+  closeModal('ticketDetailModal');
+}
+
+// ─── REOPEN TICKET ───
+window.reopenTicket=function(id){
+  const reason=prompt('سبب إعادة الفتح (اختياري):','');
+  if(reason===null) return; // cancelled
+  const t=tickets[id]; if(!t) return;
+  update(ref(db,'tickets/'+id),{
+    status:'pending',
+    reopenedAt:Date.now(), reopenedBy:CID, reopenedByName:CU.name||'',
+    reopenReason:reason,
+    assignedTo:null, assignedName:null,
+    resolution:null, resolvedAt:null
+  });
+  // notify original technician if was assigned
+  if(t.assignedTo){
+    sendNotification(t.assignedTo,'🔄 تم إعادة فتح البلاغ',
+      `تم إعادة فتح بلاغ ${t.type||''} في ${t.room||''}${reason?' — السبب: '+reason:''}`,id);
+  }
+  // notify ticket creator
+  sendNotification(t.createdBy,'🔄 تم إعادة فتح بلاغك',
+    `تم إعادة فتح بلاغك من قِبل الإدارة`,id);
+  closeModal('ticketDetailModal');
+};
+
+// ─── TRANSFER TICKET TO ANOTHER TECHNICIAN ───
+window.openTransferModal=function(ticketId){
+  const t=tickets[ticketId]; if(!t) return;
+  // Show all technicians in same dept, excluding current assigned
+  const techs=Object.entries(users).filter(([uid,u])=>
+    u.role==='technician' && u.dept===t.dept && uid!==t.assignedTo
+  );
+  $('techList').innerHTML=`
+    <div style="background:#fff8e1;border-radius:8px;padding:10px;margin-bottom:12px;font-size:12px;color:#856404;">
+      🔄 تحويل من: <strong>${t.assignedName||'غير محدد'}</strong> → اختر الفني الجديد:
+    </div>
+    ${techs.length ? techs.map(([uid,u])=>`
+      <div style="display:flex;align-items:center;justify-content:space-between;padding:12px;border:1px solid var(--border);border-radius:10px;margin-bottom:8px;">
+        <div style="display:flex;align-items:center;gap:10px;">
+          <div style="width:38px;height:38px;border-radius:50%;background:var(--accent);display:flex;align-items:center;justify-content:center;color:#fff;font-weight:700;font-size:14px;">${(u.name||'?').charAt(0)}</div>
+          <div>
+            <div style="font-weight:600;font-size:13px;">${u.name}</div>
+            <div style="font-size:11px;color:var(--text-muted);">${dept_badge(u.dept)}</div>
+          </div>
+        </div>
+        <button class="btn btn-sm btn-accent" onclick="transferTicket('${ticketId}','${uid}','${u.name}')">تحويل ✓</button>
+      </div>`).join('')
+    : '<div class="empty"><div class="empty-text">لا يوجد فنيون آخرون في نفس القسم</div></div>'}
+  `;
+  // Update modal title
+  $('assignModal').querySelector('.modal-title').textContent='🔄 تحويل البلاغ لفني آخر';
+  openModal('assignModal');
+};
+
+window.transferTicket=function(ticketId, newTechId, newTechName){
+  const t=tickets[ticketId]; if(!t) return;
+  const oldTechId=t.assignedTo;
+  const oldTechName=t.assignedName||'';
+  update(ref(db,'tickets/'+ticketId),{
+    assignedTo:newTechId, assignedName:newTechName,
+    status:'inprogress', transferredAt:Date.now(),
+    transferredFrom:oldTechId, transferredFromName:oldTechName,
+    transferredBy:CID
+  });
+  // Notify new technician
+  sendNotification(newTechId,'🔄 تم تحويل بلاغ إليك',
+    `تم تحويل بلاغ ${t.type||''} في ${t.room||''} من الفني ${oldTechName}`,ticketId);
+  // Notify old technician
+  if(oldTechId){
+    sendNotification(oldTechId,'🔄 تم تحويل بلاغك',
+      `تم تحويل بلاغ ${t.type||''} في ${t.room||''} إلى الفني ${newTechName}`,ticketId);
+  }
+  // Notify ticket creator
+  sendNotification(t.createdBy,'👷 تم تغيير الفني المسؤول',
+    `الفني ${newTechName} أصبح مسؤولاً عن بلاغك`,ticketId);
+  closeModal('assignModal');
+  // Reset modal title
+  $('assignModal').querySelector('.modal-title').textContent='👷 تعيين فني للبلاغ';
+};
+
+// ─── SHOW TICKET DETAIL ───
 window.showTicketDetail=function(id){
   const t=tickets[id]; if(!t) return;
   $('tdTitle').textContent=`🛠️ بلاغ: ${t.type||'صيانة'} — ${t.room||''}`;
   const canAct=(CU.role==='technician'&&t.dept===CU.dept)||(CU.role==='admin');
   const isAdmin=CU.role==='admin';
+
+  // Build history log
+  let historyLog='';
+  if(t.assignedName) historyLog+=`<div style="font-size:11px;color:var(--text-muted);padding:4px 0;border-bottom:1px solid var(--border);">👷 تم التعيين للفني <strong>${t.assignedName}</strong> — ${fmt_date(t.assignedAt)}</div>`;
+  if(t.transferredFromName) historyLog+=`<div style="font-size:11px;color:var(--text-muted);padding:4px 0;border-bottom:1px solid var(--border);">🔄 تم التحويل من <strong>${t.transferredFromName}</strong> → <strong>${t.assignedName}</strong> — ${fmt_date(t.transferredAt)}</div>`;
+  if(t.reopenedByName) historyLog+=`<div style="font-size:11px;color:var(--danger);padding:4px 0;border-bottom:1px solid var(--border);">🔓 تم إعادة الفتح بواسطة <strong>${t.reopenedByName}</strong>${t.reopenReason?' — '+t.reopenReason:''} — ${fmt_date(t.reopenedAt)}</div>`;
+  if(t.resolvedByName) historyLog+=`<div style="font-size:11px;color:var(--success);padding:4px 0;">✅ تم الحل بواسطة <strong>${t.resolvedByName}</strong> — ${fmt_date(t.resolvedAt)}</div>`;
+
   $('tdBody').innerHTML=`
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:16px;">
       <div><label style="font-size:11px;color:var(--text-muted);">الحالة</label><div style="margin-top:4px;">${status_badge(t.status)}</div></div>
@@ -1929,18 +2038,31 @@ window.showTicketDetail=function(id){
       <div><label style="font-size:11px;color:var(--text-muted);">القسم</label><div style="margin-top:4px;">${dept_badge(t.dept)}</div></div>
       <div><label style="font-size:11px;color:var(--text-muted);">النوع</label><div style="margin-top:4px;font-size:13px;">${t.type||'—'}</div></div>
       <div><label style="font-size:11px;color:var(--text-muted);">الموقع</label><div style="margin-top:4px;font-size:13px;">${[t.building,t.floor,t.room].filter(Boolean).join(' / ')||'—'}</div></div>
-      <div><label style="font-size:11px;color:var(--text-muted);">الفني المعين</label><div style="margin-top:4px;font-size:13px;">${t.assignedName||'<span style="color:var(--text-muted);">لم يُعيَّن بعد</span>'}</div></div>
+      <div><label style="font-size:11px;color:var(--text-muted);">الفني المعين</label>
+        <div style="margin-top:4px;font-size:13px;display:flex;align-items:center;gap:6px;">
+          ${t.assignedName
+            ? `<span style="font-weight:600;">${t.assignedName}</span>`
+            : `<span style="color:var(--text-muted);">لم يُعيَّن بعد</span>`}
+        </div>
+      </div>
       <div><label style="font-size:11px;color:var(--text-muted);">مقدم البلاغ</label><div style="margin-top:4px;font-size:13px;">${t.createdByName||'—'}</div></div>
-      <div><label style="font-size:11px;color:var(--text-muted);">التاريخ</label><div style="margin-top:4px;font-size:13px;">${fmt_time(t.createdAt)}</div></div>
-      <div style="grid-column:1/-1;"><label style="font-size:11px;color:var(--text-muted);">وصف المشكلة</label><div style="margin-top:4px;font-size:13px;background:#f9fafb;padding:10px;border-radius:8px;">${t.desc||'—'}</div></div>
-      ${t.resolution?`<div style="grid-column:1/-1;"><label style="font-size:11px;color:var(--text-muted);">سبب الحل / ملاحظات الفني</label><div style="margin-top:4px;font-size:13px;background:#f0fdf4;padding:10px;border-radius:8px;color:var(--success);">${t.resolution}</div></div>`:''}
+      <div><label style="font-size:11px;color:var(--text-muted);">تاريخ الإنشاء</label><div style="margin-top:4px;font-size:13px;">${fmt_time(t.createdAt)}</div></div>
+      <div style="grid-column:1/-1;"><label style="font-size:11px;color:var(--text-muted);">وصف المشكلة</label>
+        <div style="margin-top:4px;font-size:13px;background:#f9fafb;padding:10px;border-radius:8px;">${t.desc||'—'}</div>
+      </div>
+      ${t.resolution?`<div style="grid-column:1/-1;"><label style="font-size:11px;color:var(--text-muted);">ملاحظات الفني / سبب الحل</label>
+        <div style="margin-top:4px;font-size:13px;background:#f0fdf4;padding:10px;border-radius:8px;color:var(--success);">${t.resolution}</div>
+      </div>`:''}
       ${t.cost?`<div><label style="font-size:11px;color:var(--text-muted);">التكلفة</label><div style="margin-top:4px;"><span class="cost-tag">${parseFloat(t.cost).toLocaleString('ar-EG')} ج</span></div></div>`:''}
     </div>
-    ${canAct&&t.status!=='done'?`
+
+    ${historyLog?`<div style="background:#f9fafb;border-radius:8px;padding:10px;margin-bottom:14px;"><div style="font-size:11px;font-weight:700;color:var(--text-muted);margin-bottom:6px;">📋 سجل الأحداث</div>${historyLog}</div>`:''}
+
+    ${canAct&&t.status==='inprogress'?`
     <div style="border-top:1px solid var(--border);padding-top:14px;">
       <div class="form-group" style="margin-bottom:10px;">
         <label>ملاحظات الفني / سبب الحل</label>
-        <textarea id="res_note" placeholder="اكتب ملاحظاتك..." style="min-height:70px;width:100%;padding:9px 12px;border:1px solid #d1d5db;border-radius:8px;font-family:Cairo,sans-serif;font-size:13px;"></textarea>
+        <textarea id="res_note" placeholder="اكتب تفاصيل ما تم..." style="min-height:80px;width:100%;padding:9px 12px;border:1px solid #d1d5db;border-radius:8px;font-family:Cairo,sans-serif;font-size:13px;resize:vertical;"></textarea>
       </div>
       <div class="form-group">
         <label>التكلفة الفعلية (جنيه)</label>
@@ -1948,18 +2070,45 @@ window.showTicketDetail=function(id){
       </div>
     </div>`:''}
   `;
+
   const footer=$('tdFooter'); footer.innerHTML='';
+
+  // ── Close button (always) ──
   const cancelBtn=document.createElement('button');
   cancelBtn.className='btn btn-outline'; cancelBtn.textContent='إغلاق';
   cancelBtn.onclick=()=>closeModal('ticketDetailModal');
   footer.appendChild(cancelBtn);
 
-  if(isAdmin&&t.status==='pending'){
-    const assignBtn=document.createElement('button');
-    assignBtn.className='btn btn-accent'; assignBtn.textContent='👷 تعيين فني';
-    assignBtn.onclick=()=>{ closeModal('ticketDetailModal'); openAssignModal(id); };
-    footer.appendChild(assignBtn);
+  // ── Admin buttons ──
+  if(isAdmin){
+    // Reopen (if done or inprogress)
+    if(t.status==='done'||t.status==='inprogress'){
+      const reopenBtn=document.createElement('button');
+      reopenBtn.className='btn btn-outline';
+      reopenBtn.style.cssText='border-color:var(--warning);color:var(--warning);';
+      reopenBtn.innerHTML='🔄 إعادة فتح';
+      reopenBtn.onclick=()=>reopenTicket(id);
+      footer.appendChild(reopenBtn);
+    }
+    // Transfer (if assigned to someone)
+    if(t.assignedTo && t.status!=='done'){
+      const transferBtn=document.createElement('button');
+      transferBtn.className='btn btn-accent';
+      transferBtn.innerHTML='↔️ تحويل لفني آخر';
+      transferBtn.onclick=()=>{ closeModal('ticketDetailModal'); openTransferModal(id); };
+      footer.appendChild(transferBtn);
+    }
+    // Assign (if pending and no one assigned)
+    if(t.status==='pending'){
+      const assignBtn=document.createElement('button');
+      assignBtn.className='btn btn-primary';
+      assignBtn.innerHTML='👷 تعيين فني';
+      assignBtn.onclick=()=>{ closeModal('ticketDetailModal'); openAssignModal(id); };
+      footer.appendChild(assignBtn);
+    }
   }
+
+  // ── Technician buttons ──
   if(canAct&&t.status==='pending'){
     const startBtn=document.createElement('button');
     startBtn.className='btn btn-primary'; startBtn.textContent='▶ بدء العمل';
@@ -1972,6 +2121,7 @@ window.showTicketDetail=function(id){
     doneBtn.onclick=()=>resolveTicket(id);
     footer.appendChild(doneBtn);
   }
+
   openModal('ticketDetailModal');
 };
 
