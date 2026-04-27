@@ -90,8 +90,22 @@ button{
 <script type="module">
 
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
-import { getDatabase, ref, push, onValue } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-database.js";
+import { getDatabase, ref, push, onValue, get, update } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-database.js";
 import { getAuth, signInWithEmailAndPassword } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
+  function loadUserRole(uid){
+  get(ref(db, "users/" + uid)).then(snap=>{
+    const user = snap.val();
+
+    if(!user){
+      alert("User not found in DB");
+      return;
+    }
+
+    if(user.role === "admin") showAdmin();
+    if(user.role === "technician") showTechnician();
+    if(user.role === "teacher") showTeacher();
+  });
+}
 
 const firebaseConfig = {
   apiKey: "AIzaSyCUgpm_0w-vbtShNGvHMrnQ-om1cbO8Yuo",
@@ -116,10 +130,29 @@ window.login = function(){
 
 window.sendTicket = function(){
 
-  const dept = document.getElementById("dept").value;
-  const type = document.getElementById("type").value;
-  const room = document.getElementById("room").value;
-  const desc = document.getElementById("desc").value;
+  const email = document.getElementById("email").value;
+  const pass = document.getElementById("pass").value;
+
+  signInWithEmailAndPassword(auth,email,pass)
+    .then(res=>{
+ function loadUserRole(uid){
+  get(ref(db, "users/" + uid)).then(snap=>{
+    const user = snap.val();
+
+    if(!user){
+      alert("User not found");
+      return;
+    }
+
+    if(user.role === "admin") showAdmin();
+    if(user.role === "technician") showTechnician();
+    if(user.role === "teacher") showTeacher();
+  });
+}
+      
+    })
+    .catch(e=>alert(e.message));
+}
 
   push(ref(db,"tickets"),{
     dept,
