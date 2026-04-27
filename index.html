@@ -7,16 +7,19 @@
 
 <style>
 body{font-family:Arial;background:#f4f6f9;margin:0}
-.header{background:#1a5276;color:#fff;padding:15px}
+.header{background:#1a5276;color:#fff;padding:22px}
 .container{padding:20px}
-.card{background:#fff;padding:15px;border-radius:10px;margin-bottom:15px}
-input,select,textarea{width:100%;padding:8px;margin:5px 0}
-button{padding:10px;background:#1a5276;color:#fff;border:none;border-radius:5px;cursor:pointer}
-table{width:100%;border-collapse:collapse}
-td,th{border:1px solid #ddd;padding:8px}
+.card{background:#fff;padding:20px;border-radius:12px;margin-bottom:18px}
+input,select,textarea{width:100%;padding:10px;margin:6px 0 12px;border:1px solid #ccc;border-radius:6px}
+button{padding:9px 16px;background:#1a5276;color:#fff;border:none;border-radius:6px;cursor:pointer}
+table{width:100%;border-collapse:collapse;margin-top:12px}
+td,th{border:1px solid #ddd;padding:10px;text-align:right}
 th{background:#1a5276;color:#fff}
-.stats{display:flex;gap:10px;margin-bottom:10px}
-.stat{flex:1;background:#eef5fb;padding:10px;border-radius:10px;text-align:center}
+.stats{display:flex;gap:14px;flex-wrap:wrap}
+.stat{flex:1;min-width:180px;background:#eef5fb;padding:18px;border-radius:12px}
+.stat h2{color:#1a5276;margin:8px 0}
+.doneText{color:green;font-weight:bold}
+.pendingText{color:orange;font-weight:bold}
 </style>
 </head>
 
@@ -28,7 +31,6 @@ th{background:#1a5276;color:#fff}
 
 <div class="container">
 
-<!-- LOGIN -->
 <div class="card" id="loginCard">
   <h3>تسجيل الدخول</h3>
   <input id="email" placeholder="Email">
@@ -36,20 +38,20 @@ th{background:#1a5276;color:#fff}
   <button onclick="login()">Login</button>
 </div>
 
-<!-- TEACHER -->
 <div id="teacherPanel" style="display:none">
-
   <div class="card">
     <h3>إنشاء بلاغ</h3>
 
     <select id="dept">
-      <option value="electricity">كهرباء</option>
       <option value="it">IT</option>
+      <option value="electricity">كهرباء</option>
     </select>
 
     <select id="type">
       <option>لمبة</option>
       <option>فيشة</option>
+      <option>كمبيوتر</option>
+      <option>إنترنت</option>
     </select>
 
     <input id="room" placeholder="A-101">
@@ -59,13 +61,11 @@ th{background:#1a5276;color:#fff}
   </div>
 
   <div class="card">
-    <h3>التذاكر</h3>
+    <h3>تذاكري</h3>
     <div id="teacherTickets"></div>
   </div>
-
 </div>
 
-<!-- ADMIN -->
 <div id="adminPanel" style="display:none">
 
   <div class="card">
@@ -73,38 +73,41 @@ th{background:#1a5276;color:#fff}
 
     <div class="stats">
       <div class="stat">
-        <h3>📊 إجمالي</h3>
+        <h3>📊 إجمالي التذاكر</h3>
         <h2 id="totalCount">0</h2>
       </div>
 
       <div class="stat">
-        <h3>🟡 Pending</h3>
+        <h3>🟡 التذاكر المفتوحة</h3>
         <h2 id="pendingCount">0</h2>
       </div>
 
       <div class="stat">
-        <h3>✅ Done</h3>
+        <h3>✅ تم الحل</h3>
         <h2 id="doneCount">0</h2>
       </div>
     </div>
-
   </div>
 
   <div class="card">
-    <h3>📋 التذاكر</h3>
+    <h3>📋 كل التذاكر</h3>
+
+    <select id="filterDept" onchange="loadTickets()">
+      <option value="">كل الأقسام</option>
+      <option value="it">IT</option>
+      <option value="electricity">كهرباء</option>
+    </select>
+
     <div id="adminTable"></div>
   </div>
 
 </div>
 
-<!-- TECH -->
 <div id="techPanel" style="display:none">
-
   <div class="card">
     <h2>Technician Dashboard</h2>
     <div id="techTable"></div>
   </div>
-
 </div>
 
 </div>
@@ -131,8 +134,8 @@ const auth = getAuth(app);
 
 let currentUser = null;
 let currentUid = null;
+let ticketsListenerStarted = false;
 
-/* ====== LOGIN ====== */
 window.login = function(){
   const email = document.getElementById("email").value;
   const pass = document.getElementById("pass").value;
@@ -142,137 +145,209 @@ window.login = function(){
       loadUser(res.user.uid);
     })
     .catch(e=>alert(e.message));
-}
+};
 
-/* ====== LOAD USER ====== */
 function loadUser(uid){
   get(ref(db,"users/"+uid)).then(snap=>{
     const user = snap.val();
 
     if(!user){
-      alert("User not found");
+      alert("User not found in DB");
       return;
     }
 
     currentUser = user;
     currentUid = uid;
 
-    document.getElementById("loginCard").style.display="none";
+    document.getElementById("loginCard").style.display = "none";
 
-    if(user.role==="admin") showAdmin();
-    else if(user.role==="technician") showTech();
-    else showTeacher();
+    if(user.role === "admin") showAdmin();
+    else if(user.role === "technician") showTech();
+    else if(user.role === "teacher") showTeacher();
+    else alert("Role not recognized");
 
-    loadTickets();
+    startTicketsListener();
   });
 }
 
-/* ====== PANELS ====== */
 function hideAll(){
-  document.getElementById("adminPanel").style.display="none";
-  document.getElementById("techPanel").style.display="none";
-  document.getElementById("teacherPanel").style.display="none";
+  document.getElementById("adminPanel").style.display = "none";
+  document.getElementById("techPanel").style.display = "none";
+  document.getElementById("teacherPanel").style.display = "none";
 }
 
 function showAdmin(){
   hideAll();
-  document.getElementById("adminPanel").style.display="block";
+  document.getElementById("adminPanel").style.display = "block";
 }
 
 function showTech(){
   hideAll();
-  document.getElementById("techPanel").style.display="block";
+  document.getElementById("techPanel").style.display = "block";
 }
 
 function showTeacher(){
   hideAll();
-  document.getElementById("teacherPanel").style.display="block";
+  document.getElementById("teacherPanel").style.display = "block";
 }
 
-/* ====== SEND TICKET ====== */
 window.sendTicket = function(){
-  const dept = dept.value;
-  const type = type.value;
-  const room = room.value;
-  const desc = desc.value;
+  const deptValue = document.getElementById("dept").value;
+  const typeValue = document.getElementById("type").value;
+  const roomValue = document.getElementById("room").value;
+  const descValue = document.getElementById("desc").value;
+
+  if(!roomValue || !descValue){
+    alert("من فضلك أدخل الفصل ووصف المشكلة");
+    return;
+  }
 
   push(ref(db,"tickets"),{
-    dept,type,room,desc,
-    status:"pending",
-    createdAt:Date.now(),
-    createdBy:currentUid
+    dept: deptValue,
+    type: typeValue,
+    room: roomValue,
+    desc: descValue,
+    status: "pending",
+    createdAt: Date.now(),
+    createdBy: currentUid,
+    createdByName: currentUser?.name || "",
+    createdByEmail: auth.currentUser?.email || ""
   });
+
+  document.getElementById("room").value = "";
+  document.getElementById("desc").value = "";
 
   alert("تم إرسال البلاغ");
-}
+};
 
-/* ====== DONE ====== */
 window.markDone = function(id){
   update(ref(db,"tickets/"+id),{
-    status:"done"
+    status: "done",
+    resolvedAt: Date.now()
+  });
+};
+
+window.loadTickets = function(){
+  startTicketsListener(true);
+};
+
+function startTicketsListener(forceRenderOnly=false){
+  if(ticketsListenerStarted && !forceRenderOnly) return;
+
+  ticketsListenerStarted = true;
+
+  onValue(ref(db,"tickets"), snap=>{
+    renderTickets(snap);
   });
 }
 
-/* ====== LOAD TICKETS ====== */
-function loadTickets(){
-  onValue(ref(db,"tickets"), snap=>{
+function renderTickets(snap){
+  const filter = document.getElementById("filterDept")?.value || "";
 
-    let total=0,pending=0,done=0;
+  let total = 0;
+  let pending = 0;
+  let done = 0;
 
-    let adminHTML=`<table><tr>
-    <th>Room</th><th>Dept</th><th>Status</th><th>Action</th></tr>`;
+  let adminHTML = `
+    <table>
+      <tr>
+        <th>الفصل</th>
+        <th>القسم</th>
+        <th>نوع المشكلة</th>
+        <th>الوصف</th>
+        <th>الحالة</th>
+        <th>إجراء</th>
+      </tr>
+  `;
 
-    let techHTML=`<table><tr>
-    <th>Room</th><th>Dept</th><th>Status</th><th>Action</th></tr>`;
+  let techHTML = `
+    <table>
+      <tr>
+        <th>الفصل</th>
+        <th>القسم</th>
+        <th>نوع المشكلة</th>
+        <th>الوصف</th>
+        <th>الحالة</th>
+        <th>إجراء</th>
+      </tr>
+  `;
 
-    let teacherHTML="";
+  let teacherHTML = `
+    <table>
+      <tr>
+        <th>الفصل</th>
+        <th>القسم</th>
+        <th>نوع المشكلة</th>
+        <th>الوصف</th>
+        <th>الحالة</th>
+      </tr>
+  `;
 
-    snap.forEach(t=>{
-      const d=t.val();
-      total++;
+  snap.forEach(t=>{
+    const d = t.val();
 
-      if(d.status==="pending") pending++;
-      if(d.status==="done") done++;
+    total++;
+    if(d.status === "pending") pending++;
+    if(d.status === "done") done++;
 
-      const btn = d.status!=="done"
-        ? `<button onclick="markDone('${t.key}')">Done</button>`
-        : "✔";
+    if(filter && d.dept !== filter) return;
 
-      adminHTML += `<tr>
-      <td>${d.room}</td>
-      <td>${d.dept}</td>
-      <td>${d.status}</td>
-      <td>${btn}</td>
-      </tr>`;
+    const statusText = d.status === "done"
+      ? `<span class="doneText">done</span>`
+      : `<span class="pendingText">pending</span>`;
 
-      if(currentUser.role==="technician"){
-        if(d.dept===currentUser.dept){
-          techHTML += `<tr>
-          <td>${d.room}</td>
-          <td>${d.dept}</td>
-          <td>${d.status}</td>
-          <td>${btn}</td>
-          </tr>`;
-        }
-      }
+    const actionBtn = d.status === "pending"
+      ? `<button onclick="markDone('${t.key}')">Done</button>`
+      : `تم الحل`;
 
-      if(currentUser.role==="teacher"){
-        teacherHTML += `<div>${d.room} - ${d.status}</div>`;
-      }
-    });
+    adminHTML += `
+      <tr>
+        <td>${d.room || ""}</td>
+        <td>${d.dept || ""}</td>
+        <td>${d.type || ""}</td>
+        <td>${d.desc || ""}</td>
+        <td>${statusText}</td>
+        <td>${actionBtn}</td>
+      </tr>
+    `;
 
-    adminHTML+="</table>";
-    techHTML+="</table>";
+    if(currentUser?.role === "technician" && d.dept === currentUser.dept){
+      techHTML += `
+        <tr>
+          <td>${d.room || ""}</td>
+          <td>${d.dept || ""}</td>
+          <td>${d.type || ""}</td>
+          <td>${d.desc || ""}</td>
+          <td>${statusText}</td>
+          <td>${actionBtn}</td>
+        </tr>
+      `;
+    }
 
-    document.getElementById("adminTable").innerHTML=adminHTML;
-    document.getElementById("techTable").innerHTML=techHTML;
-    document.getElementById("teacherTickets").innerHTML=teacherHTML;
-
-    totalCount.innerText=total;
-    pendingCount.innerText=pending;
-    doneCount.innerText=done;
-
+    if(currentUser?.role === "teacher" && d.createdBy === currentUid){
+      teacherHTML += `
+        <tr>
+          <td>${d.room || ""}</td>
+          <td>${d.dept || ""}</td>
+          <td>${d.type || ""}</td>
+          <td>${d.desc || ""}</td>
+          <td>${statusText}</td>
+        </tr>
+      `;
+    }
   });
+
+  adminHTML += "</table>";
+  techHTML += "</table>";
+  teacherHTML += "</table>";
+
+  document.getElementById("adminTable").innerHTML = adminHTML;
+  document.getElementById("techTable").innerHTML = techHTML;
+  document.getElementById("teacherTickets").innerHTML = teacherHTML;
+
+  document.getElementById("totalCount").innerText = total;
+  document.getElementById("pendingCount").innerText = pending;
+  document.getElementById("doneCount").innerText = done;
 }
 
 </script>
