@@ -1673,13 +1673,16 @@ function renderSettingsTab(tab){
       </div>
       <div class="tbl-wrap">
         <table>
-          <thead><tr><th>المبنى</th><th>الأدوار</th><th>الغرف</th><th>حذف</th></tr></thead>
+          <thead><tr><th>المبنى</th><th>الأدوار</th><th>الغرف</th><th>إجراءات</th></tr></thead>
           <tbody>
-            ${settings.buildings.map((b,i)=>`<tr>
-              <td><strong>${b.name}</strong></td>
-              <td style="font-size:12px;">${b.floors.join(' | ')}</td>
+            ${settings.buildings.map((b,i)=>`<tr id="brow_${i}">
+              <td><span id="bname_${i}"><strong>${b.name}</strong></span></td>
+              <td style="font-size:12px;" id="bfloors_${i}">${b.floors.join(' | ')}</td>
               <td style="font-size:12px;">${b.rooms.slice(0,4).join(', ')}${b.rooms.length>4?'...':''}</td>
-              <td><button class="btn btn-sm btn-danger" onclick="removeBuilding(${i})">🗑</button></td>
+              <td style="white-space:nowrap;">
+                <button class="btn btn-sm btn-outline" style="margin-left:4px;" onclick="editBuilding(${i})">✏️ تعديل</button>
+                <button class="btn btn-sm btn-danger" onclick="removeBuilding(${i})">🗑</button>
+              </td>
             </tr>`).join('')}
           </tbody>
         </table>
@@ -1694,12 +1697,22 @@ function renderSettingsTab(tab){
       </div>
       <div style="margin-top:8px;">
         ${settings.depts.map((d,i)=>`
-        <div style="background:#f9fafb;border-radius:8px;padding:12px;margin-bottom:10px;">
+        <div style="background:#f9fafb;border-radius:8px;padding:12px;margin-bottom:10px;" id="dcard_${i}">
           <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;">
-            <strong>${d.icon} ${d.name}</strong>
-            <button class="btn btn-sm btn-danger" onclick="removeDept(${i})">🗑</button>
+            <div id="dlabel_${i}" style="font-weight:700;">${d.icon} ${d.name}</div>
+            <div style="display:flex;gap:6px;">
+              <button class="btn btn-sm btn-outline" onclick="editDept(${i})">✏️ تعديل</button>
+              <button class="btn btn-sm btn-danger" onclick="removeDept(${i})">🗑</button>
+            </div>
           </div>
-          <div style="font-size:12px;color:var(--text-muted);margin-bottom:8px;">الأنواع: ${d.types.join(' • ')}</div>
+          <div style="font-size:12px;color:var(--text-muted);margin-bottom:8px;">
+            الأنواع: ${d.types.map((t,ti)=>`
+              <span style="display:inline-flex;align-items:center;gap:3px;background:#e5e7eb;padding:2px 8px;border-radius:20px;margin:2px;">
+                <span id="type_${i}_${ti}">${t}</span>
+                <button onclick="editType(${i},${ti})" style="background:none;border:none;cursor:pointer;font-size:10px;color:#6b7280;padding:0;">✏️</button>
+                <button onclick="removeType(${i},${ti})" style="background:none;border:none;cursor:pointer;font-size:10px;color:var(--danger);padding:0;">✕</button>
+              </span>`).join('')}
+          </div>
           <div style="display:flex;gap:8px;">
             <input id="nt_${i}" placeholder="نوع جديد..." style="padding:6px 10px;border:1px solid #d1d5db;border-radius:6px;font-family:Cairo,sans-serif;font-size:12px;flex:1;">
             <button class="btn btn-sm btn-outline" onclick="addType(${i})">➕ نوع</button>
@@ -1712,25 +1725,93 @@ function renderSettingsTab(tab){
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;">
         <div>
           <h4 style="font-size:13px;font-weight:700;margin-bottom:8px;color:var(--primary);">💻 مخزن IT</h4>
-          ${settings.store_it.map((item,i)=>`<div style="display:flex;align-items:center;gap:6px;margin-bottom:6px;"><span style="flex:1;font-size:13px;">${item}</span><button class="btn btn-sm btn-danger" onclick="removeStoreItem('it',${i})">✕</button></div>`).join('')}
-          <div style="display:flex;gap:6px;margin-top:10px;"><input id="ni_it" placeholder="قطعة جديدة..." style="flex:1;padding:7px 10px;border:1px solid #d1d5db;border-radius:6px;font-family:Cairo,sans-serif;font-size:12px;"><button class="btn btn-sm btn-primary" onclick="addStoreItem('it')">➕</button></div>
+          ${settings.store_it.map((item,i)=>`
+          <div style="display:flex;align-items:center;gap:6px;margin-bottom:6px;" id="sit_${i}">
+            <span style="flex:1;font-size:13px;" id="sit_label_${i}">${item}</span>
+            <button class="btn btn-sm btn-outline" style="padding:3px 8px;" onclick="editStoreItem('it',${i})">✏️</button>
+            <button class="btn btn-sm btn-danger" style="padding:3px 8px;" onclick="removeStoreItem('it',${i})">✕</button>
+          </div>`).join('')}
+          <div style="display:flex;gap:6px;margin-top:10px;">
+            <input id="ni_it" placeholder="قطعة جديدة..." style="flex:1;padding:7px 10px;border:1px solid #d1d5db;border-radius:6px;font-family:Cairo,sans-serif;font-size:12px;">
+            <button class="btn btn-sm btn-primary" onclick="addStoreItem('it')">➕</button>
+          </div>
         </div>
         <div>
           <h4 style="font-size:13px;font-weight:700;margin-bottom:8px;color:var(--primary);">⚡ مخزن كهرباء</h4>
-          ${settings.store_elec.map((item,i)=>`<div style="display:flex;align-items:center;gap:6px;margin-bottom:6px;"><span style="flex:1;font-size:13px;">${item}</span><button class="btn btn-sm btn-danger" onclick="removeStoreItem('elec',${i})">✕</button></div>`).join('')}
-          <div style="display:flex;gap:6px;margin-top:10px;"><input id="ni_elec" placeholder="قطعة جديدة..." style="flex:1;padding:7px 10px;border:1px solid #d1d5db;border-radius:6px;font-family:Cairo,sans-serif;font-size:12px;"><button class="btn btn-sm btn-accent" onclick="addStoreItem('elec')">➕</button></div>
+          ${settings.store_elec.map((item,i)=>`
+          <div style="display:flex;align-items:center;gap:6px;margin-bottom:6px;" id="selec_${i}">
+            <span style="flex:1;font-size:13px;" id="selec_label_${i}">${item}</span>
+            <button class="btn btn-sm btn-outline" style="padding:3px 8px;" onclick="editStoreItem('elec',${i})">✏️</button>
+            <button class="btn btn-sm btn-danger" style="padding:3px 8px;" onclick="removeStoreItem('elec',${i})">✕</button>
+          </div>`).join('')}
+          <div style="display:flex;gap:6px;margin-top:10px;">
+            <input id="ni_elec" placeholder="قطعة جديدة..." style="flex:1;padding:7px 10px;border:1px solid #d1d5db;border-radius:6px;font-family:Cairo,sans-serif;font-size:12px;">
+            <button class="btn btn-sm btn-accent" onclick="addStoreItem('elec')">➕</button>
+          </div>
         </div>
       </div>
     `;
   }
 }
-window.addBuilding=function(){ const n=$('nb_name').value.trim(); if(!n) return; settings.buildings.push({id:'B'+Date.now(),name:n,floors:['الدور الأرضي','الدور الأول'],rooms:[]}); saveSettings(); renderSettingsTab('buildings'); };
-window.removeBuilding=function(i){ settings.buildings.splice(i,1); saveSettings(); renderSettingsTab('buildings'); };
-window.addDept=function(){ const n=$('nd_name').value.trim(), icon=$('nd_icon').value.trim()||'🔧'; if(!n) return; settings.depts.push({id:n,name:n,icon,types:[]}); saveSettings(); renderSettingsTab('depts'); };
-window.removeDept=function(i){ settings.depts.splice(i,1); saveSettings(); renderSettingsTab('depts'); };
-window.addType=function(i){ const n=$('nt_'+i)?.value.trim(); if(!n) return; settings.depts[i].types.push(n); saveSettings(); renderSettingsTab('depts'); };
-window.addStoreItem=function(store){ const key='ni_'+store; const n=$(key)?.value.trim(); if(!n) return; settings['store_'+store].push(n); saveSettings(); renderSettingsTab('store_items'); };
-window.removeStoreItem=function(store,i){ settings['store_'+store].splice(i,1); saveSettings(); renderSettingsTab('store_items'); };
+
+// ── BUILDINGS CRUD ──
+window.addBuilding=function(){
+  const n=$('nb_name').value.trim(); if(!n) return;
+  settings.buildings.push({id:'B'+Date.now(),name:n,floors:['الدور الأرضي','الدور الأول'],rooms:[]});
+  saveSettings(); renderSettingsTab('buildings');
+};
+window.removeBuilding=function(i){ if(!confirm('حذف هذا المبنى؟')) return; settings.buildings.splice(i,1); saveSettings(); renderSettingsTab('buildings'); };
+window.editBuilding=function(i){
+  const b=settings.buildings[i];
+  const newName=prompt('اسم المبنى:', b.name); if(newName===null) return;
+  const newFloors=prompt('الأدوار (افصل بفاصلة):', b.floors.join(',')); if(newFloors===null) return;
+  const newRooms=prompt('الغرف (افصل بفاصلة):', b.rooms.join(',')); if(newRooms===null) return;
+  settings.buildings[i].name=newName.trim()||b.name;
+  settings.buildings[i].floors=newFloors.split(',').map(s=>s.trim()).filter(Boolean);
+  settings.buildings[i].rooms=newRooms.split(',').map(s=>s.trim()).filter(Boolean);
+  saveSettings(); renderSettingsTab('buildings');
+};
+
+// ── DEPTS CRUD ──
+window.addDept=function(){
+  const n=$('nd_name').value.trim(), icon=$('nd_icon').value.trim()||'🔧'; if(!n) return;
+  settings.depts.push({id:'d'+Date.now(),name:n,icon,types:[]}); saveSettings(); renderSettingsTab('depts');
+};
+window.removeDept=function(i){ if(!confirm('حذف هذا القسم؟')) return; settings.depts.splice(i,1); saveSettings(); renderSettingsTab('depts'); };
+window.editDept=function(i){
+  const d=settings.depts[i];
+  const newName=prompt('اسم القسم:', d.name); if(newName===null) return;
+  const newIcon=prompt('الأيقونة:', d.icon); if(newIcon===null) return;
+  settings.depts[i].name=newName.trim()||d.name;
+  settings.depts[i].icon=newIcon.trim()||d.icon;
+  saveSettings(); renderSettingsTab('depts');
+};
+window.addType=function(i){
+  const n=$('nt_'+i)?.value.trim(); if(!n) return;
+  settings.depts[i].types.push(n); saveSettings(); renderSettingsTab('depts');
+};
+window.removeType=function(di,ti){
+  settings.depts[di].types.splice(ti,1); saveSettings(); renderSettingsTab('depts');
+};
+window.editType=function(di,ti){
+  const old=settings.depts[di].types[ti];
+  const nv=prompt('تعديل النوع:', old); if(nv===null||!nv.trim()) return;
+  settings.depts[di].types[ti]=nv.trim(); saveSettings(); renderSettingsTab('depts');
+};
+
+// ── STORE ITEMS CRUD ──
+window.addStoreItem=function(store){
+  const n=$(('ni_'+store))?.value.trim(); if(!n) return;
+  settings['store_'+store].push(n); saveSettings(); renderSettingsTab('store_items');
+};
+window.removeStoreItem=function(store,i){
+  settings['store_'+store].splice(i,1); saveSettings(); renderSettingsTab('store_items');
+};
+window.editStoreItem=function(store,i){
+  const old=settings['store_'+store][i];
+  const nv=prompt('تعديل القطعة:', old); if(nv===null||!nv.trim()) return;
+  settings['store_'+store][i]=nv.trim(); saveSettings(); renderSettingsTab('store_items');
+};
 
 // also populate store item select when modal opens
 const _orig = window.openModal;
