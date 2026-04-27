@@ -1,0 +1,151 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>DSBA Maintenance System</title>
+
+<style>
+body{
+  font-family: Arial;
+  background:#f4f6f9;
+  margin:0;
+}
+.header{
+  background:#1a5276;
+  color:#fff;
+  padding:15px;
+  display:flex;
+  align-items:center;
+  gap:10px;
+}
+.header h1{margin:0;font-size:18px}
+.container{padding:20px}
+.card{
+  background:#fff;
+  padding:15px;
+  border-radius:10px;
+  margin-bottom:15px;
+}
+input,select,textarea{
+  width:100%;
+  padding:8px;
+  margin-top:5px;
+  margin-bottom:10px;
+}
+button{
+  padding:10px;
+  background:#1a5276;
+  color:#fff;
+  border:none;
+  border-radius:5px;
+  cursor:pointer;
+}
+</style>
+</head>
+
+<body>
+
+<div class="header">
+  <h1>DSBA - نظام الصيانة</h1>
+</div>
+
+<div class="container">
+
+<div class="card">
+<h3>تسجيل الدخول</h3>
+<input id="email" placeholder="Email">
+<input id="pass" type="password" placeholder="Password">
+<button onclick="login()">Login</button>
+</div>
+
+<div class="card">
+<h3>إنشاء بلاغ</h3>
+
+<select id="dept">
+<option value="electricity">كهرباء</option>
+<option value="it">IT</option>
+</select>
+
+<select id="type">
+<option>لمبة</option>
+<option>فيشة</option>
+</select>
+
+<input id="room" placeholder="A-101">
+
+<textarea id="desc" placeholder="وصف المشكلة"></textarea>
+
+<button onclick="sendTicket()">Send Ticket</button>
+
+</div>
+
+<div class="card">
+<h3>التذاكر</h3>
+<div id="tickets"></div>
+</div>
+
+</div>
+
+<script type="module">
+
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
+import { getDatabase, ref, push, onValue } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-database.js";
+import { getAuth, signInWithEmailAndPassword } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
+
+const firebaseConfig = {
+  apiKey: "AIzaSyA6mbOjvl9_c5QeHZatdUV7qdt5mBQjQ-g",
+  authDomain: "dsba-638cc.firebaseapp.com",
+  databaseURL: "https://dsba-638cc-default-rtdb.firebaseio.com",
+  projectId: "dsba-638cc",
+  storageBucket: "dsba-638cc.firebasestorage.app",
+  messagingSenderId: "252093790493",
+  appId: "1:252093790493:web:1e8641f109235f4b0289f4"
+};
+const app = initializeApp(firebaseConfig);
+const db = getDatabase(app);
+const auth = getAuth(app);
+
+window.login = function(){
+  const email = document.getElementById("email").value;
+  const pass = document.getElementById("pass").value;
+
+  signInWithEmailAndPassword(auth,email,pass)
+    .then(()=>alert("تم تسجيل الدخول"))
+    .catch(e=>alert(e.message));
+}
+
+window.sendTicket = function(){
+
+  const dept = document.getElementById("dept").value;
+  const type = document.getElementById("type").value;
+  const room = document.getElementById("room").value;
+  const desc = document.getElementById("desc").value;
+
+  push(ref(db,"tickets"),{
+    dept,
+    type,
+    room,
+    desc,
+    status:"pending",
+    createdAt: Date.now()
+  });
+
+  alert("تم إرسال البلاغ");
+}
+
+onValue(ref(db,"tickets"), snap=>{
+  let html="";
+  snap.forEach(t=>{
+    const d = t.val();
+    html += `<div>
+      ${d.room} - ${d.dept} - ${d.status}
+    </div>`;
+  });
+  document.getElementById("tickets").innerHTML = html;
+});
+
+</script>
+
+</body>
+</html>
