@@ -630,26 +630,80 @@ tbody tr:hover { background:#f8f9ff; }
 
 <!-- Store Issue Modal -->
 <div class="modal-overlay" id="storeModal">
-  <div class="modal">
+  <div class="modal" style="width:620px;">
     <button class="modal-close" onclick="closeModal('storeModal')">✕</button>
     <div class="modal-title">🏪 صرف قطعة غيار</div>
     <div class="form-grid">
-      <div class="form-group"><label>رقم بلاغ الصيانة</label><input id="s_ticket" placeholder="TKT-XXXX"></div>
       <div class="form-group">
         <label>المخزن</label>
-        <select id="s_store">
-          <option value="it">مخزن IT</option>
-          <option value="elec">مخزن كهرباء</option>
+        <select id="s_store" onchange="onStoreChange()">
+          <option value="">-- اختر المخزن --</option>
         </select>
       </div>
-      <div class="form-group"><label>اسم القطعة</label><input id="s_item" placeholder="اسم قطعة الغيار"></div>
-      <div class="form-group"><label>الكمية</label><input id="s_qty" type="number" value="1" min="1"></div>
-      <div class="form-group"><label>التكلفة (جنيه)</label><input id="s_cost" type="number" placeholder="0"></div>
-      <div class="form-group form-full"><label>ملاحظات</label><input id="s_note" placeholder="أي ملاحظات إضافية"></div>
+      <div class="form-group">
+        <label>البلاغ المرتبط (اختياري)</label>
+        <select id="s_ticket">
+          <option value="">-- اختر بلاغ --</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label>الموقع (فصل / سيارة / مكتب)</label>
+        <select id="s_location">
+          <option value="">-- اختر الموقع --</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label>القطعة</label>
+        <select id="s_item_select" onchange="onItemSelect()">
+          <option value="">-- اختر القطعة --</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label>الرصيد المتاح</label>
+        <div id="s_balance" style="padding:9px 12px;background:#f9fafb;border:1px solid #e5e7eb;border-radius:8px;font-size:13px;color:var(--text-muted);">اختر قطعة أولاً</div>
+      </div>
+      <div class="form-group">
+        <label>الكمية المصروفة</label>
+        <input id="s_qty" type="number" value="1" min="1" oninput="calcStoreCost()">
+      </div>
+      <div class="form-group">
+        <label>سعر الوحدة (جنيه)</label>
+        <input id="s_unit_cost" type="number" placeholder="0" oninput="calcStoreCost()">
+      </div>
+      <div class="form-group">
+        <label>إجمالي التكلفة</label>
+        <div id="s_total_display" style="padding:9px 12px;background:#eef5fb;border:1px solid #b5d4f4;border-radius:8px;font-size:15px;font-weight:700;color:var(--primary);">0 ج</div>
+      </div>
+      <div class="form-group form-full">
+        <label>ملاحظات</label>
+        <input id="s_note" placeholder="أي ملاحظات إضافية">
+      </div>
     </div>
     <div class="modal-footer">
       <button class="btn btn-outline" onclick="closeModal('storeModal')">إلغاء</button>
-      <button class="btn btn-accent" onclick="submitStoreIssue()">✅ تسجيل الصرف</button>
+      <button class="btn btn-accent" onclick="submitStoreIssue()">✅ تسجيل الصرف وخصم الرصيد</button>
+    </div>
+  </div>
+</div>
+
+<!-- Store Inventory Management Modal -->
+<div class="modal-overlay" id="storeInventoryModal">
+  <div class="modal" style="width:720px;">
+    <button class="modal-close" onclick="closeModal('storeInventoryModal')">✕</button>
+    <div class="modal-title" id="storeInvTitle">📦 إدارة المخزن</div>
+    <div id="storeInvBody"></div>
+  </div>
+</div>
+
+<!-- Assign Ticket Modal -->
+<div class="modal-overlay" id="assignModal">
+  <div class="modal">
+    <button class="modal-close" onclick="closeModal('assignModal')">✕</button>
+    <div class="modal-title">👷 تعيين فني للبلاغ</div>
+    <p style="font-size:13px;color:var(--text-muted);margin-bottom:16px;">اختر الفني المناسب:</p>
+    <div id="techList"></div>
+    <div class="modal-footer">
+      <button class="btn btn-outline" onclick="closeModal('assignModal')">إلغاء</button>
     </div>
   </div>
 </div>
@@ -1076,8 +1130,9 @@ function buildTicketsTable(arr){
         <td style="font-size:12px;">${t.createdByName||'—'}</td>
         <td style="font-size:12px;">${fmt_date(t.createdAt)}</td>
         <td>${t.cost?`<span class="cost-tag">${parseFloat(t.cost).toLocaleString('ar-EG')} ج</span>`:'—'}</td>
-        <td>
+        <td style="white-space:nowrap;">
           <button class="btn btn-sm btn-outline" onclick="showTicketDetail('${t.id}')">تفاصيل</button>
+          ${CU.role==='admin'&&t.status==='pending'?`<button class="btn btn-sm btn-accent" style="margin-right:4px;" onclick="openAssignModal('${t.id}')">👷</button>`:''}
           ${CU.role==='admin'?`<button class="btn btn-sm btn-danger" style="margin-right:4px;" onclick="deleteTicket('${t.id}')">🗑</button>`:''}
         </td>
       </tr>`).join('')}
@@ -1655,80 +1710,497 @@ Write-Host "Done! Device registered successfully."
 
 function sleep(ms){ return new Promise(r=>setTimeout(r,ms)); }
 
-// ─── SETTINGS ───
-window.openModal = function(id){ $(id).classList.add('open'); if(id==='settingsModal'){ loadSettings(); renderSettingsTab('buildings'); } };
+// ─── MODAL HELPERS ───
+window.openModal = function(id){
+  $(id).classList.add('open');
+  if(id==='settingsModal'){ loadSettings(); renderSettingsTab('buildings'); }
+  if(id==='storeModal'){ openStoreModal(); }
+};
 window.closeModal = function(id){ $(id).classList.remove('open'); };
-window.switchSettingsTab = function(tab){
+
+// ─── STORE MODAL OPEN ───
+function openStoreModal(){
+  // Populate stores
+  const sSel=$('s_store');
+  sSel.innerHTML='<option value="">-- اختر المخزن --</option>';
+  get(ref(db,'store_inventory')).then(snap=>{
+    const inv=snap.val()||{};
+    Object.entries(inv).forEach(([k,s])=>{
+      sSel.innerHTML+=`<option value="${k}">${s.icon||'🏪'} ${s.name}</option>`;
+    });
+  });
+  // Populate pending tickets
+  const tSel=$('s_ticket');
+  tSel.innerHTML='<option value="">-- اختر بلاغ (اختياري) --</option>';
+  Object.entries(tickets).filter(([,t])=>t.status!=='done').forEach(([k,t])=>{
+    tSel.innerHTML+=`<option value="${k}">[${k.substr(0,6)}] ${t.type||''} - ${t.room||''}</option>`;
+  });
+  // Populate locations
+  const lSel=$('s_location');
+  lSel.innerHTML='<option value="">-- اختر الموقع --</option>';
+  settings.buildings.forEach(b=>{
+    b.rooms.forEach(r=>{ lSel.innerHTML+=`<option value="${b.name} - ${r}">${b.name} / ${r}</option>`; });
+  });
+  settings.vehicles.forEach(v=>{ lSel.innerHTML+=`<option value="${v}">🚌 ${v}</option>`; });
+  lSel.innerHTML+='<option value="الإدارة">🏢 الإدارة</option><option value="غرفة المعلمين">👨‍🏫 غرفة المعلمين</option>';
+  $('s_item_select').innerHTML='<option value="">-- اختر المخزن أولاً --</option>';
+  $('s_balance').textContent='اختر قطعة أولاً';
+  $('s_total_display').textContent='0 ج';
+}
+
+window.onStoreChange=function(){
+  const storeId=$('s_store').value;
+  const iSel=$('s_item_select');
+  iSel.innerHTML='<option value="">-- اختر القطعة --</option>';
+  $('s_balance').textContent='اختر قطعة أولاً';
+  if(!storeId) return;
+  get(ref(db,'store_inventory/'+storeId+'/items')).then(snap=>{
+    const items=snap.val()||{};
+    Object.entries(items).forEach(([k,it])=>{
+      iSel.innerHTML+=`<option value="${k}">${it.name} (رصيد: ${it.balance||0} ${it.unit||'قطعة'})</option>`;
+    });
+  });
+};
+
+window.onItemSelect=function(){
+  const storeId=$('s_store').value, itemId=$('s_item_select').value;
+  if(!storeId||!itemId){ $('s_balance').textContent='—'; return; }
+  get(ref(db,`store_inventory/${storeId}/items/${itemId}`)).then(snap=>{
+    const it=snap.val()||{};
+    const bal=$('s_balance');
+    bal.textContent=`${it.balance||0} ${it.unit||'قطعة'} متاح`;
+    bal.style.color=(it.balance||0)>0?'var(--success)':'var(--danger)';
+    if(it.unit_cost) $('s_unit_cost').value=it.unit_cost;
+    calcStoreCost();
+  });
+};
+
+window.calcStoreCost=function(){
+  const qty=parseInt($('s_qty')?.value)||1;
+  const uc=parseFloat($('s_unit_cost')?.value)||0;
+  const total=qty*uc;
+  const el=$('s_total_display');
+  if(el) el.textContent=total.toLocaleString('ar-EG')+' ج';
+};
+
+window.submitStoreIssue=function(){
+  const storeId=$('s_store').value, itemId=$('s_item_select').value;
+  const ticketId=$('s_ticket').value, location=$('s_location').value;
+  const qty=parseInt($('s_qty').value)||1;
+  const unitCost=parseFloat($('s_unit_cost').value)||0;
+  const totalCost=qty*unitCost;
+  const note=$('s_note').value;
+
+  if(!storeId||!itemId){ alert('اختر المخزن والقطعة'); return; }
+
+  get(ref(db,`store_inventory/${storeId}/items/${itemId}`)).then(snap=>{
+    const it=snap.val()||{};
+    const curBal=it.balance||0;
+    if(qty>curBal){ alert(`الرصيد المتاح ${curBal} فقط - لا يمكن صرف ${qty}`); return; }
+
+    // Deduct balance
+    update(ref(db,`store_inventory/${storeId}/items/${itemId}`),{
+      balance: curBal-qty,
+      lastUpdated: Date.now()
+    });
+
+    // Record transaction
+    push(ref(db,'store_transactions'),{
+      storeId, storeName: $('s_store').selectedOptions[0]?.text||storeId,
+      itemId, itemName: it.name,
+      qty, unitCost, totalCost, location, ticketId, note,
+      time: Date.now(), byId:CID, byName:CU.name||''
+    });
+
+    // Update ticket cost
+    if(ticketId && tickets[ticketId]){
+      const oldC=tickets[ticketId].cost||0;
+      update(ref(db,'tickets/'+ticketId),{cost:oldC+totalCost});
+    }
+    closeModal('storeModal');
+    alert(`✅ تم صرف ${qty} ${it.unit||'قطعة'} من ${it.name} — الرصيد الجديد: ${curBal-qty}`);
+  });
+};
+
+// ─── STORE INVENTORY MANAGEMENT PAGE ───
+function renderStore(){
+  get(ref(db,'store_inventory')).then(snapInv=>{
+    get(ref(db,'store_transactions')).then(snapTrans=>{
+      const stores=snapInv.val()||{};
+      const trans=Object.entries(snapTrans.val()||{}).map(([k,v])=>({id:k,...v})).sort((a,b)=>b.time-a.time);
+      const totalIssued=trans.reduce((s,t)=>s+(t.totalCost||t.cost||0),0);
+
+      $('mainContent').innerHTML=`
+        <div style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:16px;">
+          ${['admin','storekeeper'].includes(CU.role)?`
+            <button class="btn btn-primary" onclick="openNewStoreModal()">➕ مخزن جديد</button>
+          `:''}
+          ${['admin','storekeeper','technician'].includes(CU.role)?`
+            <button class="btn btn-accent" onclick="openModal('storeModal')">📤 صرف قطعة غيار</button>
+          `:''}
+        </div>
+
+        <!-- STORES CARDS -->
+        <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(320px,1fr));gap:16px;margin-bottom:24px;">
+          ${Object.entries(stores).map(([sid,s])=>`
+          <div class="card" style="border-top:4px solid var(--primary);">
+            <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;">
+              <div style="display:flex;align-items:center;gap:10px;">
+                <div style="width:44px;height:44px;background:var(--bg);border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:22px;">${s.icon||'🏪'}</div>
+                <div>
+                  <div style="font-weight:700;font-size:14px;">${s.name}</div>
+                  <div style="font-size:11px;color:var(--text-muted);">${s.desc||''}</div>
+                </div>
+              </div>
+              ${['admin','storekeeper'].includes(CU.role)?`
+              <div style="display:flex;gap:6px;">
+                <button class="btn btn-sm btn-outline" onclick="openManageStore('${sid}')">⚙️ إدارة</button>
+              </div>`:''}
+            </div>
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">
+              ${Object.entries(s.items||{}).slice(0,6).map(([iid,it])=>`
+              <div style="background:var(--bg);border-radius:8px;padding:10px;">
+                <div style="font-size:11px;color:var(--text-muted);margin-bottom:2px;">${it.name}</div>
+                <div style="font-size:16px;font-weight:700;color:${(it.balance||0)<(it.minBalance||2)?'var(--danger)':'var(--primary)'};">${it.balance||0}</div>
+                <div style="font-size:10px;color:var(--text-muted);">${it.unit||'قطعة'} ${(it.balance||0)<(it.minBalance||2)?'⚠️ منخفض':''}</div>
+              </div>`).join('')}
+            </div>
+            ${Object.keys(s.items||{}).length>6?`<div style="font-size:11px;color:var(--text-muted);margin-top:8px;text-align:center;">+ ${Object.keys(s.items||{}).length-6} قطع أخرى</div>`:''}
+          </div>`).join('') || '<div class="empty"><div class="empty-icon">🏪</div><div class="empty-text">لا توجد مخازن — أضف مخزناً جديداً</div></div>'}
+        </div>
+
+        <!-- TRANSACTIONS -->
+        <div class="card">
+          <div class="card-title"><span class="icon">📋</span> سجل الصرف (${trans.length}) — إجمالي: <span class="cost-tag">${totalIssued.toLocaleString('ar-EG')} ج</span></div>
+          <div class="tbl-wrap">
+            ${trans.length?`<table>
+              <thead><tr><th>المخزن</th><th>القطعة</th><th>الكمية</th><th>سعر الوحدة</th><th>الإجمالي</th><th>الموقع</th><th>البلاغ</th><th>الفني</th><th>التاريخ</th></tr></thead>
+              <tbody>
+                ${trans.slice(0,50).map(t=>`<tr>
+                  <td><span class="badge badge-it">${t.storeName||t.storeId||'—'}</span></td>
+                  <td style="font-weight:600;">${t.itemName||t.item||'—'}</td>
+                  <td style="text-align:center;">${t.qty||1}</td>
+                  <td>${t.unitCost?t.unitCost.toLocaleString('ar-EG')+' ج':'—'}</td>
+                  <td><span class="cost-tag">${(t.totalCost||t.cost||0).toLocaleString('ar-EG')} ج</span></td>
+                  <td style="font-size:12px;">${t.location||'—'}</td>
+                  <td style="font-size:11px;"><code>${t.ticketId?t.ticketId.substr(0,8):'—'}</code></td>
+                  <td style="font-size:12px;">${t.byName||'—'}</td>
+                  <td style="font-size:12px;">${fmt_date(t.time)}</td>
+                </tr>`).join('')}
+              </tbody>
+            </table>`:'<div class="empty"><div class="empty-icon">📋</div><div class="empty-text">لا توجد عمليات صرف</div></div>'}
+          </div>
+        </div>
+      `;
+    });
+  });
+}
+
+// Open new store modal
+window.openNewStoreModal=function(){
+  const name=prompt('اسم المخزن الجديد:','مخزن جديد'); if(!name) return;
+  const icon=prompt('أيقونة المخزن (emoji):','🏪'); 
+  const desc=prompt('وصف المخزن (اختياري):','');
+  push(ref(db,'store_inventory'),{ name:name.trim(), icon:icon||'🏪', desc:desc||'', items:{} });
+  setTimeout(()=>renderStore(),500);
+};
+
+// Open manage store modal with items, add, edit, opening balance
+window.openManageStore=function(sid){
+  get(ref(db,'store_inventory/'+sid)).then(snap=>{
+    const s=snap.val()||{};
+    $('storeInvTitle').textContent=`⚙️ إدارة: ${s.name}`;
+    const items=s.items||{};
+    $('storeInvBody').innerHTML=`
+      <div style="margin-bottom:16px;display:flex;gap:8px;flex-wrap:wrap;">
+        <input id="inv_iname" placeholder="اسم القطعة" style="flex:2;padding:8px 12px;border:1px solid #d1d5db;border-radius:8px;font-family:Cairo,sans-serif;font-size:13px;">
+        <input id="inv_iunit" placeholder="الوحدة (قطعة/م/كيلو)" style="flex:1;padding:8px 12px;border:1px solid #d1d5db;border-radius:8px;font-family:Cairo,sans-serif;font-size:13px;">
+        <input id="inv_ibal" type="number" placeholder="الرصيد الابتدائي" style="flex:1;padding:8px 12px;border:1px solid #d1d5db;border-radius:8px;font-family:Cairo,sans-serif;font-size:13px;">
+        <input id="inv_iminbal" type="number" placeholder="الحد الأدنى" style="flex:1;padding:8px 12px;border:1px solid #d1d5db;border-radius:8px;font-family:Cairo,sans-serif;font-size:13px;">
+        <input id="inv_iucost" type="number" placeholder="سعر الوحدة (ج)" style="flex:1;padding:8px 12px;border:1px solid #d1d5db;border-radius:8px;font-family:Cairo,sans-serif;font-size:13px;">
+        <button class="btn btn-primary" onclick="addInvItem('${sid}')">➕ إضافة</button>
+      </div>
+      <div class="tbl-wrap">
+        <table>
+          <thead><tr><th>القطعة</th><th>الوحدة</th><th>الرصيد الحالي</th><th>الحد الأدنى</th><th>سعر الوحدة</th><th>إضافة/خصم</th><th>إجراءات</th></tr></thead>
+          <tbody id="invItemRows">
+            ${Object.entries(items).map(([iid,it])=>`
+            <tr id="invrow_${iid}">
+              <td><strong>${it.name}</strong></td>
+              <td>${it.unit||'قطعة'}</td>
+              <td>
+                <span style="font-size:16px;font-weight:700;color:${(it.balance||0)<(it.minBalance||2)?'var(--danger)':'var(--success)'};">${it.balance||0}</span>
+              </td>
+              <td>${it.minBalance||'—'}</td>
+              <td>${it.unit_cost?it.unit_cost.toLocaleString('ar-EG')+' ج':'—'}</td>
+              <td style="display:flex;gap:4px;align-items:center;">
+                <input type="number" id="adj_${iid}" placeholder="كمية" min="1" style="width:70px;padding:4px 8px;border:1px solid #d1d5db;border-radius:6px;font-family:Cairo,sans-serif;font-size:12px;">
+                <button class="btn btn-sm btn-success" onclick="adjustBalance('${sid}','${iid}',1)">+</button>
+                <button class="btn btn-sm btn-danger" onclick="adjustBalance('${sid}','${iid}',-1)">−</button>
+              </td>
+              <td>
+                <button class="btn btn-sm btn-outline" onclick="editInvItem('${sid}','${iid}')">✏️</button>
+                <button class="btn btn-sm btn-danger" onclick="deleteInvItem('${sid}','${iid}')">🗑</button>
+              </td>
+            </tr>`).join('')||'<tr><td colspan="7" style="text-align:center;color:var(--text-muted);padding:20px;">لا توجد قطع — أضف أولاً</td></tr>'}
+          </tbody>
+        </table>
+      </div>
+      <div class="modal-footer" style="margin-top:16px;">
+        <button class="btn btn-outline" onclick="closeModal('storeInventoryModal')">إغلاق</button>
+        <button class="btn btn-danger" onclick="deleteStore('${sid}')">🗑 حذف المخزن</button>
+      </div>
+    `;
+    openModal('storeInventoryModal');
+  });
+};
+
+window.addInvItem=function(sid){
+  const name=$('inv_iname').value.trim();
+  if(!name){ alert('أدخل اسم القطعة'); return; }
+  const unit=$('inv_iunit').value.trim()||'قطعة';
+  const balance=parseFloat($('inv_ibal').value)||0;
+  const minBalance=parseFloat($('inv_iminbal').value)||2;
+  const unit_cost=parseFloat($('inv_iucost').value)||0;
+  push(ref(db,`store_inventory/${sid}/items`),{ name, unit, balance, minBalance, unit_cost, createdAt:Date.now() });
+  setTimeout(()=>openManageStore(sid),400);
+};
+
+window.adjustBalance=function(sid,iid,dir){
+  const qty=parseInt($('adj_'+iid)?.value)||1;
+  get(ref(db,`store_inventory/${sid}/items/${iid}`)).then(snap=>{
+    const it=snap.val()||{};
+    const newBal=Math.max(0,(it.balance||0)+(dir*qty));
+    update(ref(db,`store_inventory/${sid}/items/${iid}`),{balance:newBal, lastUpdated:Date.now()});
+    // Log as addition transaction if adding
+    if(dir>0){
+      push(ref(db,'store_transactions'),{
+        storeId:sid, storeName:it.storeName||sid,
+        itemId:iid, itemName:it.name,
+        qty, unitCost:it.unit_cost||0, totalCost:(it.unit_cost||0)*qty,
+        type:'addition', location:'المخزن', ticketId:'', note:'إضافة رصيد',
+        time:Date.now(), byId:CID, byName:CU.name||''
+      });
+    }
+    setTimeout(()=>openManageStore(sid),300);
+  });
+};
+
+window.editInvItem=function(sid,iid){
+  get(ref(db,`store_inventory/${sid}/items/${iid}`)).then(snap=>{
+    const it=snap.val()||{};
+    const name=prompt('اسم القطعة:',it.name); if(name===null) return;
+    const unit=prompt('الوحدة:',it.unit||'قطعة'); if(unit===null) return;
+    const balance=prompt('الرصيد الحالي:',it.balance||0); if(balance===null) return;
+    const minBalance=prompt('الحد الأدنى للتنبيه:',it.minBalance||2); if(minBalance===null) return;
+    const unit_cost=prompt('سعر الوحدة (جنيه):',it.unit_cost||0); if(unit_cost===null) return;
+    update(ref(db,`store_inventory/${sid}/items/${iid}`),{
+      name:name.trim(), unit:unit.trim(), balance:parseFloat(balance)||0,
+      minBalance:parseFloat(minBalance)||2, unit_cost:parseFloat(unit_cost)||0
+    });
+    setTimeout(()=>openManageStore(sid),300);
+  });
+};
+
+window.deleteInvItem=function(sid,iid){
+  if(!confirm('حذف هذه القطعة من المخزن؟')) return;
+  remove(ref(db,`store_inventory/${sid}/items/${iid}`));
+  setTimeout(()=>openManageStore(sid),300);
+};
+
+window.deleteStore=function(sid){
+  if(!confirm('حذف هذا المخزن بالكامل؟ لا يمكن التراجع عن هذه العملية')) return;
+  remove(ref(db,'store_inventory/'+sid));
+  closeModal('storeInventoryModal');
+  setTimeout(()=>renderStore(),400);
+};
+
+// ─── ASSIGN TICKET (Admin) ───
+window.openAssignModal=function(ticketId){
+  const t=tickets[ticketId]; if(!t) return;
+  const techs=Object.entries(users).filter(([,u])=>u.role==='technician'&&u.dept===t.dept);
+  $('techList').innerHTML=techs.length
+    ? techs.map(([uid,u])=>`
+      <div style="display:flex;align-items:center;justify-content:space-between;padding:12px;border:1px solid var(--border);border-radius:10px;margin-bottom:8px;">
+        <div style="display:flex;align-items:center;gap:10px;">
+          <div style="width:38px;height:38px;border-radius:50%;background:var(--primary);display:flex;align-items:center;justify-content:center;color:#fff;font-weight:700;">${(u.name||'?').charAt(0)}</div>
+          <div><div style="font-weight:600;font-size:13px;">${u.name}</div><div style="font-size:11px;color:var(--text-muted);">${dept_badge(u.dept)}</div></div>
+        </div>
+        <button class="btn btn-primary btn-sm" onclick="assignTicket('${ticketId}','${uid}','${u.name}')">تعيين ✓</button>
+      </div>`).join('')
+    : '<div class="empty"><div class="empty-text">لا يوجد فنيون مسجلون لهذا القسم</div></div>';
+  openModal('assignModal');
+};
+
+window.assignTicket=function(ticketId, techId, techName){
+  update(ref(db,'tickets/'+ticketId),{ assignedTo:techId, assignedName:techName, status:'inprogress', assignedAt:Date.now() });
+  sendNotification(techId,'🔧 تم تعيينك على بلاغ',`تم تعيينك للعمل على بلاغ ${tickets[ticketId]?.type||''} في ${tickets[ticketId]?.room||''}`,ticketId);
+  sendNotification(tickets[ticketId]?.createdBy,'👷 تم تعيين فني لبلاغك',`تم تعيين الفني ${techName} لحل مشكلتك`,ticketId);
+  closeModal('assignModal');
+};
+
+// ─── SHOW TICKET DETAIL (Updated with Assign button) ───
+window.showTicketDetail=function(id){
+  const t=tickets[id]; if(!t) return;
+  $('tdTitle').textContent=`🛠️ بلاغ: ${t.type||'صيانة'} — ${t.room||''}`;
+  const canAct=(CU.role==='technician'&&t.dept===CU.dept)||(CU.role==='admin');
+  const isAdmin=CU.role==='admin';
+  $('tdBody').innerHTML=`
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:16px;">
+      <div><label style="font-size:11px;color:var(--text-muted);">الحالة</label><div style="margin-top:4px;">${status_badge(t.status)}</div></div>
+      <div><label style="font-size:11px;color:var(--text-muted);">الأولوية</label><div style="margin-top:4px;">${priority_span(t.priority)}</div></div>
+      <div><label style="font-size:11px;color:var(--text-muted);">القسم</label><div style="margin-top:4px;">${dept_badge(t.dept)}</div></div>
+      <div><label style="font-size:11px;color:var(--text-muted);">النوع</label><div style="margin-top:4px;font-size:13px;">${t.type||'—'}</div></div>
+      <div><label style="font-size:11px;color:var(--text-muted);">الموقع</label><div style="margin-top:4px;font-size:13px;">${[t.building,t.floor,t.room].filter(Boolean).join(' / ')||'—'}</div></div>
+      <div><label style="font-size:11px;color:var(--text-muted);">الفني المعين</label><div style="margin-top:4px;font-size:13px;">${t.assignedName||'<span style="color:var(--text-muted);">لم يُعيَّن بعد</span>'}</div></div>
+      <div><label style="font-size:11px;color:var(--text-muted);">مقدم البلاغ</label><div style="margin-top:4px;font-size:13px;">${t.createdByName||'—'}</div></div>
+      <div><label style="font-size:11px;color:var(--text-muted);">التاريخ</label><div style="margin-top:4px;font-size:13px;">${fmt_time(t.createdAt)}</div></div>
+      <div style="grid-column:1/-1;"><label style="font-size:11px;color:var(--text-muted);">وصف المشكلة</label><div style="margin-top:4px;font-size:13px;background:#f9fafb;padding:10px;border-radius:8px;">${t.desc||'—'}</div></div>
+      ${t.resolution?`<div style="grid-column:1/-1;"><label style="font-size:11px;color:var(--text-muted);">سبب الحل / ملاحظات الفني</label><div style="margin-top:4px;font-size:13px;background:#f0fdf4;padding:10px;border-radius:8px;color:var(--success);">${t.resolution}</div></div>`:''}
+      ${t.cost?`<div><label style="font-size:11px;color:var(--text-muted);">التكلفة</label><div style="margin-top:4px;"><span class="cost-tag">${parseFloat(t.cost).toLocaleString('ar-EG')} ج</span></div></div>`:''}
+    </div>
+    ${canAct&&t.status!=='done'?`
+    <div style="border-top:1px solid var(--border);padding-top:14px;">
+      <div class="form-group" style="margin-bottom:10px;">
+        <label>ملاحظات الفني / سبب الحل</label>
+        <textarea id="res_note" placeholder="اكتب ملاحظاتك..." style="min-height:70px;width:100%;padding:9px 12px;border:1px solid #d1d5db;border-radius:8px;font-family:Cairo,sans-serif;font-size:13px;"></textarea>
+      </div>
+      <div class="form-group">
+        <label>التكلفة الفعلية (جنيه)</label>
+        <input id="res_cost" type="number" placeholder="0" value="${t.cost||0}" style="width:100%;padding:9px 12px;border:1px solid #d1d5db;border-radius:8px;font-family:Cairo,sans-serif;font-size:13px;">
+      </div>
+    </div>`:''}
+  `;
+  const footer=$('tdFooter'); footer.innerHTML='';
+  const cancelBtn=document.createElement('button');
+  cancelBtn.className='btn btn-outline'; cancelBtn.textContent='إغلاق';
+  cancelBtn.onclick=()=>closeModal('ticketDetailModal');
+  footer.appendChild(cancelBtn);
+
+  if(isAdmin&&t.status==='pending'){
+    const assignBtn=document.createElement('button');
+    assignBtn.className='btn btn-accent'; assignBtn.textContent='👷 تعيين فني';
+    assignBtn.onclick=()=>{ closeModal('ticketDetailModal'); openAssignModal(id); };
+    footer.appendChild(assignBtn);
+  }
+  if(canAct&&t.status==='pending'){
+    const startBtn=document.createElement('button');
+    startBtn.className='btn btn-primary'; startBtn.textContent='▶ بدء العمل';
+    startBtn.onclick=()=>changeTicketStatus(id,'inprogress');
+    footer.appendChild(startBtn);
+  }
+  if(canAct&&t.status==='inprogress'){
+    const doneBtn=document.createElement('button');
+    doneBtn.className='btn btn-success'; doneBtn.textContent='✅ تم الحل';
+    doneBtn.onclick=()=>resolveTicket(id);
+    footer.appendChild(doneBtn);
+  }
+  openModal('ticketDetailModal');
+};
+
+// ─── SETTINGS ───
+window.switchSettingsTab=function(tab){
   document.querySelectorAll('#settingsTabs .tab').forEach(t=>t.classList.remove('active'));
   event.target.classList.add('active');
   renderSettingsTab(tab);
 };
+
 function renderSettingsTab(tab){
   const sc=$('settingsContent');
   if(tab==='buildings'){
     sc.innerHTML=`
-      <div class="form-grid" style="margin-bottom:14px;">
-        <div class="form-group"><label>اسم المبنى</label><input id="nb_name" placeholder="مثال: المبنى الرئيسي"></div>
-        <div class="form-group form-full" style="align-self:end;"><button class="btn btn-primary" onclick="addBuilding()">➕ إضافة مبنى</button></div>
+      <div style="background:#f9fafb;border-radius:10px;padding:14px;margin-bottom:14px;">
+        <div style="font-weight:700;font-size:13px;margin-bottom:10px;color:var(--primary);">➕ إضافة مبنى جديد</div>
+        <div style="display:flex;gap:8px;flex-wrap:wrap;">
+          <input id="nb_name" placeholder="اسم المبنى" style="flex:2;padding:8px 12px;border:1px solid #d1d5db;border-radius:8px;font-family:Cairo,sans-serif;font-size:13px;">
+          <button class="btn btn-primary" onclick="addBuilding()">➕ إضافة</button>
+        </div>
       </div>
-      <div class="tbl-wrap">
-        <table>
-          <thead><tr><th>المبنى</th><th>الأدوار</th><th>الغرف</th><th>إجراءات</th></tr></thead>
-          <tbody>
-            ${settings.buildings.map((b,i)=>`<tr id="brow_${i}">
-              <td><span id="bname_${i}"><strong>${b.name}</strong></span></td>
-              <td style="font-size:12px;" id="bfloors_${i}">${b.floors.join(' | ')}</td>
-              <td style="font-size:12px;">${b.rooms.slice(0,4).join(', ')}${b.rooms.length>4?'...':''}</td>
-              <td style="white-space:nowrap;">
-                <button class="btn btn-sm btn-outline" style="margin-left:4px;" onclick="editBuilding(${i})">✏️ تعديل</button>
-                <button class="btn btn-sm btn-danger" onclick="removeBuilding(${i})">🗑</button>
-              </td>
-            </tr>`).join('')}
-          </tbody>
-        </table>
-      </div>
+      ${settings.buildings.map((b,i)=>`
+      <div style="background:#fff;border:1px solid var(--border);border-radius:10px;padding:14px;margin-bottom:12px;">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;">
+          <div style="font-weight:700;font-size:14px;">🏫 ${b.name}</div>
+          <div style="display:flex;gap:6px;">
+            <button class="btn btn-sm btn-danger" onclick="removeBuilding(${i})">🗑 حذف المبنى</button>
+          </div>
+        </div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
+          <div>
+            <div style="font-size:12px;font-weight:600;color:var(--text-muted);margin-bottom:6px;">الأدوار</div>
+            ${b.floors.map((f,fi)=>`
+            <div style="display:flex;align-items:center;gap:6px;margin-bottom:5px;">
+              <input value="${f}" id="fl_${i}_${fi}" style="flex:1;padding:5px 8px;border:1px solid #d1d5db;border-radius:6px;font-family:Cairo,sans-serif;font-size:12px;">
+              <button class="btn btn-sm btn-outline" style="padding:3px 8px;" onclick="saveFloor(${i},${fi})">💾</button>
+              <button class="btn btn-sm btn-danger" style="padding:3px 8px;" onclick="removeFloor(${i},${fi})">✕</button>
+            </div>`).join('')}
+            <div style="display:flex;gap:6px;margin-top:6px;">
+              <input id="nfl_${i}" placeholder="دور جديد..." style="flex:1;padding:5px 8px;border:1px solid #d1d5db;border-radius:6px;font-family:Cairo,sans-serif;font-size:12px;">
+              <button class="btn btn-sm btn-primary" onclick="addFloor(${i})">➕</button>
+            </div>
+          </div>
+          <div>
+            <div style="font-size:12px;font-weight:600;color:var(--text-muted);margin-bottom:6px;">الغرف والفصول</div>
+            <div style="max-height:160px;overflow-y:auto;">
+              ${b.rooms.map((r,ri)=>`
+              <div style="display:flex;align-items:center;gap:6px;margin-bottom:5px;">
+                <input value="${r}" id="rm_${i}_${ri}" style="flex:1;padding:5px 8px;border:1px solid #d1d5db;border-radius:6px;font-family:Cairo,sans-serif;font-size:12px;">
+                <button class="btn btn-sm btn-outline" style="padding:3px 8px;" onclick="saveRoom(${i},${ri})">💾</button>
+                <button class="btn btn-sm btn-danger" style="padding:3px 8px;" onclick="removeRoom(${i},${ri})">✕</button>
+              </div>`).join('')}
+            </div>
+            <div style="display:flex;gap:6px;margin-top:6px;">
+              <input id="nrm_${i}" placeholder="غرفة / فصل جديد..." style="flex:1;padding:5px 8px;border:1px solid #d1d5db;border-radius:6px;font-family:Cairo,sans-serif;font-size:12px;">
+              <button class="btn btn-sm btn-primary" onclick="addRoom(${i})">➕</button>
+            </div>
+          </div>
+        </div>
+      </div>`).join('')}
     `;
   } else if(tab==='depts'){
     sc.innerHTML=`
-      <div class="form-grid" style="margin-bottom:14px;">
-        <div class="form-group"><label>اسم القسم</label><input id="nd_name" placeholder="مثال: سباكة"></div>
-        <div class="form-group"><label>الأيقونة (emoji)</label><input id="nd_icon" placeholder="🔧" style="width:80px;"></div>
-        <div class="form-group form-full" style="align-self:end;"><button class="btn btn-primary" onclick="addDept()">➕ إضافة قسم</button></div>
+      <div style="background:#f9fafb;border-radius:10px;padding:14px;margin-bottom:14px;">
+        <div style="font-weight:700;font-size:13px;margin-bottom:10px;color:var(--primary);">➕ إضافة قسم جديد</div>
+        <div style="display:flex;gap:8px;flex-wrap:wrap;">
+          <input id="nd_name" placeholder="اسم القسم" style="flex:2;padding:8px 12px;border:1px solid #d1d5db;border-radius:8px;font-family:Cairo,sans-serif;font-size:13px;">
+          <input id="nd_icon" placeholder="🔧" style="width:60px;padding:8px 12px;border:1px solid #d1d5db;border-radius:8px;font-family:Cairo,sans-serif;font-size:16px;text-align:center;">
+          <button class="btn btn-primary" onclick="addDept()">➕ إضافة</button>
+        </div>
       </div>
-      <div style="margin-top:8px;">
-        ${settings.depts.map((d,i)=>`
-        <div style="background:#f9fafb;border-radius:8px;padding:12px;margin-bottom:10px;" id="dcard_${i}">
-          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;">
-            <div id="dlabel_${i}" style="font-weight:700;">${d.icon} ${d.name}</div>
-            <div style="display:flex;gap:6px;">
-              <button class="btn btn-sm btn-outline" onclick="editDept(${i})">✏️ تعديل</button>
-              <button class="btn btn-sm btn-danger" onclick="removeDept(${i})">🗑</button>
-            </div>
-          </div>
-          <div style="font-size:12px;color:var(--text-muted);margin-bottom:8px;">
-            الأنواع: ${d.types.map((t,ti)=>`
-              <span style="display:inline-flex;align-items:center;gap:3px;background:#e5e7eb;padding:2px 8px;border-radius:20px;margin:2px;">
-                <span id="type_${i}_${ti}">${t}</span>
-                <button onclick="editType(${i},${ti})" style="background:none;border:none;cursor:pointer;font-size:10px;color:#6b7280;padding:0;">✏️</button>
-                <button onclick="removeType(${i},${ti})" style="background:none;border:none;cursor:pointer;font-size:10px;color:var(--danger);padding:0;">✕</button>
-              </span>`).join('')}
-          </div>
-          <div style="display:flex;gap:8px;">
-            <input id="nt_${i}" placeholder="نوع جديد..." style="padding:6px 10px;border:1px solid #d1d5db;border-radius:6px;font-family:Cairo,sans-serif;font-size:12px;flex:1;">
-            <button class="btn btn-sm btn-outline" onclick="addType(${i})">➕ نوع</button>
-          </div>
-        </div>`).join('')}
-      </div>
+      ${settings.depts.map((d,i)=>`
+      <div style="background:#fff;border:1px solid var(--border);border-radius:10px;padding:14px;margin-bottom:12px;">
+        <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px;">
+          <input value="${d.icon}" id="di_${i}" style="width:50px;padding:5px;border:1px solid #d1d5db;border-radius:6px;font-size:18px;text-align:center;">
+          <input value="${d.name}" id="dn_${i}" style="flex:1;padding:6px 10px;border:1px solid #d1d5db;border-radius:6px;font-family:Cairo,sans-serif;font-size:14px;font-weight:700;">
+          <button class="btn btn-sm btn-primary" onclick="saveDept(${i})">💾 حفظ</button>
+          <button class="btn btn-sm btn-danger" onclick="removeDept(${i})">🗑</button>
+        </div>
+        <div style="font-size:12px;font-weight:600;color:var(--text-muted);margin-bottom:6px;">أنواع المشكلات:</div>
+        <div style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:8px;">
+          ${d.types.map((t,ti)=>`
+          <div style="display:inline-flex;align-items:center;gap:4px;background:#f0f2f7;border:1px solid var(--border);padding:4px 10px;border-radius:20px;">
+            <input value="${t}" id="ty_${i}_${ti}" style="border:none;background:transparent;font-family:Cairo,sans-serif;font-size:12px;outline:none;width:${Math.max(60,t.length*9)}px;">
+            <button onclick="saveType(${i},${ti})" style="background:none;border:none;cursor:pointer;color:var(--success);font-size:12px;padding:0;" title="حفظ">💾</button>
+            <button onclick="removeType(${i},${ti})" style="background:none;border:none;cursor:pointer;color:var(--danger);font-size:12px;padding:0;">✕</button>
+          </div>`).join('')}
+        </div>
+        <div style="display:flex;gap:6px;">
+          <input id="nt_${i}" placeholder="نوع جديد..." style="flex:1;padding:6px 10px;border:1px solid #d1d5db;border-radius:6px;font-family:Cairo,sans-serif;font-size:12px;">
+          <button class="btn btn-sm btn-outline" onclick="addType(${i})">➕ إضافة نوع</button>
+        </div>
+      </div>`).join('')}
     `;
   } else if(tab==='store_items'){
     sc.innerHTML=`
+      <div style="background:#eef5fb;border-radius:10px;padding:14px;margin-bottom:14px;">
+        <div style="font-size:13px;color:var(--primary);">💡 لإدارة أرصدة المخازن وقطع الغيار بالتفصيل، اذهب إلى <strong>صفحة المخزن</strong> واضغط زر <strong>⚙️ إدارة</strong> على المخزن المطلوب.</div>
+      </div>
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;">
         <div>
-          <h4 style="font-size:13px;font-weight:700;margin-bottom:8px;color:var(--primary);">💻 مخزن IT</h4>
+          <h4 style="font-size:13px;font-weight:700;margin-bottom:8px;color:var(--primary);">💻 قائمة IT (للاستخدام في Dropdowns)</h4>
           ${settings.store_it.map((item,i)=>`
-          <div style="display:flex;align-items:center;gap:6px;margin-bottom:6px;" id="sit_${i}">
-            <span style="flex:1;font-size:13px;" id="sit_label_${i}">${item}</span>
-            <button class="btn btn-sm btn-outline" style="padding:3px 8px;" onclick="editStoreItem('it',${i})">✏️</button>
+          <div style="display:flex;align-items:center;gap:6px;margin-bottom:6px;">
+            <input value="${item}" id="sit_${i}" style="flex:1;padding:5px 8px;border:1px solid #d1d5db;border-radius:6px;font-family:Cairo,sans-serif;font-size:12px;">
+            <button class="btn btn-sm btn-outline" style="padding:3px 8px;" onclick="saveStoreItem('it',${i})">💾</button>
             <button class="btn btn-sm btn-danger" style="padding:3px 8px;" onclick="removeStoreItem('it',${i})">✕</button>
           </div>`).join('')}
           <div style="display:flex;gap:6px;margin-top:10px;">
@@ -1737,11 +2209,11 @@ function renderSettingsTab(tab){
           </div>
         </div>
         <div>
-          <h4 style="font-size:13px;font-weight:700;margin-bottom:8px;color:var(--primary);">⚡ مخزن كهرباء</h4>
+          <h4 style="font-size:13px;font-weight:700;margin-bottom:8px;color:var(--primary);">⚡ قائمة كهرباء</h4>
           ${settings.store_elec.map((item,i)=>`
-          <div style="display:flex;align-items:center;gap:6px;margin-bottom:6px;" id="selec_${i}">
-            <span style="flex:1;font-size:13px;" id="selec_label_${i}">${item}</span>
-            <button class="btn btn-sm btn-outline" style="padding:3px 8px;" onclick="editStoreItem('elec',${i})">✏️</button>
+          <div style="display:flex;align-items:center;gap:6px;margin-bottom:6px;">
+            <input value="${item}" id="selec_${i}" style="flex:1;padding:5px 8px;border:1px solid #d1d5db;border-radius:6px;font-family:Cairo,sans-serif;font-size:12px;">
+            <button class="btn btn-sm btn-outline" style="padding:3px 8px;" onclick="saveStoreItem('elec',${i})">💾</button>
             <button class="btn btn-sm btn-danger" style="padding:3px 8px;" onclick="removeStoreItem('elec',${i})">✕</button>
           </div>`).join('')}
           <div style="display:flex;gap:6px;margin-top:10px;">
@@ -1754,74 +2226,30 @@ function renderSettingsTab(tab){
   }
 }
 
-// ── BUILDINGS CRUD ──
-window.addBuilding=function(){
-  const n=$('nb_name').value.trim(); if(!n) return;
-  settings.buildings.push({id:'B'+Date.now(),name:n,floors:['الدور الأرضي','الدور الأول'],rooms:[]});
-  saveSettings(); renderSettingsTab('buildings');
-};
-window.removeBuilding=function(i){ if(!confirm('حذف هذا المبنى؟')) return; settings.buildings.splice(i,1); saveSettings(); renderSettingsTab('buildings'); };
-window.editBuilding=function(i){
-  const b=settings.buildings[i];
-  const newName=prompt('اسم المبنى:', b.name); if(newName===null) return;
-  const newFloors=prompt('الأدوار (افصل بفاصلة):', b.floors.join(',')); if(newFloors===null) return;
-  const newRooms=prompt('الغرف (افصل بفاصلة):', b.rooms.join(',')); if(newRooms===null) return;
-  settings.buildings[i].name=newName.trim()||b.name;
-  settings.buildings[i].floors=newFloors.split(',').map(s=>s.trim()).filter(Boolean);
-  settings.buildings[i].rooms=newRooms.split(',').map(s=>s.trim()).filter(Boolean);
-  saveSettings(); renderSettingsTab('buildings');
-};
+// ── BUILDINGS CRUD with inline floor/room edit ──
+window.addBuilding=function(){ const n=$('nb_name').value.trim(); if(!n) return; settings.buildings.push({id:'B'+Date.now(),name:n,floors:['الدور الأرضي'],rooms:[]}); saveSettings(); renderSettingsTab('buildings'); };
+window.removeBuilding=function(i){ if(!confirm('حذف هذا المبنى بكل أدواره وغرفه؟')) return; settings.buildings.splice(i,1); saveSettings(); renderSettingsTab('buildings'); };
+window.addFloor=function(i){ const n=$('nfl_'+i)?.value.trim(); if(!n) return; settings.buildings[i].floors.push(n); saveSettings(); renderSettingsTab('buildings'); };
+window.saveFloor=function(i,fi){ const v=$('fl_'+i+'_'+fi)?.value.trim(); if(v) settings.buildings[i].floors[fi]=v; saveSettings(); };
+window.removeFloor=function(i,fi){ settings.buildings[i].floors.splice(fi,1); saveSettings(); renderSettingsTab('buildings'); };
+window.addRoom=function(i){ const n=$('nrm_'+i)?.value.trim(); if(!n) return; settings.buildings[i].rooms.push(n); saveSettings(); renderSettingsTab('buildings'); };
+window.saveRoom=function(i,ri){ const v=$('rm_'+i+'_'+ri)?.value.trim(); if(v) settings.buildings[i].rooms[ri]=v; saveSettings(); };
+window.removeRoom=function(i,ri){ settings.buildings[i].rooms.splice(ri,1); saveSettings(); renderSettingsTab('buildings'); };
 
 // ── DEPTS CRUD ──
-window.addDept=function(){
-  const n=$('nd_name').value.trim(), icon=$('nd_icon').value.trim()||'🔧'; if(!n) return;
-  settings.depts.push({id:'d'+Date.now(),name:n,icon,types:[]}); saveSettings(); renderSettingsTab('depts');
-};
+window.addDept=function(){ const n=$('nd_name').value.trim(), icon=$('nd_icon').value.trim()||'🔧'; if(!n) return; settings.depts.push({id:'d'+Date.now(),name:n,icon,types:[]}); saveSettings(); renderSettingsTab('depts'); };
 window.removeDept=function(i){ if(!confirm('حذف هذا القسم؟')) return; settings.depts.splice(i,1); saveSettings(); renderSettingsTab('depts'); };
-window.editDept=function(i){
-  const d=settings.depts[i];
-  const newName=prompt('اسم القسم:', d.name); if(newName===null) return;
-  const newIcon=prompt('الأيقونة:', d.icon); if(newIcon===null) return;
-  settings.depts[i].name=newName.trim()||d.name;
-  settings.depts[i].icon=newIcon.trim()||d.icon;
-  saveSettings(); renderSettingsTab('depts');
-};
-window.addType=function(i){
-  const n=$('nt_'+i)?.value.trim(); if(!n) return;
-  settings.depts[i].types.push(n); saveSettings(); renderSettingsTab('depts');
-};
-window.removeType=function(di,ti){
-  settings.depts[di].types.splice(ti,1); saveSettings(); renderSettingsTab('depts');
-};
-window.editType=function(di,ti){
-  const old=settings.depts[di].types[ti];
-  const nv=prompt('تعديل النوع:', old); if(nv===null||!nv.trim()) return;
-  settings.depts[di].types[ti]=nv.trim(); saveSettings(); renderSettingsTab('depts');
-};
+window.saveDept=function(i){ settings.depts[i].name=$('dn_'+i)?.value.trim()||settings.depts[i].name; settings.depts[i].icon=$('di_'+i)?.value.trim()||settings.depts[i].icon; saveSettings(); };
+window.addType=function(i){ const n=$('nt_'+i)?.value.trim(); if(!n) return; settings.depts[i].types.push(n); saveSettings(); renderSettingsTab('depts'); };
+window.removeType=function(di,ti){ settings.depts[di].types.splice(ti,1); saveSettings(); renderSettingsTab('depts'); };
+window.saveType=function(di,ti){ const v=$('ty_'+di+'_'+ti)?.value.trim(); if(v) settings.depts[di].types[ti]=v; saveSettings(); };
+window.editType=function(di,ti){ const old=settings.depts[di].types[ti]; const nv=prompt('تعديل النوع:',old); if(nv&&nv.trim()) { settings.depts[di].types[ti]=nv.trim(); saveSettings(); renderSettingsTab('depts'); } };
 
-// ── STORE ITEMS CRUD ──
-window.addStoreItem=function(store){
-  const n=$(('ni_'+store))?.value.trim(); if(!n) return;
-  settings['store_'+store].push(n); saveSettings(); renderSettingsTab('store_items');
-};
-window.removeStoreItem=function(store,i){
-  settings['store_'+store].splice(i,1); saveSettings(); renderSettingsTab('store_items');
-};
-window.editStoreItem=function(store,i){
-  const old=settings['store_'+store][i];
-  const nv=prompt('تعديل القطعة:', old); if(nv===null||!nv.trim()) return;
-  settings['store_'+store][i]=nv.trim(); saveSettings(); renderSettingsTab('store_items');
-};
-
-// also populate store item select when modal opens
-const _orig = window.openModal;
-window.openModal = function(id){
-  _orig(id);
-  if(id==='storeModal'){
-    const si=$('s_item');
-    if(si){ si.outerHTML='<input id="s_item" placeholder="اسم القطعة" style="padding:9px 12px;border:1px solid #d1d5db;border-radius:8px;font-family:Cairo,sans-serif;font-size:13px;width:100%;">'; }
-  }
-};
+// ── STORE ITEMS LIST CRUD ──
+window.addStoreItem=function(store){ const n=$('ni_'+store)?.value.trim(); if(!n) return; settings['store_'+store].push(n); saveSettings(); renderSettingsTab('store_items'); };
+window.removeStoreItem=function(store,i){ settings['store_'+store].splice(i,1); saveSettings(); renderSettingsTab('store_items'); };
+window.saveStoreItem=function(store,i){ const k=store==='it'?'sit_'+i:'selec_'+i; const v=$(k)?.value.trim(); if(v) { settings['store_'+store][i]=v; saveSettings(); } };
+window.editStoreItem=function(store,i){ const old=settings['store_'+store][i]; const nv=prompt('تعديل:',old); if(nv&&nv.trim()) { settings['store_'+store][i]=nv.trim(); saveSettings(); renderSettingsTab('store_items'); } };
 
 // close modals on overlay click
 document.querySelectorAll('.modal-overlay').forEach(overlay=>{
