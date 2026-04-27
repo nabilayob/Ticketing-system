@@ -6,106 +6,76 @@
 <title>DSBA Maintenance System</title>
 
 <style>
-body{
-  font-family: Arial;
-  background:#f4f6f9;
-  margin:0;
-}
-.header{
-  background:#1a5276;
-  color:#fff;
-  padding:15px;
-  display:flex;
-  align-items:center;
-  gap:10px;
-}
-.header h1{margin:0;font-size:18px}
+body{font-family:Arial;background:#f4f6f9;margin:0}
+.header{background:#1a5276;color:#fff;padding:15px}
 .container{padding:20px}
-.card{
-  background:#fff;
-  padding:15px;
-  border-radius:10px;
-  margin-bottom:15px;
-}
-input,select,textarea{
-  width:100%;
-  padding:8px;
-  margin-top:5px;
-  margin-bottom:10px;
-}
-button{
-  padding:10px;
-  background:#1a5276;
-  color:#fff;
-  border:none;
-  border-radius:5px;
-  cursor:pointer;
-}
+.card{background:#fff;padding:15px;border-radius:10px;margin-bottom:15px}
+input,select,textarea{width:100%;padding:8px;margin:5px 0}
+button{padding:10px;background:#1a5276;color:#fff;border:none;border-radius:5px;cursor:pointer}
 </style>
 </head>
 
 <body>
 
 <div class="header">
-  <h1>DSBA - نظام الصيانة</h1>
+  <h2>DSBA - نظام الصيانة</h2>
 </div>
 
 <div class="container">
 
-<div class="card">
-<h3>تسجيل الدخول</h3>
-<input id="email" placeholder="Email">
-<input id="pass" type="password" placeholder="Password">
-<button onclick="login()">Login</button>
-</div>
+  <div class="card" id="loginCard">
+    <h3>تسجيل الدخول</h3>
+    <input id="email" placeholder="Email">
+    <input id="pass" type="password" placeholder="Password">
+    <button onclick="login()">Login</button>
+  </div>
 
-<div class="card">
-<h3>إنشاء بلاغ</h3>
+  <div class="card" id="ticketCard">
+    <h3>إنشاء بلاغ</h3>
 
-<select id="dept">
-<option value="electricity">كهرباء</option>
-<option value="it">IT</option>
-</select>
+    <select id="dept">
+      <option value="electricity">كهرباء</option>
+      <option value="it">IT</option>
+    </select>
 
-<select id="type">
-<option>لمبة</option>
-<option>فيشة</option>
-</select>
+    <select id="type">
+      <option>لمبة</option>
+      <option>فيشة</option>
+    </select>
 
-<input id="room" placeholder="A-101">
+    <input id="room" placeholder="A-101">
+    <textarea id="desc" placeholder="وصف المشكلة"></textarea>
 
-<textarea id="desc" placeholder="وصف المشكلة"></textarea>
+    <button onclick="sendTicket()">Send Ticket</button>
+  </div>
 
-<button onclick="sendTicket()">Send Ticket</button>
+  <div class="card">
+    <h3>التذاكر</h3>
+    <div id="tickets"></div>
+  </div>
 
-</div>
+  <div id="adminPanel" class="card" style="display:none">
+    <h2>Admin Dashboard</h2>
+    <p>تم الدخول كـ Admin</p>
+  </div>
 
-<div class="card">
-<h3>التذاكر</h3>
-<div id="tickets"></div>
-</div>
+  <div id="techPanel" class="card" style="display:none">
+    <h2>Technician Dashboard</h2>
+    <p>تم الدخول كـ Technician</p>
+  </div>
+
+  <div id="teacherPanel" class="card" style="display:none">
+    <h2>Teacher Dashboard</h2>
+    <p>تم الدخول كـ Teacher</p>
+  </div>
 
 </div>
 
 <script type="module">
 
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
-import { getDatabase, ref, push, onValue, get, update } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-database.js";
+import { getDatabase, ref, push, onValue, get } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-database.js";
 import { getAuth, signInWithEmailAndPassword } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
-  function loadUserRole(uid){
-  get(ref(db, "users/" + uid)).then(snap=>{
-    const user = snap.val();
-
-    if(!user){
-      alert("User not found in DB");
-      return;
-    }
-
-    if(user.role === "admin") showAdmin();
-    if(user.role === "technician") showTechnician();
-    if(user.role === "teacher") showTeacher();
-  });
-}
 
 const firebaseConfig = {
   apiKey: "AIzaSyCUgpm_0w-vbtShNGvHMrnQ-om1cbO8Yuo",
@@ -115,44 +85,73 @@ const firebaseConfig = {
   messagingSenderId: "625229329187",
   appId: "1:625229329187:web:0d1b8a5e4324f409455296"
 };
+
 const app = initializeApp(firebaseConfig);
 const db = getDatabase(app);
 const auth = getAuth(app);
+
+function hidePanels(){
+  document.getElementById("adminPanel").style.display = "none";
+  document.getElementById("techPanel").style.display = "none";
+  document.getElementById("teacherPanel").style.display = "none";
+}
+
+function showAdmin(){
+  hidePanels();
+  document.getElementById("loginCard").style.display = "none";
+  document.getElementById("adminPanel").style.display = "block";
+}
+
+function showTechnician(){
+  hidePanels();
+  document.getElementById("loginCard").style.display = "none";
+  document.getElementById("techPanel").style.display = "block";
+}
+
+function showTeacher(){
+  hidePanels();
+  document.getElementById("loginCard").style.display = "none";
+  document.getElementById("teacherPanel").style.display = "block";
+}
+
+function loadUserRole(uid){
+  get(ref(db, "users/" + uid)).then(snap=>{
+    const user = snap.val();
+
+    console.log("UID:", uid);
+    console.log("USER:", user);
+
+    if(!user){
+      alert("User not found in DB");
+      return;
+    }
+
+    if(user.role === "admin") showAdmin();
+    else if(user.role === "technician") showTechnician();
+    else if(user.role === "teacher") showTeacher();
+    else alert("Role not recognized: " + user.role);
+
+  }).catch(e=>{
+    alert(e.message);
+  });
+}
 
 window.login = function(){
   const email = document.getElementById("email").value;
   const pass = document.getElementById("pass").value;
 
   signInWithEmailAndPassword(auth,email,pass)
-    .then(()=>alert("تم تسجيل الدخول"))
-    .catch(e=>alert(e.message));
-}
-
-window.sendTicket = function(){
-
-  const email = document.getElementById("email").value;
-  const pass = document.getElementById("pass").value;
-
-  signInWithEmailAndPassword(auth,email,pass)
     .then(res=>{
- function loadUserRole(uid){
-  get(ref(db, "users/" + uid)).then(snap=>{
-    const user = snap.val();
-
-    if(!user){
-      alert("User not found");
-      return;
-    }
-
-    if(user.role === "admin") showAdmin();
-    if(user.role === "technician") showTechnician();
-    if(user.role === "teacher") showTeacher();
-  });
-}
-      
+      loadUserRole(res.user.uid);
     })
     .catch(e=>alert(e.message));
-}
+};
+
+window.sendTicket = function(){
+  const dept = document.getElementById("dept").value;
+  const type = document.getElementById("type").value;
+  const room = document.getElementById("room").value;
+  const desc = document.getElementById("desc").value;
 
   push(ref(db,"tickets"),{
     dept,
@@ -164,15 +163,13 @@ window.sendTicket = function(){
   });
 
   alert("تم إرسال البلاغ");
-}
+};
 
 onValue(ref(db,"tickets"), snap=>{
-  let html="";
+  let html = "";
   snap.forEach(t=>{
     const d = t.val();
-    html += `<div>
-      ${d.room} - ${d.dept} - ${d.status}
-    </div>`;
+    html += `<div>${d.room} - ${d.dept} - ${d.status}</div>`;
   });
   document.getElementById("tickets").innerHTML = html;
 });
