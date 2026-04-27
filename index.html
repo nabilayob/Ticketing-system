@@ -97,21 +97,24 @@ function hidePanels(){
 }
 
 function showAdmin(){
-  hidePanels();
-  document.getElementById("loginCard").style.display = "none";
-  document.getElementById("adminPanel").style.display = "block";
+  document.getElementById("loginCard").style.display="none";
+  document.getElementById("ticketCard").style.display="none";
+
+  document.getElementById("adminPanel").style.display="block";
 }
 
 function showTechnician(){
-  hidePanels();
-  document.getElementById("loginCard").style.display = "none";
-  document.getElementById("techPanel").style.display = "block";
+  document.getElementById("loginCard").style.display="none";
+  document.getElementById("ticketCard").style.display="none";
+
+  document.getElementById("techPanel").style.display="block";
 }
 
 function showTeacher(){
-  hidePanels();
-  document.getElementById("loginCard").style.display = "none";
-  document.getElementById("teacherPanel").style.display = "block";
+  document.getElementById("loginCard").style.display="none";
+
+  document.getElementById("ticketCard").style.display="block";
+  document.getElementById("teacherPanel").style.display="block";
 }
 
 function loadUserRole(uid){
