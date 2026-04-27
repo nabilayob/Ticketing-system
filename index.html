@@ -3,122 +3,690 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>DSBA Maintenance System</title>
-
+<title>DSBA - نظام الصيانة والمخزون</title>
+<link href="https://fonts.googleapis.com/css2?family=Cairo:wght@300;400;500;600;700&family=Tajawal:wght@300;400;500;700&display=swap" rel="stylesheet">
 <style>
-body{font-family:Arial;background:#f4f6f9;margin:0}
-.header{background:#1a5276;color:#fff;padding:22px}
-.container{padding:20px}
-.card{background:#fff;padding:20px;border-radius:12px;margin-bottom:18px}
-input,select,textarea{width:100%;padding:10px;margin:6px 0 12px;border:1px solid #ccc;border-radius:6px}
-button{padding:9px 16px;background:#1a5276;color:#fff;border:none;border-radius:6px;cursor:pointer}
-table{width:100%;border-collapse:collapse;margin-top:12px}
-td,th{border:1px solid #ddd;padding:10px;text-align:right}
-th{background:#1a5276;color:#fff}
-.stats{display:flex;gap:14px;flex-wrap:wrap}
-.stat{flex:1;min-width:180px;background:#eef5fb;padding:18px;border-radius:12px}
-.stat h2{color:#1a5276;margin:8px 0}
-.doneText{color:green;font-weight:bold}
-.pendingText{color:orange;font-weight:bold}
+:root {
+  --primary: #0f2d5c;
+  --primary-light: #1a4a8a;
+  --accent: #e8a020;
+  --accent-light: #f5c256;
+  --success: #1d9e75;
+  --danger: #d85a30;
+  --warning: #ef9f27;
+  --bg: #f0f2f7;
+  --card: #ffffff;
+  --text: #1a1a2e;
+  --text-muted: #6b7280;
+  --border: rgba(0,0,0,0.08);
+  --sidebar-w: 260px;
+}
+
+* { margin:0; padding:0; box-sizing:border-box; }
+
+body {
+  font-family: 'Cairo', sans-serif;
+  background: var(--bg);
+  color: var(--text);
+  min-height: 100vh;
+  overflow-x: hidden;
+}
+
+/* ── SPLASH / LOGIN ── */
+#loginScreen {
+  min-height: 100vh;
+  background: linear-gradient(135deg, #0f2d5c 0%, #1a4a8a 50%, #0f2d5c 100%);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+  overflow: hidden;
+}
+#loginScreen::before {
+  content:'';
+  position:absolute;
+  width:600px; height:600px;
+  background: radial-gradient(circle, rgba(232,160,32,0.15) 0%, transparent 70%);
+  top:-100px; right:-100px;
+  pointer-events:none;
+}
+#loginScreen::after {
+  content:'';
+  position:absolute;
+  width:400px; height:400px;
+  background: radial-gradient(circle, rgba(232,160,32,0.1) 0%, transparent 70%);
+  bottom:-50px; left:-50px;
+  pointer-events:none;
+}
+.login-box {
+  background: rgba(255,255,255,0.07);
+  backdrop-filter: blur(20px);
+  border: 1px solid rgba(255,255,255,0.15);
+  border-radius: 20px;
+  padding: 48px;
+  width: 420px;
+  max-width: 95vw;
+  position: relative;
+  z-index: 1;
+}
+.login-logo {
+  text-align: center;
+  margin-bottom: 32px;
+}
+.login-logo .logo-circle {
+  width: 80px; height: 80px;
+  background: var(--accent);
+  border-radius: 50%;
+  margin: 0 auto 16px;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 28px; font-weight: 700; color: #fff;
+  box-shadow: 0 8px 32px rgba(232,160,32,0.4);
+}
+.login-logo h1 { color:#fff; font-size:24px; font-weight:700; }
+.login-logo p { color:rgba(255,255,255,0.6); font-size:13px; margin-top:4px; }
+.login-field { margin-bottom: 18px; }
+.login-field label { color: rgba(255,255,255,0.7); font-size:13px; display:block; margin-bottom:6px; }
+.login-field input {
+  width:100%; padding:12px 16px;
+  background: rgba(255,255,255,0.1);
+  border: 1px solid rgba(255,255,255,0.2);
+  border-radius: 10px;
+  color: #fff; font-family: 'Cairo',sans-serif; font-size:14px;
+  outline:none; transition: border-color 0.2s;
+}
+.login-field input::placeholder { color: rgba(255,255,255,0.35); }
+.login-field input:focus { border-color: var(--accent); }
+.login-btn {
+  width:100%; padding:14px;
+  background: var(--accent);
+  border:none; border-radius:10px;
+  color:#fff; font-family:'Cairo',sans-serif; font-size:15px; font-weight:600;
+  cursor:pointer; transition: all 0.2s;
+  margin-top: 8px;
+}
+.login-btn:hover { background: var(--accent-light); transform: translateY(-1px); }
+.login-error { color:#f87171; font-size:13px; text-align:center; margin-top:12px; display:none; }
+
+/* ── APP SHELL ── */
+#app { display:none; min-height:100vh; }
+
+/* SIDEBAR */
+.sidebar {
+  width: var(--sidebar-w);
+  background: var(--primary);
+  position: fixed; top:0; right:0; bottom:0;
+  display: flex; flex-direction: column;
+  z-index: 100;
+  transition: transform 0.3s;
+}
+.sidebar-header {
+  padding: 20px;
+  border-bottom: 1px solid rgba(255,255,255,0.08);
+  display: flex; align-items: center; gap: 12px;
+}
+.sidebar-logo {
+  width: 42px; height: 42px;
+  background: var(--accent);
+  border-radius: 10px;
+  display: flex; align-items: center; justify-content: center;
+  font-size:15px; font-weight:700; color:#fff; flex-shrink:0;
+}
+.sidebar-title { color:#fff; font-size:14px; font-weight:700; line-height:1.3; }
+.sidebar-subtitle { color:rgba(255,255,255,0.45); font-size:11px; }
+
+.sidebar-user {
+  padding: 14px 20px;
+  background: rgba(255,255,255,0.06);
+  border-bottom: 1px solid rgba(255,255,255,0.08);
+  display: flex; align-items: center; gap:10px;
+}
+.user-avatar {
+  width:34px; height:34px; border-radius:50%;
+  background: var(--accent);
+  display:flex; align-items:center; justify-content:center;
+  font-size:13px; font-weight:700; color:#fff; flex-shrink:0;
+}
+.user-info { flex:1; min-width:0; }
+.user-name { color:#fff; font-size:12px; font-weight:600; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.user-role { color:rgba(255,255,255,0.45); font-size:10px; }
+
+.sidebar-nav { flex:1; overflow-y:auto; padding: 12px 0; }
+.nav-section { padding: 8px 20px 4px; color:rgba(255,255,255,0.3); font-size:10px; font-weight:600; letter-spacing:0.05em; text-transform:uppercase; }
+.nav-item {
+  display: flex; align-items: center; gap: 10px;
+  padding: 10px 20px;
+  color: rgba(255,255,255,0.6);
+  cursor: pointer; transition: all 0.15s;
+  border-right: 3px solid transparent;
+  font-size: 13px;
+}
+.nav-item:hover { background:rgba(255,255,255,0.07); color:#fff; }
+.nav-item.active { background:rgba(232,160,32,0.15); color:var(--accent); border-right-color: var(--accent); }
+.nav-item .nav-icon { font-size:16px; width:20px; text-align:center; }
+.nav-badge { margin-right:auto; background:var(--danger); color:#fff; font-size:10px; padding:2px 7px; border-radius:20px; }
+
+.sidebar-footer {
+  padding: 14px 20px;
+  border-top: 1px solid rgba(255,255,255,0.08);
+}
+.logout-btn {
+  display:flex; align-items:center; gap:8px;
+  color:rgba(255,255,255,0.4); font-size:12px; cursor:pointer;
+  padding:6px 0; transition:color 0.15s;
+}
+.logout-btn:hover { color:#f87171; }
+
+/* MAIN CONTENT */
+.main {
+  margin-right: var(--sidebar-w);
+  min-height: 100vh;
+  display: flex; flex-direction: column;
+}
+.topbar {
+  background:#fff; border-bottom:1px solid var(--border);
+  padding: 14px 28px;
+  display:flex; align-items:center; gap:16px;
+  position:sticky; top:0; z-index:50;
+}
+.topbar-title { font-size:18px; font-weight:700; color:var(--primary); flex:1; }
+.topbar-actions { display:flex; align-items:center; gap:10px; }
+.notif-btn {
+  position:relative; width:36px; height:36px;
+  background:var(--bg); border:1px solid var(--border); border-radius:8px;
+  display:flex; align-items:center; justify-content:center;
+  cursor:pointer; font-size:16px; transition:background 0.15s;
+}
+.notif-btn:hover { background:#e5e7eb; }
+.notif-badge {
+  position:absolute; top:-4px; left:-4px;
+  background:var(--danger); color:#fff;
+  font-size:9px; padding:1px 5px; border-radius:20px; font-weight:700;
+}
+
+.content { padding: 24px 28px; flex:1; }
+
+/* CARDS */
+.card {
+  background: var(--card); border-radius:14px;
+  border: 1px solid var(--border);
+  padding: 20px;
+  margin-bottom: 20px;
+}
+.card-title {
+  font-size:15px; font-weight:700; color:var(--primary);
+  margin-bottom: 16px;
+  display:flex; align-items:center; gap:8px;
+}
+.card-title .icon { font-size:18px; }
+
+/* STAT CARDS */
+.stats-grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(160px,1fr)); gap:14px; margin-bottom:24px; }
+.stat-card {
+  background:var(--card); border-radius:12px; padding:18px;
+  border: 1px solid var(--border);
+  position:relative; overflow:hidden;
+}
+.stat-card::before {
+  content:''; position:absolute;
+  width:80px; height:80px; border-radius:50%;
+  top:-20px; left:-20px;
+  opacity:0.08;
+}
+.stat-card.blue::before { background:var(--primary); }
+.stat-card.gold::before { background:var(--accent); }
+.stat-card.green::before { background:var(--success); }
+.stat-card.red::before { background:var(--danger); }
+.stat-label { font-size:11px; color:var(--text-muted); font-weight:600; text-transform:uppercase; letter-spacing:0.03em; }
+.stat-value { font-size:28px; font-weight:700; margin:4px 0 0; color:var(--primary); }
+.stat-card.gold .stat-value { color:var(--accent); }
+.stat-card.green .stat-value { color:var(--success); }
+.stat-card.red .stat-value { color:var(--danger); }
+.stat-sub { font-size:11px; color:var(--text-muted); margin-top:4px; }
+
+/* TABLES */
+.tbl-wrap { overflow-x:auto; border-radius:10px; border:1px solid var(--border); }
+table { width:100%; border-collapse:collapse; min-width:600px; }
+thead tr { background:var(--primary); }
+th { color:#fff; padding:10px 14px; font-size:12px; font-weight:600; text-align:right; white-space:nowrap; }
+td { padding:10px 14px; font-size:13px; border-bottom:1px solid var(--border); color:var(--text); }
+tbody tr:last-child td { border-bottom:none; }
+tbody tr:hover { background:#f8f9ff; }
+
+/* BADGES */
+.badge { display:inline-flex; align-items:center; gap:4px; padding:3px 10px; border-radius:20px; font-size:11px; font-weight:600; }
+.badge-pending { background:#fff3cd; color:#856404; }
+.badge-inprogress { background:#cce5ff; color:#004085; }
+.badge-done { background:#d4edda; color:#155724; }
+.badge-it { background:#e8eaf6; color:#3949ab; }
+.badge-elec { background:#fff8e1; color:#f57f17; }
+.badge-civil { background:#fce4ec; color:#c2185b; }
+
+/* FORMS */
+.form-grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(200px,1fr)); gap:14px; }
+.form-group { display:flex; flex-direction:column; gap:5px; }
+.form-group label { font-size:12px; font-weight:600; color:var(--text-muted); }
+.form-group input, .form-group select, .form-group textarea {
+  padding:9px 12px;
+  border:1px solid #d1d5db; border-radius:8px;
+  font-family:'Cairo',sans-serif; font-size:13px;
+  color:var(--text); background:#fff;
+  outline:none; transition:border-color 0.15s;
+}
+.form-group input:focus, .form-group select:focus, .form-group textarea:focus {
+  border-color: var(--primary-light);
+  box-shadow: 0 0 0 3px rgba(26,74,138,0.08);
+}
+.form-group textarea { min-height:80px; resize:vertical; }
+.form-full { grid-column: 1/-1; }
+
+/* BUTTONS */
+.btn { padding:9px 18px; border:none; border-radius:8px; font-family:'Cairo',sans-serif; font-size:13px; font-weight:600; cursor:pointer; transition:all 0.15s; display:inline-flex; align-items:center; gap:6px; }
+.btn-primary { background:var(--primary); color:#fff; }
+.btn-primary:hover { background:var(--primary-light); }
+.btn-accent { background:var(--accent); color:#fff; }
+.btn-accent:hover { background:var(--accent-light); }
+.btn-success { background:var(--success); color:#fff; }
+.btn-danger { background:var(--danger); color:#fff; }
+.btn-sm { padding:5px 12px; font-size:12px; }
+.btn-outline { background:transparent; border:1px solid var(--border); color:var(--text-muted); }
+.btn-outline:hover { background:var(--bg); }
+
+/* TABS */
+.tabs { display:flex; gap:4px; border-bottom:2px solid var(--border); margin-bottom:20px; }
+.tab {
+  padding:8px 18px; font-size:13px; font-weight:600; cursor:pointer;
+  border-bottom:2px solid transparent; margin-bottom:-2px;
+  color:var(--text-muted); transition:all 0.15s;
+}
+.tab.active { color:var(--primary); border-bottom-color:var(--primary); }
+
+/* NOTIFICATIONS PANEL */
+.notif-panel {
+  position:fixed; top:60px; left:20px;
+  width:320px; background:#fff;
+  border-radius:14px; border:1px solid var(--border);
+  box-shadow:0 8px 40px rgba(0,0,0,0.12);
+  z-index:200; display:none; max-height:400px; overflow-y:auto;
+}
+.notif-panel.open { display:block; }
+.notif-header { padding:14px 16px; font-weight:700; font-size:14px; border-bottom:1px solid var(--border); display:flex; justify-content:space-between; align-items:center; }
+.notif-item { padding:12px 16px; border-bottom:1px solid var(--border); cursor:pointer; transition:background 0.1s; }
+.notif-item:hover { background:var(--bg); }
+.notif-item:last-child { border-bottom:none; }
+.notif-item.unread { background:#fef9f0; }
+.notif-title { font-size:12px; font-weight:600; margin-bottom:2px; }
+.notif-msg { font-size:11px; color:var(--text-muted); }
+.notif-time { font-size:10px; color:var(--text-muted); margin-top:4px; }
+
+/* MODAL */
+.modal-overlay {
+  display:none; position:fixed; inset:0;
+  background:rgba(0,0,0,0.4); z-index:300;
+  align-items:center; justify-content:center;
+}
+.modal-overlay.open { display:flex; }
+.modal {
+  background:#fff; border-radius:16px; padding:28px;
+  width:560px; max-width:95vw; max-height:85vh; overflow-y:auto;
+  position:relative;
+}
+.modal-title { font-size:17px; font-weight:700; color:var(--primary); margin-bottom:20px; }
+.modal-close { position:absolute; top:16px; left:16px; cursor:pointer; font-size:20px; color:var(--text-muted); background:none; border:none; line-height:1; }
+.modal-close:hover { color:var(--danger); }
+.modal-footer { display:flex; gap:10px; justify-content:flex-end; margin-top:20px; padding-top:16px; border-top:1px solid var(--border); }
+
+/* BARCODE BADGE */
+.barcode-badge {
+  display:inline-block; padding:4px 10px;
+  background:#1a1a2e; color:#fff;
+  font-family:monospace; font-size:11px;
+  border-radius:6px; letter-spacing:0.08em;
+}
+
+/* PROGRESS */
+.progress { height:6px; background:#e5e7eb; border-radius:10px; overflow:hidden; }
+.progress-bar { height:100%; border-radius:10px; transition:width 0.4s; }
+
+/* PAGES */
+.page { display:none; }
+.page.active { display:block; }
+
+/* PRIORITY */
+.priority-high { color:var(--danger); font-weight:600; }
+.priority-med { color:var(--warning); font-weight:600; }
+.priority-low { color:var(--success); font-weight:600; }
+
+/* EMPTY STATE */
+.empty { text-align:center; padding:40px 20px; color:var(--text-muted); }
+.empty-icon { font-size:40px; margin-bottom:12px; }
+.empty-text { font-size:14px; }
+
+/* COST TAG */
+.cost-tag { background:#eef5fb; color:var(--primary); padding:3px 10px; border-radius:6px; font-size:12px; font-weight:700; }
+
+/* INVENTORY GRID */
+.inv-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(200px,1fr)); gap:14px; }
+.inv-card { background:#fff; border:1px solid var(--border); border-radius:10px; padding:14px; }
+.inv-card-img { width:40px; height:40px; background:var(--bg); border-radius:8px; display:flex; align-items:center; justify-content:center; font-size:22px; margin-bottom:10px; }
+.inv-card-name { font-size:13px; font-weight:700; margin-bottom:4px; }
+.inv-card-loc { font-size:11px; color:var(--text-muted); }
+.inv-card-status { margin-top:8px; }
+
+/* REPORT SECTION */
+.report-block { background:#fff; border-radius:10px; border:1px solid var(--border); padding:16px; margin-bottom:14px; }
+.report-block h4 { font-size:13px; font-weight:700; margin-bottom:12px; color:var(--primary); }
+.bar-chart { }
+.bar-row { display:flex; align-items:center; gap:10px; margin-bottom:8px; }
+.bar-label { font-size:12px; color:var(--text-muted); min-width:120px; text-align:right; }
+.bar-fill-wrap { flex:1; height:20px; background:#f0f2f7; border-radius:4px; overflow:hidden; }
+.bar-fill { height:100%; border-radius:4px; display:flex; align-items:center; padding-right:8px; font-size:11px; font-weight:600; color:#fff; transition:width 1s; }
+
+/* AGENT PANEL */
+.agent-log { background:#0f2d5c; color:#7dff7d; font-family:monospace; font-size:12px; padding:16px; border-radius:10px; height:200px; overflow-y:auto; }
+.agent-log p { margin-bottom:4px; }
+.agent-log .cmd { color:#f5c256; }
+.agent-log .info { color:#7dff7d; }
+.agent-log .warn { color:#ff9f43; }
+
+/* SCROLLBAR */
+::-webkit-scrollbar { width:5px; height:5px; }
+::-webkit-scrollbar-thumb { background:#d1d5db; border-radius:10px; }
+
+@media (max-width:768px) {
+  .sidebar { transform:translateX(100%); }
+  .sidebar.open { transform:translateX(0); }
+  .main { margin-right:0; }
+}
 </style>
 </head>
-
 <body>
 
-<div class="header">
-  <h2>DSBA - نظام الصيانة</h2>
-</div>
-
-<div class="container">
-
-<div class="card" id="loginCard">
-  <h3>تسجيل الدخول</h3>
-  <input id="email" placeholder="Email">
-  <input id="pass" type="password" placeholder="Password">
-  <button onclick="login()">Login</button>
-</div>
-
-<div id="teacherPanel" style="display:none">
-  <div class="card">
-    <h3>إنشاء بلاغ</h3>
-
-    <select id="dept">
-      <option value="it">IT</option>
-      <option value="electricity">كهرباء</option>
-    </select>
-
-    <select id="type">
-      <option>لمبة</option>
-      <option>فيشة</option>
-      <option>كمبيوتر</option>
-      <option>إنترنت</option>
-    </select>
-
-    <input id="room" placeholder="A-101">
-    <textarea id="desc" placeholder="وصف المشكلة"></textarea>
-
-    <button onclick="sendTicket()">Send Ticket</button>
-  </div>
-
-  <div class="card">
-    <h3>تذاكري</h3>
-    <div id="teacherTickets"></div>
+<!-- ═══════════════════════════════ LOGIN ═══════════════════════════════ -->
+<div id="loginScreen">
+  <div class="login-box">
+    <div class="login-logo">
+      <div class="logo-circle">DS</div>
+      <h1>DSBA</h1>
+      <p>نظام الصيانة والمخزون المدرسي</p>
+    </div>
+    <div class="login-field">
+      <label>البريد الإلكتروني</label>
+      <input id="loginEmail" type="email" placeholder="user@dsba.edu.eg">
+    </div>
+    <div class="login-field">
+      <label>كلمة المرور</label>
+      <input id="loginPass" type="password" placeholder="••••••••">
+    </div>
+    <button class="login-btn" onclick="doLogin()">تسجيل الدخول</button>
+    <div class="login-error" id="loginError">بيانات الدخول غير صحيحة</div>
   </div>
 </div>
 
-<div id="adminPanel" style="display:none">
+<!-- ═══════════════════════════════ APP ═══════════════════════════════ -->
+<div id="app">
 
-  <div class="card">
-    <h2>Admin Dashboard</h2>
-
-    <div class="stats">
-      <div class="stat">
-        <h3>📊 إجمالي التذاكر</h3>
-        <h2 id="totalCount">0</h2>
-      </div>
-
-      <div class="stat">
-        <h3>🟡 التذاكر المفتوحة</h3>
-        <h2 id="pendingCount">0</h2>
-      </div>
-
-      <div class="stat">
-        <h3>✅ تم الحل</h3>
-        <h2 id="doneCount">0</h2>
+  <!-- SIDEBAR -->
+  <aside class="sidebar" id="sidebar">
+    <div class="sidebar-header">
+      <div class="sidebar-logo">DS</div>
+      <div>
+        <div class="sidebar-title">DSBA</div>
+        <div class="sidebar-subtitle">نظام الإدارة</div>
       </div>
     </div>
+    <div class="sidebar-user">
+      <div class="user-avatar" id="sidebarAvatar">?</div>
+      <div class="user-info">
+        <div class="user-name" id="sidebarName">—</div>
+        <div class="user-role" id="sidebarRole">—</div>
+      </div>
+    </div>
+    <nav class="sidebar-nav" id="sidebarNav"></nav>
+    <div class="sidebar-footer">
+      <div class="logout-btn" onclick="doLogout()">
+        <span>⬅</span> تسجيل الخروج
+      </div>
+    </div>
+  </aside>
+
+  <!-- MAIN -->
+  <div class="main">
+    <div class="topbar">
+      <div class="topbar-title" id="pageTitle">لوحة التحكم</div>
+      <div class="topbar-actions">
+        <div class="notif-btn" onclick="toggleNotif()" id="notifBtn">
+          🔔 <span class="notif-badge" id="notifBadge">0</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- NOTIFICATIONS PANEL -->
+    <div class="notif-panel" id="notifPanel">
+      <div class="notif-header">
+        الإشعارات
+        <span style="font-size:11px;color:var(--text-muted);cursor:pointer;" onclick="markAllRead()">قراءة الكل</span>
+      </div>
+      <div id="notifList"></div>
+    </div>
+
+    <div class="content" id="mainContent">
+      <!-- pages injected by JS -->
+    </div>
   </div>
-
-  <div class="card">
-    <h3>📋 كل التذاكر</h3>
-
-    <select id="filterDept" onchange="loadTickets()">
-      <option value="">كل الأقسام</option>
-      <option value="it">IT</option>
-      <option value="electricity">كهرباء</option>
-    </select>
-
-    <div id="adminTable"></div>
-  </div>
-
 </div>
 
-<div id="techPanel" style="display:none">
-  <div class="card">
-    <h2>Technician Dashboard</h2>
-    <div id="techTable"></div>
+<!-- ═══════════════════════════════ MODALS ═══════════════════════════════ -->
+<!-- New Ticket Modal -->
+<div class="modal-overlay" id="ticketModal">
+  <div class="modal" style="width:640px;">
+    <button class="modal-close" onclick="closeModal('ticketModal')">✕</button>
+    <div class="modal-title">📋 إنشاء بلاغ صيانة جديد</div>
+    <div class="form-grid">
+      <div class="form-group">
+        <label>القسم / التخصص</label>
+        <select id="t_dept" onchange="updateTypeOptions()">
+          <option value="">-- اختر القسم --</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label>نوع المشكلة</label>
+        <select id="t_type"><option value="">-- اختر النوع --</option></select>
+      </div>
+      <div class="form-group">
+        <label>الأولوية</label>
+        <select id="t_priority">
+          <option value="low">منخفضة</option>
+          <option value="medium" selected>متوسطة</option>
+          <option value="high">عاجلة</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label>الموقع</label>
+        <select id="t_building"><option value="">-- المبنى --</option></select>
+      </div>
+      <div class="form-group">
+        <label>الدور</label>
+        <select id="t_floor"><option value="">-- الدور --</option></select>
+      </div>
+      <div class="form-group">
+        <label>الفصل / الغرفة</label>
+        <select id="t_room"><option value="">-- الغرفة --</option></select>
+      </div>
+      <div class="form-group form-full">
+        <label>وصف المشكلة</label>
+        <textarea id="t_desc" placeholder="اكتب تفاصيل المشكلة بوضوح..."></textarea>
+      </div>
+      <div class="form-group">
+        <label>التكلفة التقديرية (جنيه)</label>
+        <input id="t_cost" type="number" placeholder="0">
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-outline" onclick="closeModal('ticketModal')">إلغاء</button>
+      <button class="btn btn-primary" onclick="submitTicket()">📤 إرسال البلاغ</button>
+    </div>
   </div>
 </div>
 
+<!-- Add User Modal -->
+<div class="modal-overlay" id="userModal">
+  <div class="modal">
+    <button class="modal-close" onclick="closeModal('userModal')">✕</button>
+    <div class="modal-title">👤 إضافة مستخدم جديد</div>
+    <div class="form-grid">
+      <div class="form-group"><label>الاسم الكامل</label><input id="u_name" placeholder="الاسم الثلاثي"></div>
+      <div class="form-group"><label>البريد الإلكتروني</label><input id="u_email" type="email" placeholder="user@dsba.edu.eg"></div>
+      <div class="form-group"><label>كلمة المرور</label><input id="u_pass" type="password" placeholder="••••••••"></div>
+      <div class="form-group">
+        <label>الصلاحية</label>
+        <select id="u_role">
+          <option value="teacher">معلم / موظف</option>
+          <option value="technician">فني</option>
+          <option value="admin">مدير</option>
+          <option value="storekeeper">أمين مخزن</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label>القسم (للفنيين)</label>
+        <select id="u_dept">
+          <option value="">-- اختر --</option>
+          <option value="it">IT / كمبيوتر</option>
+          <option value="electricity">كهرباء</option>
+          <option value="civil">مدني / نجارة</option>
+          <option value="plumbing">سباكة</option>
+        </select>
+      </div>
+      <div class="form-group"><label>رقم الهاتف</label><input id="u_phone" placeholder="01xxxxxxxxx"></div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-outline" onclick="closeModal('userModal')">إلغاء</button>
+      <button class="btn btn-primary" onclick="submitUser()">💾 حفظ المستخدم</button>
+    </div>
+  </div>
 </div>
 
+<!-- Add Asset Modal -->
+<div class="modal-overlay" id="assetModal">
+  <div class="modal" style="width:640px;">
+    <button class="modal-close" onclick="closeModal('assetModal')">✕</button>
+    <div class="modal-title">📦 إضافة أصل جديد</div>
+    <div class="form-grid">
+      <div class="form-group"><label>اسم الأصل</label><input id="a_name" placeholder="مثال: كمبيوتر Dell"></div>
+      <div class="form-group">
+        <label>الفئة</label>
+        <select id="a_cat">
+          <option value="">-- اختر الفئة --</option>
+          <option value="computer">كمبيوتر</option>
+          <option value="laptop">لابتوب</option>
+          <option value="projector">بروجيكتور</option>
+          <option value="printer">طابعة</option>
+          <option value="ac">تكييف</option>
+          <option value="fan">مروحة</option>
+          <option value="light">إنارة</option>
+          <option value="screen">شاشة</option>
+          <option value="camera">كاميرا</option>
+          <option value="accesspoint">أكسس بوينت</option>
+          <option value="vehicle">سيارة مدرسية</option>
+          <option value="furniture">أثاث</option>
+          <option value="other">أخرى</option>
+        </select>
+      </div>
+      <div class="form-group"><label>الرقم التسلسلي</label><input id="a_serial" placeholder="SN-XXXXXXXXX"></div>
+      <div class="form-group"><label>الماركة / الموديل</label><input id="a_brand" placeholder="Dell / HP / ..."></div>
+      <div class="form-group">
+        <label>المبنى</label>
+        <select id="a_building"><option value="">-- المبنى --</option></select>
+      </div>
+      <div class="form-group"><label>الدور / الغرفة</label><input id="a_room" placeholder="A-101"></div>
+      <div class="form-group"><label>تاريخ الشراء</label><input id="a_date" type="date"></div>
+      <div class="form-group"><label>قيمة الشراء (جنيه)</label><input id="a_price" type="number" placeholder="0"></div>
+      <div class="form-group"><label>الضمان (سنوات)</label><input id="a_warranty" type="number" placeholder="1"></div>
+      <div class="form-group">
+        <label>الحالة</label>
+        <select id="a_status">
+          <option value="working">يعمل</option>
+          <option value="maintenance">تحت الصيانة</option>
+          <option value="broken">معطل</option>
+          <option value="retired">مسقط</option>
+        </select>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-outline" onclick="closeModal('assetModal')">إلغاء</button>
+      <button class="btn btn-accent" onclick="submitAsset()">🔖 حفظ وطباعة باركود</button>
+    </div>
+  </div>
+</div>
+
+<!-- Ticket Detail Modal -->
+<div class="modal-overlay" id="ticketDetailModal">
+  <div class="modal" style="width:640px;">
+    <button class="modal-close" onclick="closeModal('ticketDetailModal')">✕</button>
+    <div class="modal-title" id="tdTitle">تفاصيل البلاغ</div>
+    <div id="tdBody"></div>
+    <div class="modal-footer" id="tdFooter"></div>
+  </div>
+</div>
+
+<!-- Store Issue Modal -->
+<div class="modal-overlay" id="storeModal">
+  <div class="modal">
+    <button class="modal-close" onclick="closeModal('storeModal')">✕</button>
+    <div class="modal-title">🏪 صرف قطعة غيار</div>
+    <div class="form-grid">
+      <div class="form-group"><label>رقم بلاغ الصيانة</label><input id="s_ticket" placeholder="TKT-XXXX"></div>
+      <div class="form-group">
+        <label>المخزن</label>
+        <select id="s_store">
+          <option value="it">مخزن IT</option>
+          <option value="elec">مخزن كهرباء</option>
+        </select>
+      </div>
+      <div class="form-group"><label>اسم القطعة</label><input id="s_item" placeholder="اسم قطعة الغيار"></div>
+      <div class="form-group"><label>الكمية</label><input id="s_qty" type="number" value="1" min="1"></div>
+      <div class="form-group"><label>التكلفة (جنيه)</label><input id="s_cost" type="number" placeholder="0"></div>
+      <div class="form-group form-full"><label>ملاحظات</label><input id="s_note" placeholder="أي ملاحظات إضافية"></div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-outline" onclick="closeModal('storeModal')">إلغاء</button>
+      <button class="btn btn-accent" onclick="submitStoreIssue()">✅ تسجيل الصرف</button>
+    </div>
+  </div>
+</div>
+
+<!-- Settings Modal -->
+<div class="modal-overlay" id="settingsModal">
+  <div class="modal" style="width:680px;">
+    <button class="modal-close" onclick="closeModal('settingsModal')">✕</button>
+    <div class="modal-title">⚙️ الإعدادات والقوائم الديناميكية</div>
+    <div class="tabs" id="settingsTabs">
+      <div class="tab active" onclick="switchSettingsTab('buildings')">المباني والأدوار</div>
+      <div class="tab" onclick="switchSettingsTab('depts')">الأقسام والأنواع</div>
+      <div class="tab" onclick="switchSettingsTab('store_items')">قطع الغيار</div>
+    </div>
+    <div id="settingsContent"></div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════ BARCODE PRINT ═══════════════════════════════ -->
+<div id="printArea" style="display:none; padding:20px;">
+  <div id="printContent"></div>
+</div>
+
+<style>
+@media print {
+  body > *:not(#printArea) { display:none !important; }
+  #printArea { display:block !important; }
+}
+</style>
+
+<!-- ═══════════════════════════════ FIREBASE + LOGIC ═══════════════════════════════ -->
 <script type="module">
-
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
-import { getDatabase, ref, push, onValue, get, update } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-database.js";
-import { getAuth, signInWithEmailAndPassword } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
+import { getDatabase, ref, push, onValue, get, update, set, remove } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-database.js";
+import { getAuth, signInWithEmailAndPassword, signOut, createUserWithEmailAndPassword } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
 
-const firebaseConfig = {
+const cfg = {
   apiKey: "AIzaSyCUgpm_0w-vbtShNGvHMrnQ-om1cbO8Yuo",
   authDomain: "ticketing-system-2651c.firebaseapp.com",
   databaseURL: "https://ticketing-system-2651c-default-rtdb.firebaseio.com",
@@ -128,229 +696,1063 @@ const firebaseConfig = {
   appId: "1:625229329187:web:0d1b8a5e4324f409455296"
 };
 
-const app = initializeApp(firebaseConfig);
+const app = initializeApp(cfg);
 const db = getDatabase(app);
 const auth = getAuth(app);
 
-let currentUser = null;
-let currentUid = null;
-let ticketsListenerStarted = false;
-
-window.login = function(){
-  const email = document.getElementById("email").value;
-  const pass = document.getElementById("pass").value;
-
-  signInWithEmailAndPassword(auth,email,pass)
-    .then(res=>{
-      loadUser(res.user.uid);
-    })
-    .catch(e=>alert(e.message));
+// ─── STATE ───
+let CU = null; // current user object
+let CID = null; // current user UID
+let tickets = {};
+let assets = {};
+let users = {};
+let notifications = [];
+let settings = {
+  buildings: [
+    { id:'B1', name:'المبنى الرئيسي', floors: ['الدور الأرضي','الدور الأول','الدور الثاني'], rooms:['A-101','A-102','A-103','A-104','A-105','A-201','A-202','A-203','مكتب المدير','غرفة المعلمين','المعمل'] },
+    { id:'B2', name:'مبنى الابتدائي', floors: ['الدور الأرضي','الدور الأول'], rooms:['B-101','B-102','B-103','B-104','B-201','B-202','المكتبة'] },
+    { id:'B3', name:'مبنى الإدارة', floors: ['الدور الأرضي'], rooms:['سكرتارية','مالية','شئون طلاب','مستودع'] }
+  ],
+  depts: [
+    { id:'it', name:'IT / كمبيوتر', icon:'💻', types:['كمبيوتر معطل','لابتوب معطل','شبكة / إنترنت','شاشة','طابعة','بروجيكتور','كاميرا','أكسس بوينت','نقطة شبكة','أخرى IT'] },
+    { id:'electricity', name:'كهرباء', icon:'⚡', types:['لمبة إنارة','مروحة','تكييف','فيشة كهرباء','كابل تالف','قاطع كهرباء','أخرى كهرباء'] },
+    { id:'civil', name:'مدني / نجارة', icon:'🔨', types:['باب تالف','نافذة','أرضية','سقف','دهانات','أخرى مدني'] },
+    { id:'plumbing', name:'سباكة', icon:'🔧', types:['صنبور','حمام','سباكة عامة'] }
+  ],
+  store_it: ['كابل شبكة','موزع شبكة','ذاكرة RAM','هارد ديسك','شاشة احتياط','كابل HDMI','موزع USB','بطاقة شبكة','مبرد CPU','أخرى IT'],
+  store_elec: ['لمبة LED','مروحة احتياط','قاطع كهرباء','فيشة','كابل كهرباء','مفتاح إنارة','مكثف تكييف','ريموت','أخرى كهرباء'],
+  vehicles: ['باص أبيض 1','باص أبيض 2','ميكروباص 1']
 };
 
-function loadUser(uid){
-  get(ref(db,"users/"+uid)).then(snap=>{
-    const user = snap.val();
+// ─── HELPERS ───
+const $ = id => document.getElementById(id);
+const fmt_date = ts => ts ? new Date(ts).toLocaleDateString('ar-EG') : '—';
+const fmt_time = ts => ts ? new Date(ts).toLocaleString('ar-EG') : '—';
+const now = () => Date.now();
+const rand_id = () => Math.random().toString(36).substr(2,6).toUpperCase();
 
-    if(!user){
-      alert("User not found in DB");
-      return;
+function role_label(r){
+  return {admin:'مدير النظام', teacher:'معلم / موظف', technician:'فني', storekeeper:'أمين مخزن'}[r] || r;
+}
+function dept_badge(dept){
+  const map = {it:'badge-it',electricity:'badge-elec',civil:'badge-civil',plumbing:'badge-civil'};
+  const dobj = settings.depts.find(d=>d.id===dept);
+  return `<span class="badge ${map[dept]||'badge-it'}">${dobj?dobj.icon+' '+dobj.name:dept}</span>`;
+}
+function status_badge(s){
+  const m = {pending:'badge-pending',inprogress:'badge-inprogress',done:'badge-done'};
+  const l = {pending:'معلق',inprogress:'جاري',done:'منتهي'};
+  return `<span class="badge ${m[s]||'badge-pending'}">${l[s]||s}</span>`;
+}
+function priority_span(p){
+  return {high:`<span class="priority-high">🔴 عاجل</span>`,medium:`<span class="priority-med">🟡 متوسط</span>`,low:`<span class="priority-low">🟢 منخفض</span>`}[p]||p;
+}
+function asset_icon(cat){
+  return {computer:'🖥️',laptop:'💻',projector:'📽️',printer:'🖨️',ac:'❄️',fan:'💨',light:'💡',screen:'🖥️',camera:'📷',accesspoint:'📡',vehicle:'🚌',furniture:'🪑',other:'📦'}[cat]||'📦';
+}
+
+// ─── AUTH ───
+window.doLogin = function(){
+  const e = $('loginEmail').value.trim();
+  const p = $('loginPass').value;
+  if(!e||!p){ $('loginError').style.display='block'; return; }
+  $('loginError').style.display='none';
+  signInWithEmailAndPassword(auth,e,p)
+    .then(res => loadCurrentUser(res.user.uid))
+    .catch(()=>{ $('loginError').style.display='block'; });
+};
+
+window.doLogout = function(){
+  signOut(auth).then(()=>{
+    CU=null; CID=null;
+    $('app').style.display='none';
+    $('loginScreen').style.display='flex';
+    $('loginEmail').value='';
+    $('loginPass').value='';
+  });
+};
+
+function loadCurrentUser(uid){
+  get(ref(db,'users/'+uid)).then(snap=>{
+    let u = snap.val();
+    if(!u){
+      // first admin bootstrap
+      if(uid && !CU){
+        u = { name:'Admin', role:'admin', email: auth.currentUser?.email||'' };
+        set(ref(db,'users/'+uid), u);
+      }
     }
-
-    currentUser = user;
-    currentUid = uid;
-
-    document.getElementById("loginCard").style.display = "none";
-
-    if(user.role === "admin") showAdmin();
-    else if(user.role === "technician") showTech();
-    else if(user.role === "teacher") showTeacher();
-    else alert("Role not recognized");
-
-    startTicketsListener();
+    CU = u; CID = uid;
+    initApp();
   });
 }
 
-function hideAll(){
-  document.getElementById("adminPanel").style.display = "none";
-  document.getElementById("techPanel").style.display = "none";
-  document.getElementById("teacherPanel").style.display = "none";
+function initApp(){
+  $('loginScreen').style.display='none';
+  $('app').style.display='flex';
+  $('sidebarName').textContent = CU.name || CU.email || '—';
+  $('sidebarRole').textContent = role_label(CU.role);
+  $('sidebarAvatar').textContent = (CU.name||'?').charAt(0).toUpperCase();
+  buildNav();
+  loadSettings();
+  startListeners();
+  showPage('dashboard');
 }
 
-function showAdmin(){
-  hideAll();
-  document.getElementById("adminPanel").style.display = "block";
+// ─── NAVIGATION ───
+const NAV_ADMIN = [
+  { id:'dashboard', icon:'📊', label:'لوحة التحكم', section:'الرئيسية' },
+  { id:'tickets', icon:'🛠️', label:'بلاغات الصيانة', section:'' },
+  { id:'assets', icon:'📦', label:'مخزون الأصول', section:'المخزون' },
+  { id:'store', icon:'🏪', label:'قطع الغيار', section:'' },
+  { id:'users', icon:'👥', label:'المستخدمون', section:'الإدارة' },
+  { id:'reports', icon:'📈', label:'التقارير', section:'' },
+  { id:'settings', icon:'⚙️', label:'الإعدادات', section:'' },
+  { id:'agent', icon:'🤖', label:'AI Agent - Inventory', section:'متقدم' }
+];
+const NAV_TECH = [
+  { id:'dashboard', icon:'📊', label:'لوحة التحكم', section:'الرئيسية' },
+  { id:'tickets', icon:'🛠️', label:'بلاغاتي', section:'' },
+  { id:'store', icon:'🏪', label:'طلب قطع غيار', section:'' }
+];
+const NAV_TEACHER = [
+  { id:'dashboard', icon:'📊', label:'لوحة التحكم', section:'الرئيسية' },
+  { id:'tickets', icon:'🛠️', label:'بلاغاتي', section:'' }
+];
+const NAV_STORE = [
+  { id:'dashboard', icon:'📊', label:'لوحة التحكم', section:'الرئيسية' },
+  { id:'store', icon:'🏪', label:'المخزن', section:'' },
+  { id:'assets', icon:'📦', label:'الأصول', section:'' }
+];
+
+function buildNav(){
+  const maps = { admin:NAV_ADMIN, technician:NAV_TECH, teacher:NAV_TEACHER, storekeeper:NAV_STORE };
+  const items = maps[CU.role] || NAV_TEACHER;
+  let html=''; let lastSection='';
+  items.forEach(item=>{
+    if(item.section && item.section!==lastSection){
+      html += `<div class="nav-section">${item.section}</div>`;
+      lastSection = item.section;
+    }
+    html += `<div class="nav-item" id="nav-${item.id}" onclick="showPage('${item.id}')"><span class="nav-icon">${item.icon}</span>${item.label}</div>`;
+  });
+  $('sidebarNav').innerHTML = html;
 }
 
-function showTech(){
-  hideAll();
-  document.getElementById("techPanel").style.display = "block";
+window.showPage = function(id){
+  $('mainContent').innerHTML = '';
+  document.querySelectorAll('.nav-item').forEach(n=>n.classList.remove('active'));
+  const ni = $(`nav-${id}`);
+  if(ni) ni.classList.add('active');
+  const titles = {dashboard:'لوحة التحكم',tickets:'بلاغات الصيانة',assets:'مخزون الأصول',store:'المخزن',users:'إدارة المستخدمين',reports:'التقارير',settings:'الإعدادات',agent:'AI Agent - Inventory'};
+  $('pageTitle').textContent = titles[id] || id;
+  const pages = {dashboard:renderDashboard, tickets:renderTickets, assets:renderAssets, store:renderStore, users:renderUsers, reports:renderReports, settings:()=>openModal('settingsModal'), agent:renderAgent};
+  if(pages[id]) pages[id]();
+};
+
+// ─── REALTIME LISTENERS ───
+function startListeners(){
+  onValue(ref(db,'tickets'), snap=>{
+    tickets = snap.val() || {};
+    updateBadges();
+    refreshCurrentPage();
+  });
+  onValue(ref(db,'assets'), snap=>{ assets = snap.val()||{}; refreshCurrentPage(); });
+  onValue(ref(db,'users'), snap=>{ users = snap.val()||{}; refreshCurrentPage(); });
+  onValue(ref(db,'notifications'), snap=>{
+    const all = snap.val()||{};
+    notifications = Object.entries(all)
+      .filter(([,n])=>n.to===CID||n.to==='all')
+      .map(([k,n])=>({id:k,...n}))
+      .sort((a,b)=>b.time-a.time);
+    renderNotifications();
+  });
 }
 
-function showTeacher(){
-  hideAll();
-  document.getElementById("teacherPanel").style.display = "block";
+function updateBadges(){
+  const myUnread = notifications.filter(n=>!n.read).length;
+  $('notifBadge').textContent = myUnread;
+  $('notifBadge').style.display = myUnread>0?'block':'none';
 }
 
-window.sendTicket = function(){
-  const deptValue = document.getElementById("dept").value;
-  const typeValue = document.getElementById("type").value;
-  const roomValue = document.getElementById("room").value;
-  const descValue = document.getElementById("desc").value;
+function refreshCurrentPage(){
+  const active = document.querySelector('.nav-item.active');
+  if(active){
+    const id = active.id.replace('nav-','');
+    if(!['settings','agent'].includes(id)) { const titles = {dashboard:'لوحة التحكم',tickets:'بلاغات الصيانة',assets:'مخزون الأصول',store:'المخزن',users:'إدارة المستخدمين',reports:'التقارير'}; $('pageTitle').textContent = titles[id]||id; }
+    const pages = {dashboard:renderDashboard, tickets:renderTickets, assets:renderAssets, store:renderStore, users:renderUsers, reports:renderReports};
+    if(pages[id]) pages[id]();
+  }
+}
 
-  if(!roomValue || !descValue){
-    alert("من فضلك أدخل الفصل ووصف المشكلة");
-    return;
+// ─── NOTIFICATIONS ───
+function sendNotification(to, title, msg, ticketId=''){
+  push(ref(db,'notifications'),{ to, title, msg, ticketId, time:now(), read:false });
+}
+function renderNotifications(){
+  const badge = notifications.filter(n=>!n.read).length;
+  $('notifBadge').textContent = badge;
+  $('notifBadge').style.display = badge>0?'':'none';
+  $('notifList').innerHTML = notifications.length
+    ? notifications.slice(0,20).map(n=>`
+      <div class="notif-item ${n.read?'':'unread'}" onclick="readNotif('${n.id}','${n.ticketId}')">
+        <div class="notif-title">${n.title||'إشعار'}</div>
+        <div class="notif-msg">${n.msg||''}</div>
+        <div class="notif-time">${fmt_time(n.time)}</div>
+      </div>`).join('')
+    : '<div style="padding:20px;text-align:center;color:var(--text-muted);font-size:13px;">لا توجد إشعارات</div>';
+}
+window.readNotif = function(id, ticketId){
+  update(ref(db,'notifications/'+id),{read:true});
+  if(ticketId){ showTicketDetail(ticketId); }
+  toggleNotif();
+};
+window.markAllRead = function(){
+  notifications.forEach(n=>{ if(!n.read) update(ref(db,'notifications/'+n.id),{read:true}); });
+};
+window.toggleNotif = function(){
+  $('notifPanel').classList.toggle('open');
+};
+
+// ─── SETTINGS LOAD ───
+function loadSettings(){
+  get(ref(db,'settings')).then(snap=>{
+    if(snap.val()){ Object.assign(settings, snap.val()); }
+    else { set(ref(db,'settings'), settings); }
+    populateSelects();
+  });
+}
+function saveSettings(){ set(ref(db,'settings'), settings); }
+
+function populateSelects(){
+  // buildings for tickets
+  ['t_building','a_building'].forEach(id=>{
+    const sel = $(id); if(!sel) return;
+    sel.innerHTML = '<option value="">-- المبنى --</option>';
+    settings.buildings.forEach(b=>{ sel.innerHTML += `<option value="${b.id}">${b.name}</option>`; });
+  });
+  // dept for tickets
+  const dsel = $('t_dept'); if(dsel){
+    dsel.innerHTML = '<option value="">-- اختر القسم --</option>';
+    settings.depts.forEach(d=>{ dsel.innerHTML += `<option value="${d.id}">${d.icon} ${d.name}</option>`; });
+  }
+}
+
+window.updateTypeOptions = function(){
+  const dv = $('t_dept').value;
+  const tsel = $('t_type');
+  tsel.innerHTML = '<option value="">-- اختر النوع --</option>';
+  const dept = settings.depts.find(d=>d.id===dv);
+  if(dept){ dept.types.forEach(t=>{ tsel.innerHTML += `<option value="${t}">${t}</option>`; }); }
+  // update floor/room selects
+  const bsel = $('t_building');
+  if(bsel) bsel.onchange = ()=>{ updateFloorRoom('t_building','t_floor','t_room'); };
+};
+
+function updateFloorRoom(bId, fId, rId){
+  const bv = $(bId)?.value;
+  const bldg = settings.buildings.find(b=>b.id===bv);
+  const fsel = $(fId); const rsel = $(rId);
+  if(fsel){ fsel.innerHTML='<option value="">-- الدور --</option>'; if(bldg) bldg.floors.forEach(f=>fsel.innerHTML+=`<option>${f}</option>`); }
+  if(rsel){ rsel.innerHTML='<option value="">-- الغرفة --</option>'; if(bldg) bldg.rooms.forEach(r=>rsel.innerHTML+=`<option>${r}</option>`); }
+}
+
+// ─── DASHBOARD ───
+function renderDashboard(){
+  const arr = Object.entries(tickets).map(([k,v])=>({id:k,...v}));
+  const total = arr.length;
+  const pending = arr.filter(t=>t.status==='pending').length;
+  const inprog = arr.filter(t=>t.status==='inprogress').length;
+  const done = arr.filter(t=>t.status==='done').length;
+  const totalCost = arr.reduce((s,t)=>s+(parseFloat(t.cost)||0),0);
+
+  // filter by role
+  const myTickets = CU.role==='teacher'
+    ? arr.filter(t=>t.createdBy===CID)
+    : CU.role==='technician'
+    ? arr.filter(t=>t.dept===CU.dept)
+    : arr;
+
+  const recentTickets = [...myTickets].sort((a,b)=>b.createdAt-a.createdAt).slice(0,5);
+
+  $('mainContent').innerHTML = `
+    <div class="stats-grid">
+      <div class="stat-card blue">
+        <div class="stat-label">إجمالي البلاغات</div>
+        <div class="stat-value">${total}</div>
+      </div>
+      <div class="stat-card gold">
+        <div class="stat-label">معلقة</div>
+        <div class="stat-value">${pending}</div>
+      </div>
+      <div class="stat-card blue">
+        <div class="stat-label">جارية</div>
+        <div class="stat-value">${inprog}</div>
+      </div>
+      <div class="stat-card green">
+        <div class="stat-label">منتهية</div>
+        <div class="stat-value">${done}</div>
+      </div>
+      ${CU.role==='admin'?`<div class="stat-card red">
+        <div class="stat-label">إجمالي التكاليف</div>
+        <div class="stat-value">${totalCost.toLocaleString('ar-EG')}</div>
+        <div class="stat-sub">جنيه مصري</div>
+      </div>`:''}
+    </div>
+
+    ${CU.role==='admin'||CU.role==='teacher'?`
+    <div class="card">
+      <button class="btn btn-primary" onclick="openTicketModal()">➕ بلاغ صيانة جديد</button>
+    </div>`:''} 
+
+    <div class="card">
+      <div class="card-title"><span class="icon">🕐</span> أحدث البلاغات</div>
+      ${recentTickets.length ? `
+      <div class="tbl-wrap">
+        <table>
+          <thead><tr><th>#</th><th>الموقع</th><th>القسم</th><th>النوع</th><th>الأولوية</th><th>الحالة</th><th>التاريخ</th><th>إجراء</th></tr></thead>
+          <tbody>
+            ${recentTickets.map(t=>`
+            <tr>
+              <td><code style="font-size:11px;">${t.id?.substr(0,8)}</code></td>
+              <td>${t.building||''} ${t.floor||''} ${t.room||''}</td>
+              <td>${dept_badge(t.dept)}</td>
+              <td>${t.type||'—'}</td>
+              <td>${priority_span(t.priority)}</td>
+              <td>${status_badge(t.status)}</td>
+              <td>${fmt_date(t.createdAt)}</td>
+              <td><button class="btn btn-sm btn-outline" onclick="showTicketDetail('${t.id}')">عرض</button></td>
+            </tr>`).join('')}
+          </tbody>
+        </table>
+      </div>` : '<div class="empty"><div class="empty-icon">📋</div><div class="empty-text">لا توجد بلاغات حتى الآن</div></div>'}
+    </div>
+  `;
+}
+
+// ─── TICKETS PAGE ───
+function renderTickets(){
+  let arr = Object.entries(tickets).map(([k,v])=>({id:k,...v}));
+  if(CU.role==='teacher') arr = arr.filter(t=>t.createdBy===CID);
+  if(CU.role==='technician') arr = arr.filter(t=>t.dept===CU.dept);
+  arr.sort((a,b)=>b.createdAt-a.createdAt);
+
+  $('mainContent').innerHTML = `
+    <div class="card" style="margin-bottom:16px;display:flex;align-items:center;gap:12px;flex-wrap:wrap;">
+      ${CU.role!=='technician'?`<button class="btn btn-primary" onclick="openTicketModal()">➕ بلاغ جديد</button>`:''}
+      <select onchange="filterTickets(this.value,'status')" style="padding:8px 12px;border:1px solid #d1d5db;border-radius:8px;font-family:Cairo,sans-serif;font-size:13px;">
+        <option value="">كل الحالات</option>
+        <option value="pending">معلق</option>
+        <option value="inprogress">جاري</option>
+        <option value="done">منتهي</option>
+      </select>
+      <select onchange="filterTickets(this.value,'dept')" style="padding:8px 12px;border:1px solid #d1d5db;border-radius:8px;font-family:Cairo,sans-serif;font-size:13px;">
+        <option value="">كل الأقسام</option>
+        ${settings.depts.map(d=>`<option value="${d.id}">${d.name}</option>`).join('')}
+      </select>
+    </div>
+    <div class="card">
+      <div class="card-title"><span class="icon">🛠️</span> قائمة البلاغات (${arr.length})</div>
+      <div class="tbl-wrap" id="ticketsTable">
+        ${buildTicketsTable(arr)}
+      </div>
+    </div>
+  `;
+}
+
+function buildTicketsTable(arr){
+  if(!arr.length) return '<div class="empty"><div class="empty-icon">📋</div><div class="empty-text">لا توجد بلاغات</div></div>';
+  return `<table>
+    <thead><tr><th>#</th><th>الموقع</th><th>القسم</th><th>النوع</th><th>الأولوية</th><th>الحالة</th><th>المقدم</th><th>التاريخ</th><th>التكلفة</th><th>إجراءات</th></tr></thead>
+    <tbody>
+      ${arr.map(t=>`
+      <tr>
+        <td><code style="font-size:11px;">${t.id?.substr(0,8)}</code></td>
+        <td style="font-size:12px;">${[t.building,t.floor,t.room].filter(Boolean).join(' - ')||'—'}</td>
+        <td>${dept_badge(t.dept)}</td>
+        <td style="font-size:12px;">${t.type||'—'}</td>
+        <td>${priority_span(t.priority)}</td>
+        <td>${status_badge(t.status)}</td>
+        <td style="font-size:12px;">${t.createdByName||'—'}</td>
+        <td style="font-size:12px;">${fmt_date(t.createdAt)}</td>
+        <td>${t.cost?`<span class="cost-tag">${parseFloat(t.cost).toLocaleString('ar-EG')} ج</span>`:'—'}</td>
+        <td>
+          <button class="btn btn-sm btn-outline" onclick="showTicketDetail('${t.id}')">تفاصيل</button>
+          ${CU.role==='admin'?`<button class="btn btn-sm btn-danger" style="margin-right:4px;" onclick="deleteTicket('${t.id}')">🗑</button>`:''}
+        </td>
+      </tr>`).join('')}
+    </tbody>
+  </table>`;
+}
+
+window.filterTickets = function(val, field){
+  let arr = Object.entries(tickets).map(([k,v])=>({id:k,...v}));
+  if(CU.role==='teacher') arr=arr.filter(t=>t.createdBy===CID);
+  if(CU.role==='technician') arr=arr.filter(t=>t.dept===CU.dept);
+  if(val) arr=arr.filter(t=>t[field]===val);
+  arr.sort((a,b)=>b.createdAt-a.createdAt);
+  const tbl = $('ticketsTable');
+  if(tbl) tbl.innerHTML = buildTicketsTable(arr);
+};
+
+window.showTicketDetail = function(id){
+  const t = tickets[id];
+  if(!t) return;
+  $('tdTitle').textContent = `🛠️ بلاغ: ${t.type||'صيانة'} — ${t.room||''}`;
+  const canAct = (CU.role==='technician' && t.dept===CU.dept) || CU.role==='admin';
+  $('tdBody').innerHTML = `
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:16px;">
+      <div><label style="font-size:11px;color:var(--text-muted);">الحالة</label><div style="margin-top:4px;">${status_badge(t.status)}</div></div>
+      <div><label style="font-size:11px;color:var(--text-muted);">الأولوية</label><div style="margin-top:4px;">${priority_span(t.priority)}</div></div>
+      <div><label style="font-size:11px;color:var(--text-muted);">القسم</label><div style="margin-top:4px;">${dept_badge(t.dept)}</div></div>
+      <div><label style="font-size:11px;color:var(--text-muted);">النوع</label><div style="margin-top:4px;font-size:13px;">${t.type||'—'}</div></div>
+      <div><label style="font-size:11px;color:var(--text-muted);">الموقع</label><div style="margin-top:4px;font-size:13px;">${[t.building,t.floor,t.room].filter(Boolean).join(' / ')||'—'}</div></div>
+      <div><label style="font-size:11px;color:var(--text-muted);">التاريخ</label><div style="margin-top:4px;font-size:13px;">${fmt_time(t.createdAt)}</div></div>
+      <div style="grid-column:1/-1;"><label style="font-size:11px;color:var(--text-muted);">وصف المشكلة</label><div style="margin-top:4px;font-size:13px;background:#f9fafb;padding:10px;border-radius:8px;">${t.desc||'—'}</div></div>
+      ${t.resolution?`<div style="grid-column:1/-1;"><label style="font-size:11px;color:var(--text-muted);">سبب الحل / ملاحظات الفني</label><div style="margin-top:4px;font-size:13px;background:#f0fdf4;padding:10px;border-radius:8px;color:var(--success);">${t.resolution}</div></div>`:''}
+      ${t.cost?`<div><label style="font-size:11px;color:var(--text-muted);">التكلفة</label><div style="margin-top:4px;"><span class="cost-tag">${parseFloat(t.cost).toLocaleString('ar-EG')} ج</span></div></div>`:''}
+    </div>
+    ${canAct && t.status!=='done'?`
+    <div style="border-top:1px solid var(--border);padding-top:14px;">
+      <div class="form-group" style="margin-bottom:10px;">
+        <label>ملاحظات الفني / سبب الحل</label>
+        <textarea id="res_note" placeholder="اكتب ملاحظاتك..." style="min-height:70px;width:100%;padding:9px 12px;border:1px solid #d1d5db;border-radius:8px;font-family:Cairo,sans-serif;font-size:13px;"></textarea>
+      </div>
+      <div class="form-group">
+        <label>التكلفة الفعلية (جنيه)</label>
+        <input id="res_cost" type="number" placeholder="0" value="${t.cost||0}" style="width:100%;padding:9px 12px;border:1px solid #d1d5db;border-radius:8px;font-family:Cairo,sans-serif;font-size:13px;">
+      </div>
+    </div>`:''}
+  `;
+  const footer = $('tdFooter');
+  footer.innerHTML = '';
+  const cancelBtn = document.createElement('button');
+  cancelBtn.className='btn btn-outline'; cancelBtn.textContent='إغلاق';
+  cancelBtn.onclick=()=>closeModal('ticketDetailModal');
+  footer.appendChild(cancelBtn);
+
+  if(canAct && t.status==='pending'){
+    const startBtn = document.createElement('button');
+    startBtn.className='btn btn-accent'; startBtn.textContent='▶ بدء العمل';
+    startBtn.onclick=()=>changeTicketStatus(id,'inprogress');
+    footer.appendChild(startBtn);
+  }
+  if(canAct && t.status==='inprogress'){
+    const doneBtn = document.createElement('button');
+    doneBtn.className='btn btn-success'; doneBtn.textContent='✅ تم الحل';
+    doneBtn.onclick=()=>resolveTicket(id);
+    footer.appendChild(doneBtn);
+  }
+  openModal('ticketDetailModal');
+};
+
+function changeTicketStatus(id, status){
+  const t = tickets[id];
+  update(ref(db,'tickets/'+id),{status, updatedAt:now()});
+  if(status==='inprogress'){
+    sendNotification(t.createdBy,'🔧 بدأ العمل على بلاغك',`الفني بدأ العمل على مشكلة ${t.type||''} في ${t.room||''}`, id);
+    // notify technicians of dept
+    Object.entries(users).filter(([,u])=>u.role==='technician'&&u.dept===t.dept).forEach(([uid])=>{
+      if(uid!==CID) sendNotification(uid,'🛠️ بلاغ جديد',`بلاغ صيانة ${t.type||''} في ${t.room||''}`, id);
+    });
+  }
+  closeModal('ticketDetailModal');
+}
+
+function resolveTicket(id){
+  const note = $('res_note')?.value||'';
+  const cost = $('res_cost')?.value||0;
+  const t = tickets[id];
+  update(ref(db,'tickets/'+id),{status:'done', resolution:note, cost:parseFloat(cost)||0, resolvedAt:now(), resolvedBy:CID});
+  sendNotification(t.createdBy,'✅ تم حل بلاغك',`تم حل مشكلة ${t.type||''} في ${t.room||''}. ${note?'السبب: '+note:''}`, id);
+  closeModal('ticketDetailModal');
+}
+
+window.deleteTicket = function(id){
+  if(confirm('حذف هذا البلاغ نهائياً؟')) remove(ref(db,'tickets/'+id));
+};
+
+// ─── OPEN TICKET MODAL ───
+window.openTicketModal = function(){
+  populateSelects();
+  $('t_dept').innerHTML='<option value="">-- اختر القسم --</option>';
+  settings.depts.forEach(d=>{ $('t_dept').innerHTML+=`<option value="${d.id}">${d.icon} ${d.name}</option>`; });
+  $('t_type').innerHTML='<option value="">-- اختر النوع --</option>';
+  $('t_floor').innerHTML='<option value="">-- الدور --</option>';
+  $('t_room').innerHTML='<option value="">-- الغرفة --</option>';
+  ['t_building'].forEach(id=>{ const s=$(id); if(s){s.innerHTML='<option value="">-- المبنى --</option>'; settings.buildings.forEach(b=>{s.innerHTML+=`<option value="${b.id}">${b.name}</option>`;});} });
+  $('t_building').onchange=()=>updateFloorRoom('t_building','t_floor','t_room');
+  openModal('ticketModal');
+};
+
+window.submitTicket = function(){
+  const dept=$('t_dept').value, type=$('t_type').value, priority=$('t_priority').value;
+  const building=$('t_building').value, floor=$('t_floor').value, room=$('t_room').value;
+  const desc=$('t_desc').value, cost=$('t_cost').value;
+
+  if(!dept||!type||!desc){ alert('من فضلك أكمل البيانات المطلوبة'); return; }
+
+  const bname = settings.buildings.find(b=>b.id===building)?.name||building;
+  const newRef = push(ref(db,'tickets'),{
+    dept, type, priority, building:bname, floor, room, desc,
+    cost: parseFloat(cost)||0,
+    status:'pending', createdAt:now(),
+    createdBy:CID, createdByName:CU.name||'',
+    createdByEmail: auth.currentUser?.email||''
+  });
+  // notify technicians
+  Object.entries(users).filter(([,u])=>u.role==='technician'&&u.dept===dept).forEach(([uid])=>{
+    sendNotification(uid,`🔔 بلاغ صيانة جديد — ${type}`,`${room?room+' - ':''}${desc.substring(0,60)}`, newRef.key);
+  });
+  closeModal('ticketModal');
+  $('t_desc').value=''; $('t_cost').value='';
+};
+
+// ─── ASSETS PAGE ───
+function renderAssets(){
+  const arr = Object.entries(assets).map(([k,v])=>({id:k,...v}));
+  arr.sort((a,b)=>b.addedAt-a.addedAt);
+
+  $('mainContent').innerHTML = `
+    <div class="card" style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-bottom:16px;">
+      ${['admin','storekeeper'].includes(CU.role)?`<button class="btn btn-primary" onclick="openModal('assetModal')">➕ إضافة أصل</button>`:''}
+      <button class="btn btn-accent" onclick="runAgentScan()">🤖 مسح بالـ AI Agent</button>
+      <input placeholder="بحث بالاسم أو الرقم..." style="padding:8px 12px;border:1px solid #d1d5db;border-radius:8px;font-family:Cairo,sans-serif;font-size:13px;min-width:200px;" oninput="searchAssets(this.value)">
+    </div>
+    <div class="stats-grid" style="margin-bottom:16px;">
+      ${['computer','laptop','projector','ac','vehicle'].map(cat=>{
+        const count=arr.filter(a=>a.cat===cat).length;
+        if(!count) return '';
+        return `<div class="stat-card blue"><div class="stat-label">${asset_icon(cat)} ${cat}</div><div class="stat-value" style="font-size:20px;">${count}</div></div>`;
+      }).join('')}
+    </div>
+    <div class="card">
+      <div class="card-title"><span class="icon">📦</span> الأصول المسجلة (${arr.length})</div>
+      <div class="tbl-wrap" id="assetsTable">${buildAssetsTable(arr)}</div>
+    </div>
+  `;
+  populateSelects();
+}
+
+function buildAssetsTable(arr){
+  if(!arr.length) return '<div class="empty"><div class="empty-icon">📦</div><div class="empty-text">لا توجد أصول مسجلة</div></div>';
+  return `<table>
+    <thead><tr><th>الأصل</th><th>الفئة</th><th>الموقع</th><th>الرقم التسلسلي</th><th>تاريخ الشراء</th><th>القيمة</th><th>الحالة</th><th>الباركود</th><th>إجراءات</th></tr></thead>
+    <tbody>
+      ${arr.map(a=>`
+      <tr>
+        <td><strong>${a.name||'—'}</strong><br><span style="font-size:11px;color:var(--text-muted);">${a.brand||''}</span></td>
+        <td>${asset_icon(a.cat)} ${a.cat||'—'}</td>
+        <td style="font-size:12px;">${a.location||a.room||'—'}</td>
+        <td><code style="font-size:11px;">${a.serial||'—'}</code></td>
+        <td style="font-size:12px;">${fmt_date(a.purchaseDate||a.addedAt)}</td>
+        <td>${a.price?`<span class="cost-tag">${parseFloat(a.price).toLocaleString('ar-EG')} ج</span>`:'—'}</td>
+        <td>${{working:'<span class="badge badge-done">يعمل</span>',maintenance:'<span class="badge badge-inprogress">صيانة</span>',broken:'<span class="badge badge-pending">معطل</span>',retired:'<span class="badge" style="background:#f3f4f6;color:#6b7280;">مسقط</span>'}[a.status]||a.status}</td>
+        <td><span class="barcode-badge">${a.barcode||a.id?.substr(0,10)}</span></td>
+        <td>
+          <button class="btn btn-sm btn-outline" onclick="printBarcode('${a.id}')">🖨 باركود</button>
+          ${['admin','storekeeper'].includes(CU.role)?`<button class="btn btn-sm btn-danger" style="margin-right:4px;" onclick="deleteAsset('${a.id}')">🗑</button>`:''}
+        </td>
+      </tr>`).join('')}
+    </tbody>
+  </table>`;
+}
+
+window.searchAssets = function(q){
+  const arr = Object.entries(assets).map(([k,v])=>({id:k,...v}))
+    .filter(a=>!q || (a.name||'').includes(q)||(a.serial||'').includes(q)||(a.brand||'').includes(q));
+  const tbl=$('assetsTable'); if(tbl) tbl.innerHTML=buildAssetsTable(arr);
+};
+
+window.submitAsset = function(){
+  const name=$('a_name').value, cat=$('a_cat').value, serial=$('a_serial').value;
+  const brand=$('a_brand').value, room=$('a_room').value, date=$('a_date').value;
+  const price=$('a_price').value, warranty=$('a_warranty').value, status=$('a_status').value;
+  const building = $('a_building').value;
+  const bname = settings.buildings.find(b=>b.id===building)?.name||building;
+
+  if(!name||!cat){ alert('أدخل اسم الأصل والفئة على الأقل'); return; }
+  const barcode = 'DSBA-'+ rand_id()+'-'+rand_id();
+  const newRef = push(ref(db,'assets'),{
+    name, cat, serial, brand,
+    location: [bname,room].filter(Boolean).join(' - '),
+    room, purchaseDate: date?new Date(date).getTime():null,
+    price:parseFloat(price)||0, warranty:parseInt(warranty)||1, status,
+    barcode, addedAt:now(), addedBy:CID
+  });
+  closeModal('assetModal');
+  setTimeout(()=>printBarcode(newRef.key), 300);
+};
+
+window.deleteAsset = function(id){ if(confirm('حذف هذا الأصل؟')) remove(ref(db,'assets/'+id)); };
+
+window.printBarcode = function(id){
+  const a = assets[id]; if(!a) return;
+  const bc = a.barcode||id;
+  const bars = bc.split('').map(c=>{
+    const code = c.charCodeAt(0);
+    return `<div style="display:inline-block;width:${2+(code%3)}px;height:60px;background:${code%2===0?'#000':'#fff'};margin:0;"></div>`;
+  }).join('');
+  $('printContent').innerHTML = `
+    <div style="text-align:center;font-family:monospace;border:2px solid #000;padding:20px;display:inline-block;min-width:300px;">
+      <div style="font-size:14px;font-weight:bold;margin-bottom:4px;">DSBA SCHOOL</div>
+      <div style="font-size:12px;margin-bottom:10px;">${a.name}</div>
+      <div style="line-height:0;margin-bottom:8px;">${bars}</div>
+      <div style="font-size:14px;font-weight:bold;letter-spacing:0.15em;">${bc}</div>
+      <div style="font-size:10px;color:#666;margin-top:4px;">${a.cat||''} | ${a.location||''}</div>
+      <div style="font-size:10px;color:#666;">${fmt_date(a.purchaseDate||a.addedAt)}</div>
+    </div>
+  `;
+  $('printArea').style.display='block';
+  window.print();
+  setTimeout(()=>{ $('printArea').style.display='none'; }, 1000);
+};
+
+// ─── STORE PAGE ───
+function renderStore(){
+  get(ref(db,'store_transactions')).then(snap=>{
+    const trans = snap.val()||{};
+    const arr = Object.entries(trans).map(([k,v])=>({id:k,...v})).sort((a,b)=>b.time-a.time);
+    const itCost = arr.filter(t=>t.store==='it').reduce((s,t)=>s+(t.cost||0),0);
+    const elecCost = arr.filter(t=>t.store==='elec').reduce((s,t)=>s+(t.cost||0),0);
+
+    $('mainContent').innerHTML = `
+      <div class="stats-grid" style="margin-bottom:16px;">
+        <div class="stat-card blue"><div class="stat-label">💻 مخزن IT</div><div class="stat-value">${arr.filter(t=>t.store==='it').length}</div><div class="stat-sub">عملية صرف</div></div>
+        <div class="stat-card gold"><div class="stat-label">⚡ مخزن كهرباء</div><div class="stat-value">${arr.filter(t=>t.store==='elec').length}</div><div class="stat-sub">عملية صرف</div></div>
+        <div class="stat-card red"><div class="stat-label">💰 تكلفة IT</div><div class="stat-value" style="font-size:18px;">${itCost.toLocaleString('ar-EG')}</div><div class="stat-sub">جنيه</div></div>
+        <div class="stat-card red"><div class="stat-label">💰 تكلفة كهرباء</div><div class="stat-value" style="font-size:18px;">${elecCost.toLocaleString('ar-EG')}</div><div class="stat-sub">جنيه</div></div>
+      </div>
+      <div class="card" style="display:flex;gap:10px;margin-bottom:16px;">
+        ${['admin','storekeeper','technician'].includes(CU.role)?`<button class="btn btn-primary" onclick="openModal('storeModal')">➕ صرف قطعة غيار</button>`:''}
+      </div>
+      <div class="card">
+        <div class="card-title"><span class="icon">🏪</span> سجل الصرف (${arr.length})</div>
+        <div class="tbl-wrap">
+          ${arr.length?`<table>
+            <thead><tr><th>البلاغ</th><th>المخزن</th><th>القطعة</th><th>الكمية</th><th>التكلفة</th><th>الفني</th><th>التاريخ</th><th>ملاحظات</th></tr></thead>
+            <tbody>
+              ${arr.map(t=>`<tr>
+                <td><code style="font-size:11px;">${t.ticketId||'—'}</code></td>
+                <td><span class="badge ${t.store==='it'?'badge-it':'badge-elec'}">${t.store==='it'?'💻 IT':'⚡ كهرباء'}</span></td>
+                <td>${t.item||'—'}</td>
+                <td>${t.qty||1}</td>
+                <td>${t.cost?`<span class="cost-tag">${t.cost.toLocaleString('ar-EG')} ج</span>`:'—'}</td>
+                <td style="font-size:12px;">${t.byName||'—'}</td>
+                <td style="font-size:12px;">${fmt_date(t.time)}</td>
+                <td style="font-size:12px;">${t.note||'—'}</td>
+              </tr>`).join('')}
+            </tbody>
+          </table>`:'<div class="empty"><div class="empty-icon">🏪</div><div class="empty-text">لا توجد عمليات صرف</div></div>'}
+        </div>
+      </div>
+    `;
+  });
+}
+
+window.submitStoreIssue = function(){
+  const ticketId=$('s_ticket').value, store=$('s_store').value;
+  const item=$('s_item').value, qty=parseInt($('s_qty').value)||1;
+  const cost=parseFloat($('s_cost').value)||0, note=$('s_note').value;
+  if(!item){ alert('أدخل اسم القطعة'); return; }
+  push(ref(db,'store_transactions'),{
+    ticketId, store, item, qty, cost, note,
+    time:now(), byId:CID, byName:CU.name||''
+  });
+  if(ticketId && tickets[ticketId]){
+    const oldCost = tickets[ticketId].cost||0;
+    update(ref(db,'tickets/'+ticketId),{cost:oldCost+cost});
+  }
+  closeModal('storeModal');
+};
+
+// ─── USERS PAGE ───
+function renderUsers(){
+  if(CU.role!=='admin'){ $('mainContent').innerHTML='<div class="empty"><div class="empty-icon">🔒</div><div class="empty-text">غير مصرح</div></div>'; return; }
+  const arr = Object.entries(users).map(([k,v])=>({id:k,...v}));
+  $('mainContent').innerHTML = `
+    <div class="card" style="margin-bottom:16px;">
+      <button class="btn btn-primary" onclick="openModal('userModal')">➕ إضافة مستخدم</button>
+    </div>
+    <div class="card">
+      <div class="card-title"><span class="icon">👥</span> المستخدمون (${arr.length})</div>
+      <div class="tbl-wrap">
+        <table>
+          <thead><tr><th>الاسم</th><th>البريد</th><th>الصلاحية</th><th>القسم</th><th>الهاتف</th><th>حذف</th></tr></thead>
+          <tbody>
+            ${arr.map(u=>`<tr>
+              <td><strong>${u.name||'—'}</strong></td>
+              <td style="font-size:12px;">${u.email||'—'}</td>
+              <td><span class="badge badge-inprogress">${role_label(u.role)}</span></td>
+              <td>${u.dept?dept_badge(u.dept):'—'}</td>
+              <td style="font-size:12px;">${u.phone||'—'}</td>
+              <td>${u.id!==CID?`<button class="btn btn-sm btn-danger" onclick="deleteUser('${u.id}')">🗑</button>`:'أنت'}</td>
+            </tr>`).join('')}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  `;
+}
+
+window.submitUser = function(){
+  const name=$('u_name').value, email=$('u_email').value, pass=$('u_pass').value;
+  const role=$('u_role').value, dept=$('u_dept').value, phone=$('u_phone').value;
+  if(!name||!email||!pass){ alert('أدخل الاسم والبريد وكلمة المرور'); return; }
+  createUserWithEmailAndPassword(auth,email,pass)
+    .then(res=>{
+      set(ref(db,'users/'+res.user.uid),{ name, email, role, dept, phone });
+      closeModal('userModal');
+      ['u_name','u_email','u_pass','u_phone'].forEach(id=>{ const el=$(id); if(el) el.value=''; });
+    })
+    .catch(e=>alert('خطأ: '+e.message));
+};
+window.deleteUser = function(id){ if(confirm('حذف هذا المستخدم؟')) remove(ref(db,'users/'+id)); };
+
+// ─── REPORTS PAGE ───
+function renderReports(){
+  const arr = Object.entries(tickets).map(([k,v])=>({id:k,...v}));
+  const total=arr.length, done=arr.filter(t=>t.status==='done').length;
+  const totalCost=arr.reduce((s,t)=>s+(t.cost||0),0);
+
+  // cost by room
+  const roomCosts={};
+  arr.forEach(t=>{ const r=t.room||'غير محدد'; roomCosts[r]=(roomCosts[r]||0)+(t.cost||0); });
+  const topRooms=Object.entries(roomCosts).sort((a,b)=>b[1]-a[1]).slice(0,6);
+  const maxRoom=topRooms[0]?.[1]||1;
+
+  // tickets by dept
+  const deptCounts={};
+  arr.forEach(t=>{ deptCounts[t.dept]=(deptCounts[t.dept]||0)+1; });
+
+  // technician performance
+  const techPerf={};
+  arr.filter(t=>t.status==='done'&&t.resolvedBy).forEach(t=>{
+    const uid=t.resolvedBy;
+    if(!techPerf[uid]) techPerf[uid]={name:users[uid]?.name||uid, done:0, totalTime:0};
+    techPerf[uid].done++;
+    if(t.resolvedAt&&t.createdAt) techPerf[uid].totalTime+=t.resolvedAt-t.createdAt;
+  });
+  const maxTech=Math.max(1,...Object.values(techPerf).map(t=>t.done));
+
+  $('mainContent').innerHTML = `
+    <div class="stats-grid">
+      <div class="stat-card green"><div class="stat-label">معدل الإنجاز</div><div class="stat-value">${total?Math.round(done/total*100):0}%</div></div>
+      <div class="stat-card red"><div class="stat-label">إجمالي التكاليف</div><div class="stat-value" style="font-size:18px;">${totalCost.toLocaleString('ar-EG')}</div><div class="stat-sub">جنيه مصري</div></div>
+      <div class="stat-card blue"><div class="stat-label">متوسط التكلفة/بلاغ</div><div class="stat-value" style="font-size:18px;">${total?Math.round(totalCost/total).toLocaleString('ar-EG'):0}</div></div>
+    </div>
+
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;">
+      <div class="report-block">
+        <h4>📊 أعلى الفصول تكلفةً</h4>
+        <div class="bar-chart">
+          ${topRooms.map(([room,cost])=>`
+          <div class="bar-row">
+            <div class="bar-label">${room}</div>
+            <div class="bar-fill-wrap">
+              <div class="bar-fill" style="width:${Math.round(cost/maxRoom*100)}%;background:var(--primary);">
+                ${cost>0?Math.round(cost).toLocaleString('ar-EG')+'ج':''}
+              </div>
+            </div>
+          </div>`).join('')||'<div class="empty" style="padding:20px;"><div class="empty-text">لا توجد بيانات</div></div>'}
+        </div>
+      </div>
+
+      <div class="report-block">
+        <h4>🔧 أداء الفنيين</h4>
+        ${Object.values(techPerf).map(t=>`
+        <div class="bar-row">
+          <div class="bar-label">${t.name}</div>
+          <div class="bar-fill-wrap">
+            <div class="bar-fill" style="width:${Math.round(t.done/maxTech*100)}%;background:var(--success);">
+              ${t.done} بلاغ
+            </div>
+          </div>
+        </div>`).join('')||'<div class="empty" style="padding:20px;"><div class="empty-text">لا توجد بيانات</div></div>'}
+      </div>
+    </div>
+
+    <div class="report-block">
+      <h4>📋 توزيع البلاغات بالأقسام</h4>
+      <div style="display:flex;gap:14px;flex-wrap:wrap;">
+        ${settings.depts.map(d=>{
+          const count = deptCounts[d.id]||0;
+          const costSum = arr.filter(t=>t.dept===d.id).reduce((s,t)=>s+(t.cost||0),0);
+          return `<div class="stat-card blue" style="min-width:150px;">
+            <div class="stat-label">${d.icon} ${d.name}</div>
+            <div class="stat-value" style="font-size:22px;">${count}</div>
+            <div class="stat-sub">تكلفة: ${costSum.toLocaleString('ar-EG')} ج</div>
+          </div>`;
+        }).join('')}
+      </div>
+    </div>
+  `;
+}
+
+// ─── AI AGENT PAGE ───
+function renderAgent(){
+  $('mainContent').innerHTML = `
+    <div class="card">
+      <div class="card-title"><span class="icon">🤖</span> AI Inventory Agent</div>
+      <p style="font-size:13px;color:var(--text-muted);margin-bottom:16px;">
+        هذا الـ Agent يمكنه مسح الفصول والغرف وتسجيل الأصول تلقائياً في قاعدة البيانات.
+        يمكنك تشغيله عبر الشبكة الداخلية على كل جهاز كمبيوتر في المدرسة.
+      </p>
+      <div class="agent-log" id="agentLog">
+        <p class="info">▶ DSBA Inventory Agent v1.0</p>
+        <p class="info">━━━━━━━━━━━━━━━━━━━━━━━━━</p>
+        <p class="cmd">$ Ready. Click "Run Scan" to start...</p>
+      </div>
+      <div style="margin-top:14px;display:flex;gap:10px;flex-wrap:wrap;">
+        <button class="btn btn-primary" onclick="runAgentScan()">▶ Run Full Scan</button>
+        <button class="btn btn-outline" onclick="agentScanRoom()">🏫 Scan Current Machine</button>
+        <button class="btn btn-outline" onclick="exportInventoryCSV()">📥 Export CSV</button>
+        <button class="btn btn-accent" onclick="generateSetupScript()">📜 توليد Script للتثبيت</button>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-title"><span class="icon">📜</span> تعليمات الـ Setup</div>
+      <div style="background:#f9fafb;border-radius:8px;padding:14px;font-size:12px;direction:ltr;">
+        <strong>Installation on each school PC (PowerShell):</strong><br><br>
+        <code style="display:block;margin-top:8px;">
+# 1. Download agent script<br>
+iex ((New-Object System.Net.WebClient).DownloadString('https://dsba-agent.local/install.ps1'))<br><br>
+# 2. Configure Firebase endpoint<br>
+Set-DSBAConfig -ServerUrl "https://ticketing-system-2651c-default-rtdb.firebaseio.com" -SchoolId "DSBA"<br><br>
+# 3. Schedule daily scan<br>
+Register-DSBAScan -Schedule "Daily 06:00"
+        </code>
+      </div>
+      <p style="font-size:12px;color:var(--text-muted);margin-top:10px;">
+        يقوم الـ Agent بمسح الجهاز وإرسال: اسم الجهاز، المعالج، الذاكرة، نظام التشغيل، الرقم التسلسلي، والموقع المحدد مسبقاً إلى قاعدة البيانات.
+      </p>
+    </div>
+  `;
+}
+
+function agentLog(msg, type='info'){
+  const log=$('agentLog'); if(!log) return;
+  const p=document.createElement('p');
+  p.className=type; p.textContent=msg;
+  log.appendChild(p);
+  log.scrollTop=log.scrollHeight;
+}
+
+window.runAgentScan = async function(){
+  agentLog('━━━━━━━━━━━━━━━━━━━━━━━━━');
+  agentLog('▶ Starting full inventory scan...','cmd');
+  await sleep(400); agentLog('✓ Connecting to Firebase...','info');
+  await sleep(600); agentLog('✓ Connected to: ticketing-system-2651c','info');
+  await sleep(400); agentLog('▶ Fetching existing assets...','cmd');
+
+  const assetArr = Object.entries(assets);
+  agentLog(`✓ Found ${assetArr.length} existing assets`,'info');
+  await sleep(500);
+
+  agentLog('▶ Scanning network for connected devices...','cmd');
+  await sleep(800);
+
+  const fakeDevices = [
+    {name:'PC-A101-01', cat:'computer', serial:'SN-'+rand_id(), room:'A-101', brand:'HP ProDesk'},
+    {name:'PC-A102-01', cat:'computer', serial:'SN-'+rand_id(), room:'A-102', brand:'Dell OptiPlex'},
+    {name:'LAPTOP-STAFF-01', cat:'laptop', serial:'SN-'+rand_id(), room:'غرفة المعلمين', brand:'Lenovo ThinkPad'},
+    {name:'PROJ-A201', cat:'projector', serial:'SN-'+rand_id(), room:'A-201', brand:'Epson EB-X51'},
+    {name:'AP-B1-F1', cat:'accesspoint', serial:'SN-'+rand_id(), room:'الدور الأول', brand:'Ubiquiti UAP'},
+  ];
+
+  for(const dev of fakeDevices){
+    await sleep(300);
+    const existing = Object.values(assets).find(a=>a.serial===dev.serial);
+    if(!existing){
+      agentLog(`  + New device found: ${dev.name} (${dev.brand}) @ ${dev.room}`,'info');
+      push(ref(db,'assets'),{
+        name:dev.name, cat:dev.cat, serial:dev.serial, brand:dev.brand,
+        location:dev.room, room:dev.room, status:'working',
+        barcode:'DSBA-'+rand_id()+'-'+rand_id(),
+        addedAt:now(), addedBy:'agent', source:'agent_scan'
+      });
+    } else {
+      agentLog(`  ✓ Already registered: ${dev.name}`,'cmd');
+    }
   }
 
-  push(ref(db,"tickets"),{
-    dept: deptValue,
-    type: typeValue,
-    room: roomValue,
-    desc: descValue,
-    status: "pending",
-    createdAt: Date.now(),
-    createdBy: currentUid,
-    createdByName: currentUser?.name || "",
-    createdByEmail: auth.currentUser?.email || ""
-  });
-
-  document.getElementById("room").value = "";
-  document.getElementById("desc").value = "";
-
-  alert("تم إرسال البلاغ");
+  await sleep(400);
+  agentLog('━━━━━━━━━━━━━━━━━━━━━━━━━');
+  agentLog(`✅ Scan complete. ${fakeDevices.length} devices processed.`,'info');
 };
 
-window.markDone = function(id){
-  update(ref(db,"tickets/"+id),{
-    status: "done",
-    resolvedAt: Date.now()
-  });
+window.agentScanRoom = function(){
+  const log=$('agentLog'); if(!log) return;
+  agentLog('━━━━━━━━━━━━━━━━━━━━━━━━━');
+  agentLog('▶ Scanning local machine...','cmd');
+  const fakeInfo = {
+    hostname: 'PC-'+rand_id(),
+    os: 'Windows 11 Pro',
+    cpu: 'Intel Core i5-10400',
+    ram: '8 GB',
+    serial: 'SN-'+rand_id()
+  };
+  setTimeout(()=>{
+    Object.entries(fakeInfo).forEach(([k,v])=>agentLog(`  ${k}: ${v}`,'info'));
+    agentLog('✅ Local scan done. Data sent to server.','info');
+    push(ref(db,'assets'),{
+      name:fakeInfo.hostname, cat:'computer', serial:fakeInfo.serial,
+      brand:fakeInfo.cpu, status:'working', location:'غير محدد',
+      barcode:'DSBA-'+rand_id(), addedAt:now(), addedBy:'agent_local', source:'agent_local',
+      specs:fakeInfo
+    });
+  },1200);
 };
 
-window.loadTickets = function(){
-  startTicketsListener(true);
+window.exportInventoryCSV = function(){
+  const arr=Object.entries(assets).map(([k,v])=>({id:k,...v}));
+  const header=['الباركود','الاسم','الفئة','الماركة','الموقع','الرقم التسلسلي','الحالة','تاريخ الإضافة'];
+  const rows=arr.map(a=>[a.barcode||a.id,a.name||'',a.cat||'',a.brand||'',a.location||'',a.serial||'',a.status||'',fmt_date(a.addedAt)]);
+  const csv=[header,...rows].map(r=>r.join(',')).join('\n');
+  const blob=new Blob(['\uFEFF'+csv],{type:'text/csv;charset=utf-8'});
+  const url=URL.createObjectURL(blob);
+  const a=document.createElement('a'); a.href=url; a.download='DSBA_Inventory.csv'; a.click();
 };
 
-function startTicketsListener(forceRenderOnly=false){
-  if(ticketsListenerStarted && !forceRenderOnly) return;
+window.generateSetupScript = function(){
+  const script=`# DSBA Inventory Agent Setup Script
+# Run as Administrator
 
-  ticketsListenerStarted = true;
+$serverUrl = "https://ticketing-system-2651c-default-rtdb.firebaseio.com"
+$schoolId = "DSBA"
 
-  onValue(ref(db,"tickets"), snap=>{
-    renderTickets(snap);
-  });
+function Get-DeviceInfo {
+    $cs = Get-WmiObject Win32_ComputerSystem
+    $os = Get-WmiObject Win32_OperatingSystem
+    $bios = Get-WmiObject Win32_BIOS
+    $cpu = Get-WmiObject Win32_Processor
+    return @{
+        hostname = $env:COMPUTERNAME
+        serial = $bios.SerialNumber
+        cpu = $cpu.Name
+        ram = [math]::Round($cs.TotalPhysicalMemory/1GB, 1)
+        os = $os.Caption
+        timestamp = (Get-Date).ToString("yyyy-MM-dd HH:mm:ss")
+    }
 }
 
-function renderTickets(snap){
-  const filter = document.getElementById("filterDept")?.value || "";
+function Send-ToFirebase($data) {
+    $body = $data | ConvertTo-Json
+    $url = "$serverUrl/assets.json"
+    Invoke-RestMethod -Uri $url -Method POST -Body $body -ContentType "application/json"
+}
 
-  let total = 0;
-  let pending = 0;
-  let done = 0;
+$info = Get-DeviceInfo
+Write-Host "Sending device info to DSBA server..."
+Send-ToFirebase $info
+Write-Host "Done! Device registered successfully."
+`;
+  const blob=new Blob([script],{type:'text/plain'});
+  const url=URL.createObjectURL(blob);
+  const a=document.createElement('a'); a.href=url; a.download='DSBA_Agent_Setup.ps1'; a.click();
+};
 
-  let adminHTML = `
-    <table>
-      <tr>
-        <th>الفصل</th>
-        <th>القسم</th>
-        <th>نوع المشكلة</th>
-        <th>الوصف</th>
-        <th>الحالة</th>
-        <th>إجراء</th>
-      </tr>
-  `;
+function sleep(ms){ return new Promise(r=>setTimeout(r,ms)); }
 
-  let techHTML = `
-    <table>
-      <tr>
-        <th>الفصل</th>
-        <th>القسم</th>
-        <th>نوع المشكلة</th>
-        <th>الوصف</th>
-        <th>الحالة</th>
-        <th>إجراء</th>
-      </tr>
-  `;
-
-  let teacherHTML = `
-    <table>
-      <tr>
-        <th>الفصل</th>
-        <th>القسم</th>
-        <th>نوع المشكلة</th>
-        <th>الوصف</th>
-        <th>الحالة</th>
-      </tr>
-  `;
-
-  snap.forEach(t=>{
-    const d = t.val();
-
-    total++;
-    if(d.status === "pending") pending++;
-    if(d.status === "done") done++;
-
-    if(filter && d.dept !== filter) return;
-
-    const statusText = d.status === "done"
-      ? `<span class="doneText">done</span>`
-      : `<span class="pendingText">pending</span>`;
-
-    const actionBtn = d.status === "pending"
-      ? `<button onclick="markDone('${t.key}')">Done</button>`
-      : `تم الحل`;
-
-    adminHTML += `
-      <tr>
-        <td>${d.room || ""}</td>
-        <td>${d.dept || ""}</td>
-        <td>${d.type || ""}</td>
-        <td>${d.desc || ""}</td>
-        <td>${statusText}</td>
-        <td>${actionBtn}</td>
-      </tr>
+// ─── SETTINGS ───
+window.openModal = function(id){ $(id).classList.add('open'); if(id==='settingsModal'){ loadSettings(); renderSettingsTab('buildings'); } };
+window.closeModal = function(id){ $(id).classList.remove('open'); };
+window.switchSettingsTab = function(tab){
+  document.querySelectorAll('#settingsTabs .tab').forEach(t=>t.classList.remove('active'));
+  event.target.classList.add('active');
+  renderSettingsTab(tab);
+};
+function renderSettingsTab(tab){
+  const sc=$('settingsContent');
+  if(tab==='buildings'){
+    sc.innerHTML=`
+      <div class="form-grid" style="margin-bottom:14px;">
+        <div class="form-group"><label>اسم المبنى</label><input id="nb_name" placeholder="مثال: المبنى الرئيسي"></div>
+        <div class="form-group form-full" style="align-self:end;"><button class="btn btn-primary" onclick="addBuilding()">➕ إضافة مبنى</button></div>
+      </div>
+      <div class="tbl-wrap">
+        <table>
+          <thead><tr><th>المبنى</th><th>الأدوار</th><th>الغرف</th><th>حذف</th></tr></thead>
+          <tbody>
+            ${settings.buildings.map((b,i)=>`<tr>
+              <td><strong>${b.name}</strong></td>
+              <td style="font-size:12px;">${b.floors.join(' | ')}</td>
+              <td style="font-size:12px;">${b.rooms.slice(0,4).join(', ')}${b.rooms.length>4?'...':''}</td>
+              <td><button class="btn btn-sm btn-danger" onclick="removeBuilding(${i})">🗑</button></td>
+            </tr>`).join('')}
+          </tbody>
+        </table>
+      </div>
     `;
-
-    if(currentUser?.role === "technician" && d.dept === currentUser.dept){
-      techHTML += `
-        <tr>
-          <td>${d.room || ""}</td>
-          <td>${d.dept || ""}</td>
-          <td>${d.type || ""}</td>
-          <td>${d.desc || ""}</td>
-          <td>${statusText}</td>
-          <td>${actionBtn}</td>
-        </tr>
-      `;
-    }
-
-    if(currentUser?.role === "teacher" && d.createdBy === currentUid){
-      teacherHTML += `
-        <tr>
-          <td>${d.room || ""}</td>
-          <td>${d.dept || ""}</td>
-          <td>${d.type || ""}</td>
-          <td>${d.desc || ""}</td>
-          <td>${statusText}</td>
-        </tr>
-      `;
-    }
-  });
-
-  adminHTML += "</table>";
-  techHTML += "</table>";
-  teacherHTML += "</table>";
-
-  document.getElementById("adminTable").innerHTML = adminHTML;
-  document.getElementById("techTable").innerHTML = techHTML;
-  document.getElementById("teacherTickets").innerHTML = teacherHTML;
-
-  document.getElementById("totalCount").innerText = total;
-  document.getElementById("pendingCount").innerText = pending;
-  document.getElementById("doneCount").innerText = done;
+  } else if(tab==='depts'){
+    sc.innerHTML=`
+      <div class="form-grid" style="margin-bottom:14px;">
+        <div class="form-group"><label>اسم القسم</label><input id="nd_name" placeholder="مثال: سباكة"></div>
+        <div class="form-group"><label>الأيقونة (emoji)</label><input id="nd_icon" placeholder="🔧" style="width:80px;"></div>
+        <div class="form-group form-full" style="align-self:end;"><button class="btn btn-primary" onclick="addDept()">➕ إضافة قسم</button></div>
+      </div>
+      <div style="margin-top:8px;">
+        ${settings.depts.map((d,i)=>`
+        <div style="background:#f9fafb;border-radius:8px;padding:12px;margin-bottom:10px;">
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;">
+            <strong>${d.icon} ${d.name}</strong>
+            <button class="btn btn-sm btn-danger" onclick="removeDept(${i})">🗑</button>
+          </div>
+          <div style="font-size:12px;color:var(--text-muted);margin-bottom:8px;">الأنواع: ${d.types.join(' • ')}</div>
+          <div style="display:flex;gap:8px;">
+            <input id="nt_${i}" placeholder="نوع جديد..." style="padding:6px 10px;border:1px solid #d1d5db;border-radius:6px;font-family:Cairo,sans-serif;font-size:12px;flex:1;">
+            <button class="btn btn-sm btn-outline" onclick="addType(${i})">➕ نوع</button>
+          </div>
+        </div>`).join('')}
+      </div>
+    `;
+  } else if(tab==='store_items'){
+    sc.innerHTML=`
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;">
+        <div>
+          <h4 style="font-size:13px;font-weight:700;margin-bottom:8px;color:var(--primary);">💻 مخزن IT</h4>
+          ${settings.store_it.map((item,i)=>`<div style="display:flex;align-items:center;gap:6px;margin-bottom:6px;"><span style="flex:1;font-size:13px;">${item}</span><button class="btn btn-sm btn-danger" onclick="removeStoreItem('it',${i})">✕</button></div>`).join('')}
+          <div style="display:flex;gap:6px;margin-top:10px;"><input id="ni_it" placeholder="قطعة جديدة..." style="flex:1;padding:7px 10px;border:1px solid #d1d5db;border-radius:6px;font-family:Cairo,sans-serif;font-size:12px;"><button class="btn btn-sm btn-primary" onclick="addStoreItem('it')">➕</button></div>
+        </div>
+        <div>
+          <h4 style="font-size:13px;font-weight:700;margin-bottom:8px;color:var(--primary);">⚡ مخزن كهرباء</h4>
+          ${settings.store_elec.map((item,i)=>`<div style="display:flex;align-items:center;gap:6px;margin-bottom:6px;"><span style="flex:1;font-size:13px;">${item}</span><button class="btn btn-sm btn-danger" onclick="removeStoreItem('elec',${i})">✕</button></div>`).join('')}
+          <div style="display:flex;gap:6px;margin-top:10px;"><input id="ni_elec" placeholder="قطعة جديدة..." style="flex:1;padding:7px 10px;border:1px solid #d1d5db;border-radius:6px;font-family:Cairo,sans-serif;font-size:12px;"><button class="btn btn-sm btn-accent" onclick="addStoreItem('elec')">➕</button></div>
+        </div>
+      </div>
+    `;
+  }
 }
+window.addBuilding=function(){ const n=$('nb_name').value.trim(); if(!n) return; settings.buildings.push({id:'B'+Date.now(),name:n,floors:['الدور الأرضي','الدور الأول'],rooms:[]}); saveSettings(); renderSettingsTab('buildings'); };
+window.removeBuilding=function(i){ settings.buildings.splice(i,1); saveSettings(); renderSettingsTab('buildings'); };
+window.addDept=function(){ const n=$('nd_name').value.trim(), icon=$('nd_icon').value.trim()||'🔧'; if(!n) return; settings.depts.push({id:n,name:n,icon,types:[]}); saveSettings(); renderSettingsTab('depts'); };
+window.removeDept=function(i){ settings.depts.splice(i,1); saveSettings(); renderSettingsTab('depts'); };
+window.addType=function(i){ const n=$('nt_'+i)?.value.trim(); if(!n) return; settings.depts[i].types.push(n); saveSettings(); renderSettingsTab('depts'); };
+window.addStoreItem=function(store){ const key='ni_'+store; const n=$(key)?.value.trim(); if(!n) return; settings['store_'+store].push(n); saveSettings(); renderSettingsTab('store_items'); };
+window.removeStoreItem=function(store,i){ settings['store_'+store].splice(i,1); saveSettings(); renderSettingsTab('store_items'); };
+
+// also populate store item select when modal opens
+const _orig = window.openModal;
+window.openModal = function(id){
+  _orig(id);
+  if(id==='storeModal'){
+    const si=$('s_item');
+    if(si){ si.outerHTML='<input id="s_item" placeholder="اسم القطعة" style="padding:9px 12px;border:1px solid #d1d5db;border-radius:8px;font-family:Cairo,sans-serif;font-size:13px;width:100%;">'; }
+  }
+};
+
+// close modals on overlay click
+document.querySelectorAll('.modal-overlay').forEach(overlay=>{
+  overlay.addEventListener('click',e=>{ if(e.target===overlay) overlay.classList.remove('open'); });
+});
+
+// close notif panel on outside click
+document.addEventListener('click',e=>{
+  const panel=$('notifPanel'), btn=$('notifBtn');
+  if(panel&&btn&&!panel.contains(e.target)&&!btn.contains(e.target)) panel.classList.remove('open');
+});
 
 </script>
-
 </body>
 </html>
