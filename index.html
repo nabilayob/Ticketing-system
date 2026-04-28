@@ -826,9 +826,9 @@ function renderStaticUI(){
   // Lang switcher in topbar
   var ls=document.getElementById('langSwitcher');
   if(ls) ls.innerHTML=
-    '<button class="lang-btn '+(currentLang==='ar'?'active-lang':'')+'" data-lang="ar" onclick="applyLanguage('ar')">عربي</button>'+
-    '<button class="lang-btn '+(currentLang==='en'?'active-lang':'')+'" data-lang="en" onclick="applyLanguage('en')">English</button>'+
-    '<button class="lang-btn '+(currentLang==='de'?'active-lang':'')+'" data-lang="de" onclick="applyLanguage('de')">Deutsch</button>';
+    '<button class="lang-btn '+(currentLang==='ar'?'active-lang':'')+'" data-lang="ar" onclick="applyLanguage(\'ar\')">عربي</button>'+
+    '<button class="lang-btn '+(currentLang==='en'?'active-lang':'')+'" data-lang="en" onclick="applyLanguage(\'en\')">English</button>'+
+    '<button class="lang-btn '+(currentLang==='de'?'active-lang':'')+'" data-lang="de" onclick="applyLanguage(\'de\')">Deutsch</button>';
   // Role
   if(CU){ var ur=document.getElementById('sidebarRole'); if(ur) ur.textContent=role_label(CU.role); }
   // Notifications header
@@ -1726,49 +1726,61 @@ function renderSettingsTab(tab){
       </div>
     `;
   } else if(tab==='email'){
-    sc.innerHTML=`
-      <div style="background:#eef5fb;border-radius:10px;padding:16px;margin-bottom:16px;display:flex;align-items:center;gap:12px;">
-        <div style="font-size:28px;">📧</div>
-        <div>
-          <div style="font-size:13px;font-weight:700;color:var(--primary);">الإيميلات تُرسَل تلقائياً عبر Firebase Cloud Functions + Gmail</div>
-          <div style="font-size:12px;color:var(--text-muted);margin-top:4px;">لا تحتاج أي إعداد داخل النظام — الإعداد يتم مرة واحدة على السيرفر</div>
-        </div>
-      </div>
-
-      <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:16px;">
-        <div style="background:#f0fdf4;border-radius:10px;padding:14px;border-right:4px solid var(--success);">
-          <div style="font-size:12px;font-weight:700;color:var(--success);margin-bottom:6px;">📤 عند إنشاء بلاغ جديد</div>
-          <div style="font-size:12px;color:var(--text-muted);">يُرسَل إيميل تلقائياً لجميع فنيي القسم المعني</div>
-        </div>
-        <div style="background:#f0fdf4;border-radius:10px;padding:14px;border-right:4px solid var(--success);">
-          <div style="font-size:12px;font-weight:700;color:var(--success);margin-bottom:6px;">✅ عند حل البلاغ</div>
-          <div style="font-size:12px;color:var(--text-muted);">يُرسَل إيميل لصاحب البلاغ مع تفاصيل الحل والتكلفة</div>
-        </div>
-      </div>
-
-      <div style="background:#fff;border:1px solid var(--border);border-radius:10px;padding:16px;margin-bottom:14px;">
-        <div style="font-size:13px;font-weight:700;color:var(--primary);margin-bottom:12px;">🚀 خطوات الإعداد على السيرفر (مرة واحدة)</div>
-        <div style="counter-reset:steps;">
-          ${[
-            ['1','تحميل ملف الـ Functions', 'حمّل ملف <code style="background:#f0f2f7;padding:2px 6px;border-radius:4px;">dsba_functions.zip</code> وفك الضغط في مجلد المشروع'],
-            ['2','إعداد Gmail App Password', 'اذهب إلى Google Account → Security → 2-Step Verification → App Passwords → أنشئ كلمة مرور للتطبيق'],
-            ['3','حفظ البيانات السرية', '<code style="background:#1a1a2e;color:#7dff7d;padding:2px 8px;border-radius:4px;font-size:11px;">firebase functions:secrets:set GMAIL_USER</code><br><code style="background:#1a1a2e;color:#7dff7d;padding:2px 8px;border-radius:4px;font-size:11px;">firebase functions:secrets:set GMAIL_APP_PASSWORD</code>'],
-            ['4','نشر الـ Functions', '<code style="background:#1a1a2e;color:#7dff7d;padding:2px 8px;border-radius:4px;font-size:11px;">firebase deploy --only functions</code>'],
-          ].map(([n,title,desc]) => \`
-          <div style="display:flex;gap:12px;margin-bottom:12px;align-items:flex-start;">
-            <div style="min-width:28px;height:28px;background:var(--primary);color:#fff;border-radius:50%;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:13px;flex-shrink:0;">\${n}</div>
-            <div><div style="font-weight:600;font-size:13px;margin-bottom:3px;">\${title}</div><div style="font-size:12px;color:var(--text-muted);">\${desc}</div></div>
-          </div>\`).join('')}
-        </div>
-      </div>
-
-      <div style="display:flex;gap:10px;flex-wrap:wrap;">
-        <button class="btn btn-primary" onclick="testFunctionEmail()">🧪 إرسال إيميل تجريبي</button>
-        <button class="btn btn-outline" onclick="window.open('https://console.firebase.google.com/project/ticketing-system-2651c/functions','_blank')">🔗 Firebase Functions Console</button>
-      </div>
-
-      <div id="emailTestResult" style="margin-top:12px;display:none;"></div>
-    `;
+    var steps = [
+      ['1', t('tab_email')+' — Firebase Functions', t('btn_new_store')],
+    ];
+    sc.innerHTML =
+      '<div style="background:#eef5fb;border-radius:10px;padding:16px;margin-bottom:16px;display:flex;align-items:center;gap:12px;">'+
+        '<div style="font-size:28px;">📧</div>'+
+        '<div>'+
+          '<div style="font-size:13px;font-weight:700;color:var(--primary);">'+
+            (currentLang==='ar'?'الإيميلات تُرسَل تلقائياً عبر Firebase Cloud Functions + Gmail':
+             currentLang==='de'?'E-Mails werden automatisch über Firebase Cloud Functions + Gmail gesendet':
+             'Emails are sent automatically via Firebase Cloud Functions + Gmail')+
+          '</div>'+
+          '<div style="font-size:12px;color:var(--text-muted);margin-top:4px;">'+
+            (currentLang==='ar'?'لا تحتاج أي إعداد داخل النظام — الإعداد يتم مرة واحدة على السيرفر':
+             currentLang==='de'?'Keine Konfiguration im System erforderlich — einmalige Einrichtung auf dem Server':
+             'No configuration needed in the system — one-time server setup')+
+          '</div>'+
+        '</div>'+
+      '</div>'+
+      '<div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:16px;">'+
+        '<div style="background:#f0fdf4;border-radius:10px;padding:14px;border-right:4px solid var(--success);">'+
+          '<div style="font-size:12px;font-weight:700;color:var(--success);margin-bottom:6px;">📤 '+
+            (currentLang==='ar'?'عند إنشاء بلاغ جديد':currentLang==='de'?'Neuer Wartungsauftrag':'New Ticket Created')+
+          '</div>'+
+          '<div style="font-size:12px;color:var(--text-muted);">'+
+            (currentLang==='ar'?'يُرسَل إيميل لجميع فنيي القسم المعني':
+             currentLang==='de'?'E-Mail wird an alle Techniker der Abteilung gesendet':
+             'Email sent to all technicians of the relevant department')+
+          '</div>'+
+        '</div>'+
+        '<div style="background:#f0fdf4;border-radius:10px;padding:14px;border-right:4px solid var(--success);">'+
+          '<div style="font-size:12px;font-weight:700;color:var(--success);margin-bottom:6px;">✅ '+
+            (currentLang==='ar'?'عند حل البلاغ':currentLang==='de'?'Auftrag erledigt':'Ticket Resolved')+
+          '</div>'+
+          '<div style="font-size:12px;color:var(--text-muted);">'+
+            (currentLang==='ar'?'يُرسَل إيميل لصاحب البلاغ مع تفاصيل الحل':
+             currentLang==='de'?'E-Mail mit Lösungsdetails an den Auftraggeber':
+             'Resolution email sent to ticket creator')+
+          '</div>'+
+        '</div>'+
+      '</div>'+
+      '<div style="background:#1a1a2e;border-radius:10px;padding:16px;margin-bottom:14px;font-family:monospace;font-size:12px;color:#7dff7d;">'+
+        '<div style="color:#f5c256;margin-bottom:8px;"># Setup commands (run once):</div>'+
+        'firebase functions:secrets:set GMAIL_USER<br>'+
+        'firebase functions:secrets:set GMAIL_APP_PASSWORD<br>'+
+        'cd functions && npm install<br>'+
+        'firebase deploy --only functions'+
+      '</div>'+
+      '<div style="display:flex;gap:10px;flex-wrap:wrap;">'+
+        '<button class="btn btn-primary" onclick="testFunctionEmail()">🧪 '+
+          (currentLang==='ar'?'إرسال إيميل تجريبي':currentLang==='de'?'Test-E-Mail senden':'Send Test Email')+
+        '</button>'+
+        '<button class="btn btn-outline" onclick="window.open(\'https://console.firebase.google.com/project/ticketing-system-2651c/functions\',\'_blank\')">🔗 Firebase Console</button>'+
+      '</div>'+
+      '<div id="emailTestResult" style="margin-top:12px;display:none;"></div>';
   }
 }
 
@@ -1893,7 +1905,7 @@ function renderNotifications(){
   var list=$('notifList'); if(!list) return;
   list.innerHTML=notifications.length
     ? notifications.slice(0,20).map(function(n){
-        return '<div class="notif-item '+(n.read?'':'unread')+'" onclick="readNotif(''+n.id+'',''+n.ticketId+'')">'+
+        return '<div class="notif-item '+(n.read?'':'unread')+'" onclick="readNotif(\\"'+n.id+'\\",\\"'+n.ticketId+'\\")">'+
           '<div class="notif-title">'+(n.title||'')+'</div>'+
           '<div class="notif-msg">'+(n.msg||'')+'</div>'+
           '<div class="notif-time">'+fmt_time(n.time)+'</div></div>';
@@ -1944,7 +1956,7 @@ function buildNav(){
       html+='<div class="nav-section">'+item.sec+'</div>';
       lastSec=item.sec;
     }
-    html+='<div class="nav-item" id="nav-'+item.id+'" onclick="showPage(''+item.id+'')">'+
+    html+='<div class="nav-item" id="nav-'+item.id+'" onclick="showPage(\''+item.id+'\')">' +
       '<span class="nav-icon">'+item.icon+'</span>'+item.label+'</div>';
   });
   $('sidebarNav').innerHTML=html;
