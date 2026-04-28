@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>DSBA - Maintenance & Inventory</title>
-<link href="https://fonts.googleapis.com/css2?family=Cairo:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Cairo:wght@300;400;500;600;700&family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
 <style>
 
 :root {
@@ -115,11 +115,13 @@ body {
 .sidebar {
   width: var(--sidebar-w);
   background: var(--primary);
-  position: fixed; top:0; right:0; bottom:0;
+  position: fixed; top:0; bottom:0;
+  right:0; left:auto;
   display: flex; flex-direction: column;
   z-index: 100;
-  transition: transform 0.3s;
+  transition: transform 0.3s, right 0.3s, left 0.3s;
 }
+[dir="ltr"] .sidebar { right:auto; left:0; }
 .sidebar-header {
   padding: 20px;
   border-bottom: 1px solid rgba(255,255,255,0.08);
@@ -159,10 +161,13 @@ body {
   color: rgba(255,255,255,0.6);
   cursor: pointer; transition: all 0.15s;
   border-right: 3px solid transparent;
+  border-left: 3px solid transparent;
   font-size: 13px;
 }
 .nav-item:hover { background:rgba(255,255,255,0.07); color:#fff; }
 .nav-item.active { background:rgba(232,160,32,0.15); color:var(--accent); border-right-color: var(--accent); }
+[dir="ltr"] .nav-item { border-right:none; border-left:3px solid transparent; }
+[dir="ltr"] .nav-item.active { border-left-color: var(--accent); border-right-color: transparent; }
 .nav-item .nav-icon { font-size:16px; width:20px; text-align:center; }
 .nav-badge { margin-right:auto; background:var(--danger); color:#fff; font-size:10px; padding:2px 7px; border-radius:20px; }
 
@@ -180,9 +185,11 @@ body {
 /* MAIN CONTENT */
 .main {
   margin-right: var(--sidebar-w);
+  margin-left: 0;
   min-height: 100vh;
   display: flex; flex-direction: column;
 }
+[dir="ltr"] .main { margin-right: 0; margin-left: var(--sidebar-w); }
 .topbar {
   background:#fff; border-bottom:1px solid var(--border);
   padding: 14px 28px;
@@ -250,6 +257,8 @@ table { width:100%; border-collapse:collapse; min-width:600px; }
 thead tr { background:var(--primary); }
 th { color:#fff; padding:10px 14px; font-size:12px; font-weight:600; text-align:right; white-space:nowrap; }
 td { padding:10px 14px; font-size:13px; border-bottom:1px solid var(--border); color:var(--text); }
+[dir="ltr"] th { text-align:left; }
+[dir="ltr"] td { text-align:left; }
 tbody tr:last-child td { border-bottom:none; }
 tbody tr:hover { background:#f8f9ff; }
 
@@ -303,13 +312,15 @@ tbody tr:hover { background:#f8f9ff; }
 
 /* NOTIFICATIONS PANEL */
 .notif-panel {
-  position:fixed; top:60px; left:20px;
+  position:fixed; top:60px;
+  left:20px; right:auto;
   width:320px; background:#fff;
   border-radius:14px; border:1px solid var(--border);
   box-shadow:0 8px 40px rgba(0,0,0,0.12);
   z-index:200; display:none; max-height:400px; overflow-y:auto;
 }
 .notif-panel.open { display:block; }
+[dir="ltr"] .notif-panel { left:auto; right:20px; }
 .notif-header { padding:14px 16px; font-weight:700; font-size:14px; border-bottom:1px solid var(--border); display:flex; justify-content:space-between; align-items:center; }
 .notif-item { padding:12px 16px; border-bottom:1px solid var(--border); cursor:pointer; transition:background 0.1s; }
 .notif-item:hover { background:var(--bg); }
@@ -333,6 +344,7 @@ tbody tr:hover { background:#f8f9ff; }
 }
 .modal-title { font-size:17px; font-weight:700; color:var(--primary); margin-bottom:20px; }
 .modal-close { position:absolute; top:16px; left:16px; cursor:pointer; font-size:20px; color:var(--text-muted); background:none; border:none; line-height:1; }
+[dir="ltr"] .modal-close { left:auto; right:16px; }
 .modal-close:hover { color:var(--danger); }
 .modal-footer { display:flex; gap:10px; justify-content:flex-end; margin-top:20px; padding-top:16px; border-top:1px solid var(--border); }
 
@@ -399,6 +411,14 @@ tbody tr:hover { background:#f8f9ff; }
   .main { margin-right:0; }
 }
 
+/* ── LTR FONT ── */
+[dir="ltr"] body,
+[dir="ltr"] input,
+[dir="ltr"] select,
+[dir="ltr"] textarea,
+[dir="ltr"] button { font-family: 'Inter', sans-serif; }
+[dir="ltr"] .login-box { font-family: 'Inter', sans-serif; }
+
 /* ── LANGUAGE SWITCHER ── */
 .lang-switcher { display:flex; gap:4px; align-items:center; }
 .lang-btn {
@@ -417,6 +437,21 @@ tbody tr:hover { background:#f8f9ff; }
   cursor:pointer;letter-spacing:.04em;transition:all .15s;font-family:'Cairo',sans-serif;}
 .lang-btn:hover{background:rgba(255,255,255,0.1);color:#fff;}
 .lang-btn.active-lang{background:var(--accent);border-color:var(--accent);color:#fff;}
+
+/* ── Extra LTR body selectors (belt-and-suspenders) ── */
+body.ltr .sidebar { right:auto; left:0; }
+body.ltr .main { margin-right:0; margin-left:var(--sidebar-w); }
+body.ltr .nav-item { border-right:none; border-left:3px solid transparent; }
+body.ltr .nav-item.active { border-left-color:var(--accent); border-right-color:transparent; }
+body.ltr .notif-panel { left:auto; right:20px; }
+body.ltr th { text-align:left; }
+body.ltr td { text-align:left; }
+body.ltr .modal-close { left:auto; right:16px; }
+body.ltr,
+body.ltr input,
+body.ltr select,
+body.ltr textarea,
+body.ltr button { font-family:'Inter',sans-serif; }
 </style>
 </head>
 <body>
@@ -830,6 +865,9 @@ function applyLanguage(lang){
   var rtl = lang==='ar';
   document.documentElement.lang = lang;
   document.documentElement.dir = rtl ? 'rtl' : 'ltr';
+  // Toggle body class for extra CSS
+  document.body.classList.toggle('ltr', !rtl);
+  document.body.classList.toggle('rtl', rtl);
   // Update lang buttons
   document.querySelectorAll('.lang-btn').forEach(function(b){
     b.classList.toggle('active-lang', b.dataset.lang===lang);
