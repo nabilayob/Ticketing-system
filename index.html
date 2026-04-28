@@ -502,6 +502,61 @@ function callFirebaseFunction(name,data){
   return firebase.functions().httpsCallable(name)(data);
 }
 
+// ─── INIT ───
+var localCfg = {
+  apiKey: "AIzaSyCUgpm_0w-vbtShNGvHMrnQ-om1cbO8Yuo",
+  authDomain: "ticketing-system-2651c.firebaseapp.com",
+  databaseURL: "https://ticketing-system-2651c-default-rtdb.firebaseio.com",
+  projectId: "ticketing-system-2651c",
+  storageBucket: "ticketing-system-2651c.appspot.com",
+  messagingSenderId: "625229329187",
+  appId: "1:625229329187:web:0d1b8a5e4324f409455296"
+};
+
+var theApp = firebase_app.initializeApp(localCfg);
+var db  = firebase_database.getDatabase(theApp);
+var auth= firebase_auth.getAuth(theApp);
+
+var CU=null,CID=null,tickets={},assets={},users={},notifications=[];
+var settings={
+  buildings:[
+    {id:'B1',name:'المبنى الرئيسي',floors:['الدور الأرضي','الدور الأول','الدور الثاني'],rooms:['A-101','A-102','A-103','A-201','A-202','مكتب المدير','غرفة المعلمين','المعمل']},
+    {id:'B2',name:'مبنى الابتدائي',floors:['الدور الأرضي','الدور الأول'],rooms:['B-101','B-102','B-103','B-201','المكتبة']},
+    {id:'B3',name:'مبنى الإدارة',floors:['الدور الأرضي'],rooms:['سكرتارية','مالية','شئون طلاب']}
+  ],
+  depts:[
+    {id:'it',name:'IT / كمبيوتر',icon:'💻',types:['كمبيوتر معطل','لابتوب معطل','شبكة / إنترنت','شاشة','طابعة','بروجيكتور','كاميرا','أكسس بوينت','أخرى IT']},
+    {id:'electricity',name:'كهرباء',icon:'⚡',types:['لمبة إنارة','مروحة','تكييف','فيشة كهرباء','كابل تالف','قاطع كهرباء','أخرى كهرباء']},
+    {id:'civil',name:'مدني / نجارة',icon:'🔨',types:['باب تالف','نافذة','أرضية','سقف','دهانات','أخرى مدني']},
+    {id:'plumbing',name:'سباكة',icon:'🔧',types:['صنبور','حمام','سباكة عامة']}
+  ],
+  store_it:['كابل شبكة','موزع شبكة','ذاكرة RAM','هارد ديسك','كابل HDMI','بطاقة شبكة','أخرى IT'],
+  store_elec:['لمبة LED','مروحة احتياط','قاطع كهرباء','فيشة','كابل كهرباء','مفتاح إنارة','أخرى كهرباء'],
+  vehicles:['باص أبيض 1','باص أبيض 2','ميكروباص 1']
+};
+
+function loadSettings(){
+  get(ref(db,'settings')).then(function(snap){
+    if(snap.val()) Object.assign(settings,snap.val());
+    else set(ref(db,'settings'),settings);
+  });
+}
+function saveSettings(){ set(ref(db,'settings'),settings); }
+
+
+// ─── SHORTHAND FIREBASE FUNCTIONS ───
+// These make signInWithEmailAndPassword(auth,e,p) etc. work globally
+var signInWithEmailAndPassword = firebase_auth.signInWithEmailAndPassword;
+var signOut                    = function(){ return firebase_auth.signOut(auth); };
+var createUserWithEmailAndPassword = firebase_auth.createUserWithEmailAndPassword;
+var ref    = firebase_database.ref;
+var push   = firebase_database.push;
+var get    = firebase_database.get;
+var update = firebase_database.update;
+var set    = firebase_database.set;
+var remove = firebase_database.remove;
+var onValue= firebase_database.onValue;
+
 // ════════════════════════════════════════════════════════
 // ─── i18n: AR / EN / DE ─────────────────────────────────
 // ════════════════════════════════════════════════════════
@@ -2348,55 +2403,14 @@ function renderAgent(){
     '</div></div>';
 }
 
+// Render login on page load — called last after all defs
+renderLogin();
+
 // close notif on outside click
 document.addEventListener('click',function(e){
   var panel=$('notifPanel'),btn=$('notifBtn');
   if(panel&&btn&&!panel.contains(e.target)&&!btn.contains(e.target)) panel.classList.remove('open');
 });
-
-// ─── INIT ───
-var localCfg = {
-  apiKey: "AIzaSyCUgpm_0w-vbtShNGvHMrnQ-om1cbO8Yuo",
-  authDomain: "ticketing-system-2651c.firebaseapp.com",
-  databaseURL: "https://ticketing-system-2651c-default-rtdb.firebaseio.com",
-  projectId: "ticketing-system-2651c",
-  storageBucket: "ticketing-system-2651c.appspot.com",
-  messagingSenderId: "625229329187",
-  appId: "1:625229329187:web:0d1b8a5e4324f409455296"
-};
-
-var theApp = firebase_app.initializeApp(localCfg);
-var db  = firebase_database.getDatabase(theApp);
-var auth= firebase_auth.getAuth(theApp);
-
-var CU=null,CID=null,tickets={},assets={},users={},notifications=[];
-var settings={
-  buildings:[
-    {id:'B1',name:'المبنى الرئيسي',floors:['الدور الأرضي','الدور الأول','الدور الثاني'],rooms:['A-101','A-102','A-103','A-201','A-202','مكتب المدير','غرفة المعلمين','المعمل']},
-    {id:'B2',name:'مبنى الابتدائي',floors:['الدور الأرضي','الدور الأول'],rooms:['B-101','B-102','B-103','B-201','المكتبة']},
-    {id:'B3',name:'مبنى الإدارة',floors:['الدور الأرضي'],rooms:['سكرتارية','مالية','شئون طلاب']}
-  ],
-  depts:[
-    {id:'it',name:'IT / كمبيوتر',icon:'💻',types:['كمبيوتر معطل','لابتوب معطل','شبكة / إنترنت','شاشة','طابعة','بروجيكتور','كاميرا','أكسس بوينت','أخرى IT']},
-    {id:'electricity',name:'كهرباء',icon:'⚡',types:['لمبة إنارة','مروحة','تكييف','فيشة كهرباء','كابل تالف','قاطع كهرباء','أخرى كهرباء']},
-    {id:'civil',name:'مدني / نجارة',icon:'🔨',types:['باب تالف','نافذة','أرضية','سقف','دهانات','أخرى مدني']},
-    {id:'plumbing',name:'سباكة',icon:'🔧',types:['صنبور','حمام','سباكة عامة']}
-  ],
-  store_it:['كابل شبكة','موزع شبكة','ذاكرة RAM','هارد ديسك','كابل HDMI','بطاقة شبكة','أخرى IT'],
-  store_elec:['لمبة LED','مروحة احتياط','قاطع كهرباء','فيشة','كابل كهرباء','مفتاح إنارة','أخرى كهرباء'],
-  vehicles:['باص أبيض 1','باص أبيض 2','ميكروباص 1']
-};
-
-function loadSettings(){
-  get(ref(db,'settings')).then(function(snap){
-    if(snap.val()) Object.assign(settings,snap.val());
-    else set(ref(db,'settings'),settings);
-  });
-}
-function saveSettings(){ set(ref(db,'settings'),settings); }
-
-// Render login on page load
-renderLogin();
 
 </script>
 </body>
