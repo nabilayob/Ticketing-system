@@ -3,9 +3,10 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>DSBA - نظام الصيانة والمخزون</title>
-<link href="https://fonts.googleapis.com/css2?family=Cairo:wght@300;400;500;600;700&family=Tajawal:wght@300;400;500;700&display=swap" rel="stylesheet">
+<title>DSBA - Maintenance & Inventory</title>
+<link href="https://fonts.googleapis.com/css2?family=Cairo:wght@300;400;500;600;700&display=swap" rel="stylesheet">
 <style>
+
 :root {
   --primary: #0f2d5c;
   --primary-light: #1a4a8a;
@@ -408,41 +409,29 @@ tbody tr:hover { background:#f8f9ff; }
 }
 .lang-btn:hover { background:rgba(255,255,255,0.1); color:#fff; }
 .lang-btn.active-lang { background:var(--accent); border-color:var(--accent); color:#fff; }
+
+/* ── LANGUAGE SWITCHER ── */
+.lang-switcher{display:flex;gap:4px;align-items:center;}
+.lang-btn{padding:4px 10px;border:1px solid rgba(255,255,255,0.25);border-radius:6px;
+  background:transparent;color:rgba(255,255,255,0.55);font-size:11px;font-weight:700;
+  cursor:pointer;letter-spacing:.04em;transition:all .15s;font-family:'Cairo',sans-serif;}
+.lang-btn:hover{background:rgba(255,255,255,0.1);color:#fff;}
+.lang-btn.active-lang{background:var(--accent);border-color:var(--accent);color:#fff;}
 </style>
 </head>
 <body>
 
-<!-- ═══════════════════════════════ LOGIN ═══════════════════════════════ -->
-<div id="loginScreen">
-  <div class="login-box">
-    <div class="login-logo">
-      <div class="logo-circle">DS</div>
-      <h1>DSBA</h1>
-      <p data-i18n="app_subtitle">نظام الصيانة والمخزون المدرسي</p>
-    </div>
-    <div class="login-field">
-      <label data-i18n="login_email">البريد الإلكتروني</label>
-      <input id="loginEmail" type="email" placeholder="user@dsba.edu.eg">
-    </div>
-    <div class="login-field">
-      <label data-i18n="login_password">كلمة المرور</label>
-      <input id="loginPass" type="password" placeholder="••••••••">
-    </div>
-    <button class="login-btn" onclick="doLogin()" data-i18n="login_btn">تسجيل الدخول</button>
-    <div class="login-error" id="loginError" data-i18n="login_error">بيانات الدخول غير صحيحة</div>
-  </div>
-</div>
+<!-- LOGIN SCREEN — rendered by JS -->
+<div id="loginScreen"></div>
 
-<!-- ═══════════════════════════════ APP ═══════════════════════════════ -->
-<div id="app">
-
-  <!-- SIDEBAR -->
+<!-- APP SHELL -->
+<div id="app" style="display:none;">
   <aside class="sidebar" id="sidebar">
     <div class="sidebar-header">
       <div class="sidebar-logo">DS</div>
       <div>
         <div class="sidebar-title">DSBA</div>
-        <div class="sidebar-subtitle" data-i18n="system_management">نظام الإدارة</div>
+        <div class="sidebar-subtitle" id="sidebarSubtitle"></div>
       </div>
     </div>
     <div class="sidebar-user">
@@ -454,671 +443,607 @@ tbody tr:hover { background:#f8f9ff; }
     </div>
     <nav class="sidebar-nav" id="sidebarNav"></nav>
     <div class="sidebar-footer">
-      <div class="logout-btn" onclick="doLogout()">
-        <span>⬅</span> تسجيل الخروج
-      </div>
+      <div class="logout-btn" id="logoutBtn" onclick="doLogout()">⬅ —</div>
     </div>
   </aside>
 
-  <!-- MAIN -->
   <div class="main">
     <div class="topbar">
-      <div class="topbar-title" id="pageTitle" data-i18n="nav_dashboard">لوحة التحكم</div>
+      <div class="topbar-title" id="pageTitle"></div>
       <div class="topbar-actions">
-        <div class="lang-switcher">
-          <button class="lang-btn active-lang" data-lang="ar" onclick="applyLanguage('ar')">AR</button>
-          <button class="lang-btn" data-lang="en" onclick="applyLanguage('en')">EN</button>
-        </div>
+        <div class="lang-switcher" id="langSwitcher"></div>
         <div class="notif-btn" onclick="toggleNotif()" id="notifBtn">
-          🔔 <span class="notif-badge" id="notifBadge">0</span>
+          🔔 <span class="notif-badge" id="notifBadge" style="display:none;">0</span>
         </div>
       </div>
     </div>
-
-    <!-- NOTIFICATIONS PANEL -->
     <div class="notif-panel" id="notifPanel">
-      <div class="notif-header">
-        <span data-i18n="notif_title">الإشعارات</span>
-        <span style="font-size:11px;color:var(--text-muted);cursor:pointer;" onclick="markAllRead()" data-i18n="notif_read_all">قراءة الكل</span>
-      </div>
+      <div class="notif-header" id="notifHeader"></div>
       <div id="notifList"></div>
     </div>
-
-    <div class="content" id="mainContent">
-      <!-- pages injected by JS -->
-    </div>
+    <div class="content" id="mainContent"></div>
   </div>
 </div>
 
-<!-- ═══════════════════════════════ MODALS ═══════════════════════════════ -->
-<!-- New Ticket Modal -->
-<div class="modal-overlay" id="ticketModal">
-  <div class="modal" style="width:640px;">
-    <button class="modal-close" onclick="closeModal('ticketModal')">✕</button>
-    <div class="modal-title">📋 إنشاء بلاغ صيانة جديد</div>
-    <div class="form-grid">
-      <div class="form-group">
-        <label data-i18n="ticket_dept">القسم / التخصص</label>
-        <select id="t_dept" onchange="updateTypeOptions()">
-          <option value="">-- اختر القسم --</option>
-        </select>
-      </div>
-      <div class="form-group">
-        <label data-i18n="ticket_type">نوع المشكلة</label>
-        <select id="t_type"><option value="">-- اختر النوع --</option></select>
-      </div>
-      <div class="form-group">
-        <label data-i18n="ticket_priority">الأولوية</label>
-        <select id="t_priority">
-          <option value="low" data-i18n="priority_low_label">منخفضة</option>
-          <option value="medium" selected data-i18n="priority_med_label">متوسطة</option>
-          <option value="high" data-i18n="priority_high_label">عاجلة</option>
-        </select>
-      </div>
-      <div class="form-group">
-        <label data-i18n="ticket_building">الموقع</label>
-        <select id="t_building"><option value="">-- المبنى --</option></select>
-      </div>
-      <div class="form-group">
-        <label data-i18n="ticket_floor">الدور</label>
-        <select id="t_floor"><option value="">-- الدور --</option></select>
-      </div>
-      <div class="form-group">
-        <label data-i18n="ticket_room">الفصل / الغرفة</label>
-        <select id="t_room"><option value="">-- الغرفة --</option></select>
-      </div>
-      <div class="form-group form-full">
-        <label data-i18n="ticket_desc">وصف المشكلة</label>
-        <textarea id="t_desc" placeholder="اكتب تفاصيل المشكلة بوضوح..."></textarea>
-      </div>
-      <div class="form-group">
-        <label data-i18n="ticket_est_cost">التكلفة التقديرية (جنيه)</label>
-        <input id="t_cost" type="number" placeholder="0">
-      </div>
-    </div>
-    <div class="modal-footer">
-      <button class="btn btn-outline" onclick="closeModal('ticketModal')" data-i18n="btn_cancel">إلغاء</button>
-      <button class="btn btn-primary" onclick="submitTicket()" data-i18n="btn_submit_ticket">📤 إرسال البلاغ</button>
-    </div>
-  </div>
-</div>
+<!-- MODALS — rendered by JS -->
+<div id="modalsContainer"></div>
 
-<!-- Add User Modal -->
-<div class="modal-overlay" id="userModal">
-  <div class="modal">
-    <button class="modal-close" onclick="closeModal('userModal')">✕</button>
-    <div class="modal-title">👤 إضافة مستخدم جديد</div>
-    <div class="form-grid">
-      <div class="form-group"><label data-i18n="u_name">الاسم الكامل</label><input id="u_name" placeholder="الاسم الثلاثي"></div>
-      <div class="form-group"><label data-i18n="u_email_lbl">البريد الإلكتروني</label><input id="u_email" type="email" placeholder="user@dsba.edu.eg"></div>
-      <div class="form-group"><label data-i18n="u_pass">كلمة المرور</label><input id="u_pass" type="password" placeholder="••••••••"></div>
-      <div class="form-group">
-        <label data-i18n="u_role">الصلاحية</label>
-        <select id="u_role">
-          <option value="teacher" data-i18n="role_teacher">معلم / موظف</option>
-          <option value="technician" data-i18n="role_technician">فني</option>
-          <option value="admin" data-i18n="role_admin">مدير</option>
-          <option value="storekeeper" data-i18n="role_storekeeper">أمين مخزن</option>
-        </select>
-      </div>
-      <div class="form-group">
-        <label data-i18n="u_dept_lbl">القسم (للفنيين)</label>
-        <select id="u_dept">
-          <option value="">-- اختر --</option>
-          <option value="it">IT / كمبيوتر</option>
-          <option value="electricity">كهرباء</option>
-          <option value="civil">مدني / نجارة</option>
-          <option value="plumbing">سباكة</option>
-        </select>
-      </div>
-      <div class="form-group"><label data-i18n="u_phone">رقم الهاتف</label><input id="u_phone" placeholder="01xxxxxxxxx"></div>
-    </div>
-    <div class="modal-footer">
-      <button class="btn btn-outline" onclick="closeModal('userModal')">إلغاء</button>
-      <button class="btn btn-primary" onclick="submitUser()">💾 حفظ المستخدم</button>
-    </div>
-  </div>
-</div>
+<!-- BARCODE PRINT -->
+<div id="printArea" style="display:none;padding:20px;"><div id="printContent"></div></div>
+<style>@media print{body>*:not(#printArea){display:none!important;}#printArea{display:block!important;}}</style>
 
-<!-- Add Asset Modal -->
-<div class="modal-overlay" id="assetModal">
-  <div class="modal" style="width:640px;">
-    <button class="modal-close" onclick="closeModal('assetModal')">✕</button>
-    <div class="modal-title">📦 إضافة أصل جديد</div>
-    <div class="form-grid">
-      <div class="form-group"><label data-i18n="a_name">اسم الأصل</label><input id="a_name" placeholder="مثال: كمبيوتر Dell"></div>
-      <div class="form-group">
-        <label data-i18n="a_cat">الفئة</label>
-        <select id="a_cat">
-          <option value="">-- اختر الفئة --</option>
-          <option value="computer">كمبيوتر</option>
-          <option value="laptop">لابتوب</option>
-          <option value="projector">بروجيكتور</option>
-          <option value="printer">طابعة</option>
-          <option value="ac">تكييف</option>
-          <option value="fan">مروحة</option>
-          <option value="light">إنارة</option>
-          <option value="screen">شاشة</option>
-          <option value="camera">كاميرا</option>
-          <option value="accesspoint">أكسس بوينت</option>
-          <option value="vehicle">سيارة مدرسية</option>
-          <option value="furniture">أثاث</option>
-          <option value="other">أخرى</option>
-        </select>
-      </div>
-      <div class="form-group"><label data-i18n="a_serial">الرقم التسلسلي</label><input id="a_serial" placeholder="SN-XXXXXXXXX"></div>
-      <div class="form-group"><label data-i18n="a_brand">الماركة / الموديل</label><input id="a_brand" placeholder="Dell / HP / ..."></div>
-      <div class="form-group">
-        <label data-i18n="a_building">المبنى</label>
-        <select id="a_building"><option value="">-- المبنى --</option></select>
-      </div>
-      <div class="form-group"><label data-i18n="a_room_lbl">الدور / الغرفة</label><input id="a_room" placeholder="A-101"></div>
-      <div class="form-group"><label data-i18n="a_date">تاريخ الشراء</label><input id="a_date" type="date"></div>
-      <div class="form-group"><label data-i18n="a_price">قيمة الشراء (جنيه)</label><input id="a_price" type="number" placeholder="0"></div>
-      <div class="form-group"><label data-i18n="a_warranty">الضمان (سنوات)</label><input id="a_warranty" type="number" placeholder="1"></div>
-      <div class="form-group">
-        <label data-i18n="a_status">الحالة</label>
-        <select id="a_status">
-          <option value="working" data-i18n="a_working">يعمل</option>
-          <option value="maintenance" data-i18n="a_maintenance_s">تحت الصيانة</option>
-          <option value="broken" data-i18n="a_broken">معطل</option>
-          <option value="retired" data-i18n="a_retired">مسقط</option>
-        </select>
-      </div>
-    </div>
-    <div class="modal-footer">
-      <button class="btn btn-outline" onclick="closeModal('assetModal')">إلغاء</button>
-      <button class="btn btn-accent" onclick="submitAsset()">🔖 حفظ وطباعة باركود</button>
-    </div>
-  </div>
-</div>
-
-<!-- Ticket Detail Modal -->
-<div class="modal-overlay" id="ticketDetailModal">
-  <div class="modal" style="width:640px;">
-    <button class="modal-close" onclick="closeModal('ticketDetailModal')">✕</button>
-    <div class="modal-title" id="tdTitle">تفاصيل البلاغ</div>
-    <div id="tdBody"></div>
-    <div class="modal-footer" id="tdFooter"></div>
-  </div>
-</div>
-
-<!-- Store Issue Modal -->
-<div class="modal-overlay" id="storeModal">
-  <div class="modal" style="width:620px;">
-    <button class="modal-close" onclick="closeModal('storeModal')">✕</button>
-    <div class="modal-title">🏪 صرف قطعة غيار</div>
-    <div class="form-grid">
-      <div class="form-group">
-        <label data-i18n="s_store_lbl">المخزن</label>
-        <select id="s_store" onchange="onStoreChange()">
-          <option value="">-- اختر المخزن --</option>
-        </select>
-      </div>
-      <div class="form-group">
-        <label data-i18n="s_ticket_lbl">البلاغ المرتبط (اختياري)</label>
-        <select id="s_ticket">
-          <option value="">-- اختر بلاغ --</option>
-        </select>
-      </div>
-      <div class="form-group">
-        <label data-i18n="s_location_lbl">الموقع (فصل / سيارة / مكتب)</label>
-        <select id="s_location">
-          <option value="">-- اختر الموقع --</option>
-        </select>
-      </div>
-      <div class="form-group">
-        <label data-i18n="s_item_lbl">القطعة</label>
-        <select id="s_item_select" onchange="onItemSelect()">
-          <option value="">-- اختر القطعة --</option>
-        </select>
-      </div>
-      <div class="form-group">
-        <label data-i18n="s_balance_lbl">الرصيد المتاح</label>
-        <div id="s_balance" style="padding:9px 12px;background:#f9fafb;border:1px solid #e5e7eb;border-radius:8px;font-size:13px;color:var(--text-muted);">اختر قطعة أولاً</div>
-      </div>
-      <div class="form-group">
-        <label data-i18n="s_qty_lbl">الكمية المصروفة</label>
-        <input id="s_qty" type="number" value="1" min="1" oninput="calcStoreCost()">
-      </div>
-      <div class="form-group">
-        <label data-i18n="s_unit_cost_lbl">سعر الوحدة (جنيه)</label>
-        <input id="s_unit_cost" type="number" placeholder="0" oninput="calcStoreCost()">
-      </div>
-      <div class="form-group">
-        <label data-i18n="s_total_lbl">إجمالي التكلفة</label>
-        <div id="s_total_display" style="padding:9px 12px;background:#eef5fb;border:1px solid #b5d4f4;border-radius:8px;font-size:15px;font-weight:700;color:var(--primary);">0 ج</div>
-      </div>
-      <div class="form-group form-full">
-        <label data-i18n="s_notes_lbl">ملاحظات</label>
-        <input id="s_note" placeholder="أي ملاحظات إضافية">
-      </div>
-    </div>
-    <div class="modal-footer">
-      <button class="btn btn-outline" onclick="closeModal('storeModal')">إلغاء</button>
-      <button class="btn btn-accent" onclick="submitStoreIssue()">✅ تسجيل الصرف وخصم الرصيد</button>
-    </div>
-  </div>
-</div>
-
-<!-- Store Inventory Management Modal -->
-<div class="modal-overlay" id="storeInventoryModal">
-  <div class="modal" style="width:720px;">
-    <button class="modal-close" onclick="closeModal('storeInventoryModal')">✕</button>
-    <div class="modal-title" id="storeInvTitle">📦 إدارة المخزن</div>
-    <div id="storeInvBody"></div>
-  </div>
-</div>
-
-<!-- Assign Ticket Modal -->
-<div class="modal-overlay" id="assignModal">
-  <div class="modal">
-    <button class="modal-close" onclick="closeModal('assignModal')">✕</button>
-    <div class="modal-title" data-i18n="assign_title">👷 تعيين فني للبلاغ</div>
-    <p style="font-size:13px;color:var(--text-muted);margin-bottom:16px;">اختر الفني المناسب:</p>
-    <div id="techList"></div>
-    <div class="modal-footer">
-      <button class="btn btn-outline" onclick="closeModal('assignModal')">إلغاء</button>
-    </div>
-  </div>
-</div>
-
-<!-- Settings Modal -->
-<div class="modal-overlay" id="settingsModal">
-  <div class="modal" style="width:680px;">
-    <button class="modal-close" onclick="closeModal('settingsModal')">✕</button>
-    <div class="modal-title" data-i18n="settings_title">⚙️ الإعدادات والقوائم الديناميكية</div>
-    <div class="tabs" id="settingsTabs">
-      <div class="tab active" onclick="switchSettingsTab('buildings')" data-i18n="settings_buildings">المباني والأدوار</div>
-      <div class="tab" onclick="switchSettingsTab('depts')" data-i18n="settings_depts">الأقسام والأنواع</div>
-      <div class="tab" onclick="switchSettingsTab('store_items')" data-i18n="settings_store">قطع الغيار</div>
-      <div class="tab" onclick="switchSettingsTab('email')" data-i18n="settings_email">📧 الإيميل</div>
-    </div>
-    <div id="settingsContent"></div>
-  </div>
-</div>
-
-<!-- ═══════════════════════════════ BARCODE PRINT ═══════════════════════════════ -->
-<div id="printArea" style="display:none; padding:20px;">
-  <div id="printContent"></div>
-</div>
-
-<style>
-@media print {
-  body > *:not(#printArea) { display:none !important; }
-  #printArea { display:block !important; }
-}
-</style>
-
-<!-- ═══════════════════════════════ FIREBASE + LOGIC ═══════════════════════════════ -->
-<!-- Firebase CDN (compat version - works as global scripts) -->
+<!-- FIREBASE CDN -->
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-database-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-functions-compat.js"></script>
 <script>
-
-// Bridge compat to modular API names
-var firebase_app = { initializeApp: (cfg) => firebase.initializeApp(cfg) };
-var _db_mod = {
-  getDatabase: () => firebase.database(),
-  ref: (db, path) => path ? firebase.database().ref(path) : firebase.database().ref(),
-  push: (r, data) => r.push(data),
-  onValue: (r, cb) => r.on('value', snap => cb(snap)),
-  get: (r) => r.once('value'),
-  update: (r, data) => r.update(data),
-  set: (r, data) => r.set(data),
-  remove: (r) => r.remove()
+// ─── FIREBASE BRIDGE ───
+var firebase_app={initializeApp:(c)=>firebase.initializeApp(c)};
+var _db={
+  getDatabase:()=>firebase.database(),
+  ref:(db,path)=>path?firebase.database().ref(path):firebase.database().ref(),
+  push:(r,data)=>r.push(data),
+  onValue:(r,cb)=>r.on('value',snap=>cb(snap)),
+  get:(r)=>r.once('value'),
+  update:(r,data)=>r.update(data),
+  set:(r,data)=>r.set(data),
+  remove:(r)=>r.remove()
 };
-var firebase_database = _db_mod;
-var firebase_auth = {
-  getAuth: () => firebase.auth(),
-  signInWithEmailAndPassword: (auth, e, p) => firebase.auth().signInWithEmailAndPassword(e, p),
-  signOut: (auth) => firebase.auth().signOut(),
-  createUserWithEmailAndPassword: (auth, e, p) => firebase.auth().createUserWithEmailAndPassword(e, p)
+var firebase_database=_db;
+var firebase_auth={
+  getAuth:()=>firebase.auth(),
+  signInWithEmailAndPassword:(auth,e,p)=>firebase.auth().signInWithEmailAndPassword(e,p),
+  signOut:(auth)=>firebase.auth().signOut(),
+  createUserWithEmailAndPassword:(auth,e,p)=>firebase.auth().createUserWithEmailAndPassword(e,p)
 };
-
-// Firebase Functions callable (for test email button)
-function callFirebaseFunction(name, data) {
-  if (typeof firebase === 'undefined' || !firebase.functions) return Promise.reject('Functions not loaded');
-  var fn = firebase.functions().httpsCallable(name);
-  return fn(data);
+function callFirebaseFunction(name,data){
+  if(typeof firebase==='undefined'||!firebase.functions) return Promise.reject('Functions not loaded');
+  return firebase.functions().httpsCallable(name)(data);
 }
 
-
-// Firebase loaded via CDN scripts above
-const { initializeApp } = firebase_app;
-const { getDatabase, ref, push, onValue, get, update, set, remove } = firebase_database;
-const { getAuth, signInWithEmailAndPassword, signOut, createUserWithEmailAndPassword } = firebase_auth;
-
-
-// ═══════════════════════════════════════════════════════
-
 // ════════════════════════════════════════════════════════
-// ─── i18n SYSTEM  (AR / EN) ─────────────────────────────
+// ─── i18n: AR / EN / DE ─────────────────────────────────
 // ════════════════════════════════════════════════════════
 var currentLang = localStorage.getItem('dsba_lang') || 'ar';
 
-var i18n = {
-  app_subtitle:{ ar:'نظام الصيانة والمخزون المدرسي', en:'School Maintenance & Inventory System' },
-  system_management:{ ar:'نظام الإدارة', en:'Management System' },
-  login_email:{ ar:'البريد الإلكتروني', en:'Email Address' },
-  login_password:{ ar:'كلمة المرور', en:'Password' },
-  login_btn:{ ar:'تسجيل الدخول', en:'Sign In' },
-  login_error:{ ar:'بيانات الدخول غير صحيحة', en:'Invalid credentials' },
-  role_admin:{ ar:'مدير النظام', en:'System Administrator' },
-  role_teacher:{ ar:'معلم / موظف', en:'Teacher / Staff' },
-  role_technician:{ ar:'فني', en:'Technician' },
-  role_storekeeper:{ ar:'أمين مخزن', en:'Storekeeper' },
-  nav_dashboard:{ ar:'لوحة التحكم', en:'Dashboard' },
-  nav_tickets:{ ar:'بلاغات الصيانة', en:'Maintenance Tickets' },
-  nav_my_tickets:{ ar:'بلاغاتي', en:'My Tickets' },
-  nav_assets:{ ar:'مخزون الأصول', en:'Asset Inventory' },
-  nav_store:{ ar:'قطع الغيار', en:'Spare Parts' },
-  nav_users:{ ar:'المستخدمون', en:'Users' },
-  nav_reports:{ ar:'التقارير', en:'Reports' },
-  nav_settings:{ ar:'الإعدادات', en:'Settings' },
-  nav_agent:{ ar:'AI Agent - Inventory', en:'AI Agent - Inventory' },
-  nav_spare_request:{ ar:'طلب قطع غيار', en:'Request Spare Parts' },
-  nav_main:{ ar:'الرئيسية', en:'Main' },
-  nav_inventory_sec:{ ar:'المخزون', en:'Inventory' },
-  nav_admin_sec:{ ar:'الإدارة', en:'Administration' },
-  nav_advanced:{ ar:'متقدم', en:'Advanced' },
-  logout:{ ar:'تسجيل الخروج', en:'Sign Out' },
-  notif_title:{ ar:'الإشعارات', en:'Notifications' },
-  notif_read_all:{ ar:'قراءة الكل', en:'Mark all read' },
-  notif_empty:{ ar:'لا توجد إشعارات', en:'No notifications' },
-  total_tickets:{ ar:'إجمالي البلاغات', en:'Total Tickets' },
-  pending_tickets:{ ar:'معلقة', en:'Pending' },
-  inprogress_tickets:{ ar:'جارية', en:'In Progress' },
-  done_tickets:{ ar:'منتهية', en:'Completed' },
-  total_costs:{ ar:'إجمالي التكاليف', en:'Total Costs' },
-  egp:{ ar:'جنيه مصري', en:'EGP' },
-  new_ticket_btn:{ ar:'➕ بلاغ صيانة جديد', en:'➕ New Maintenance Ticket' },
-  recent_tickets:{ ar:'أحدث البلاغات', en:'Recent Tickets' },
-  no_tickets:{ ar:'لا توجد بلاغات حتى الآن', en:'No tickets yet' },
-  th_id:{ ar:'#', en:'#' },
-  th_location:{ ar:'الموقع', en:'Location' },
-  th_dept:{ ar:'القسم', en:'Department' },
-  th_type:{ ar:'نوع المشكلة', en:'Issue Type' },
-  th_priority:{ ar:'الأولوية', en:'Priority' },
-  th_status:{ ar:'الحالة', en:'Status' },
-  th_submitter:{ ar:'المقدم', en:'Submitted By' },
-  th_date:{ ar:'التاريخ', en:'Date' },
-  th_cost:{ ar:'التكلفة', en:'Cost' },
-  th_actions:{ ar:'إجراءات', en:'Actions' },
-  th_asset:{ ar:'الأصل', en:'Asset' },
-  th_category:{ ar:'الفئة', en:'Category' },
-  th_serial:{ ar:'الرقم التسلسلي', en:'Serial No.' },
-  th_purchase_date:{ ar:'تاريخ الشراء', en:'Purchase Date' },
-  th_value:{ ar:'القيمة', en:'Value' },
-  th_barcode:{ ar:'الباركود', en:'Barcode' },
-  th_store:{ ar:'المخزن', en:'Warehouse' },
-  th_item:{ ar:'القطعة', en:'Item' },
-  th_qty:{ ar:'الكمية', en:'Qty' },
-  th_unit_price:{ ar:'سعر الوحدة', en:'Unit Price' },
-  th_total:{ ar:'الإجمالي', en:'Total' },
-  th_technician:{ ar:'الفني', en:'Technician' },
-  th_notes:{ ar:'ملاحظات', en:'Notes' },
-  th_ticket:{ ar:'البلاغ', en:'Ticket' },
-  th_balance:{ ar:'الرصيد الحالي', en:'Current Stock' },
-  th_min_balance:{ ar:'الحد الأدنى', en:'Min. Stock' },
-  th_adj:{ ar:'إضافة/خصم', en:'Add/Deduct' },
-  th_unit:{ ar:'الوحدة', en:'Unit' },
-  th_role:{ ar:'الصلاحية', en:'Role' },
-  th_phone:{ ar:'الهاتف', en:'Phone' },
-  th_delete:{ ar:'حذف', en:'Delete' },
-  status_pending:{ ar:'معلق', en:'Pending' },
-  status_inprogress:{ ar:'جاري', en:'In Progress' },
-  status_done:{ ar:'منتهي', en:'Completed' },
-  priority_high:{ ar:'🔴 عاجل', en:'🔴 Urgent' },
-  priority_med:{ ar:'🟡 متوسط', en:'🟡 Medium' },
-  priority_low:{ ar:'🟢 منخفض', en:'🟢 Low' },
-  priority_high_label:{ ar:'عاجلة', en:'Urgent' },
-  priority_med_label:{ ar:'متوسطة', en:'Medium' },
-  priority_low_label:{ ar:'منخفضة', en:'Low' },
-  ticket_modal_title:{ ar:'📋 إنشاء بلاغ صيانة جديد', en:'📋 New Maintenance Ticket' },
-  ticket_dept:{ ar:'القسم / التخصص', en:'Department / Specialty' },
-  ticket_type:{ ar:'نوع المشكلة', en:'Issue Type' },
-  ticket_priority:{ ar:'الأولوية', en:'Priority' },
-  ticket_building:{ ar:'الموقع', en:'Location' },
-  ticket_floor:{ ar:'الدور', en:'Floor' },
-  ticket_room:{ ar:'الفصل / الغرفة', en:'Classroom / Room' },
-  ticket_desc:{ ar:'وصف المشكلة', en:'Problem Description' },
-  ticket_est_cost:{ ar:'التكلفة التقديرية (جنيه)', en:'Estimated Cost (EGP)' },
-  ticket_select_dept:{ ar:'-- اختر القسم --', en:'-- Select Department --' },
-  ticket_select_type:{ ar:'-- اختر النوع --', en:'-- Select Type --' },
-  ticket_select_building:{ ar:'-- المبنى --', en:'-- Building --' },
-  ticket_select_floor:{ ar:'-- الدور --', en:'-- Floor --' },
-  ticket_select_room:{ ar:'-- الغرفة --', en:'-- Room --' },
-  ticket_desc_ph:{ ar:'اكتب تفاصيل المشكلة بوضوح...', en:'Describe the problem clearly...' },
-  ticket_required:{ ar:'من فضلك أكمل البيانات المطلوبة', en:'Please complete all required fields' },
-  td_status:{ ar:'الحالة', en:'Status' },
-  td_priority:{ ar:'الأولوية', en:'Priority' },
-  td_dept:{ ar:'القسم', en:'Department' },
-  td_type:{ ar:'النوع', en:'Issue Type' },
-  td_location:{ ar:'الموقع', en:'Location' },
-  td_assigned:{ ar:'الفني المعين', en:'Assigned Technician' },
-  td_not_assigned:{ ar:'لم يُعيَّن بعد', en:'Not assigned yet' },
-  td_submitter:{ ar:'مقدم البلاغ', en:'Submitted By' },
-  td_created:{ ar:'تاريخ الإنشاء', en:'Created On' },
-  td_desc:{ ar:'وصف المشكلة', en:'Problem Description' },
-  td_resolution:{ ar:'ملاحظات الفني / سبب الحل', en:'Technician Notes / Resolution' },
-  td_cost:{ ar:'التكلفة', en:'Cost' },
-  td_history:{ ar:'📋 سجل الأحداث', en:'📋 Event Log' },
-  td_tech_notes:{ ar:'ملاحظات الفني / سبب الحل', en:'Technician Notes' },
-  td_actual_cost:{ ar:'التكلفة الفعلية (جنيه)', en:'Actual Cost (EGP)' },
-  td_notes_ph:{ ar:'اكتب تفاصيل ما تم...', en:'Enter resolution details...' },
-  log_assigned:{ ar:'تم التعيين للفني', en:'Assigned to technician' },
-  log_transferred:{ ar:'تم التحويل من', en:'Transferred from' },
-  log_reopened:{ ar:'تم إعادة الفتح بواسطة', en:'Reopened by' },
-  log_resolved:{ ar:'تم الحل بواسطة', en:'Resolved by' },
-  reopen_reason:{ ar:'سبب إعادة الفتح (اختياري):', en:'Reason for reopening (optional):' },
-  btn_close:{ ar:'إغلاق', en:'Close' },
-  btn_cancel:{ ar:'إلغاء', en:'Cancel' },
-  btn_save:{ ar:'💾 حفظ', en:'💾 Save' },
-  btn_details:{ ar:'تفاصيل', en:'Details' },
-  btn_view:{ ar:'عرض', en:'View' },
-  btn_submit_ticket:{ ar:'📤 إرسال البلاغ', en:'📤 Submit Ticket' },
-  btn_new_ticket:{ ar:'➕ بلاغ جديد', en:'➕ New Ticket' },
-  btn_reopen:{ ar:'🔄 إعادة فتح', en:'🔄 Reopen' },
-  btn_transfer:{ ar:'↔️ تحويل لفني آخر', en:'↔️ Transfer' },
-  btn_assign:{ ar:'👷 تعيين فني', en:'👷 Assign Technician' },
-  btn_start:{ ar:'▶ بدء العمل', en:'▶ Start Work' },
-  btn_done:{ ar:'✅ تم الحل', en:'✅ Mark Resolved' },
-  btn_print_barcode:{ ar:'🖨 باركود', en:'🖨 Barcode' },
-  btn_save_barcode:{ ar:'🔖 حفظ وطباعة باركود', en:'🔖 Save & Print Barcode' },
-  assign_title:{ ar:'👷 تعيين فني للبلاغ', en:'👷 Assign Technician' },
-  assign_select:{ ar:'اختر الفني المناسب:', en:'Select a technician:' },
-  assign_btn:{ ar:'تعيين ✓', en:'Assign ✓' },
-  assign_no_techs:{ ar:'لا يوجد فنيون مسجلون لهذا القسم', en:'No technicians for this department' },
-  transfer_title:{ ar:'🔄 تحويل البلاغ لفني آخر', en:'🔄 Transfer to Another Technician' },
-  transfer_from:{ ar:'تحويل من', en:'Transfer from' },
-  transfer_btn:{ ar:'تحويل ✓', en:'Transfer ✓' },
-  transfer_no_techs:{ ar:'لا يوجد فنيون آخرون في نفس القسم', en:'No other technicians in this department' },
-  assets_registered:{ ar:'الأصول المسجلة', en:'Registered Assets' },
-  no_assets:{ ar:'لا توجد أصول مسجلة', en:'No assets registered' },
-  asset_modal_title:{ ar:'📦 إضافة أصل جديد', en:'📦 Add New Asset' },
-  a_name:{ ar:'اسم الأصل', en:'Asset Name' },
-  a_cat:{ ar:'الفئة', en:'Category' },
-  a_cat_select:{ ar:'-- اختر الفئة --', en:'-- Select Category --' },
-  a_serial:{ ar:'الرقم التسلسلي', en:'Serial Number' },
-  a_brand:{ ar:'الماركة / الموديل', en:'Brand / Model' },
-  a_building:{ ar:'المبنى', en:'Building' },
-  a_room_lbl:{ ar:'الدور / الغرفة', en:'Floor / Room' },
-  a_date:{ ar:'تاريخ الشراء', en:'Purchase Date' },
-  a_price:{ ar:'قيمة الشراء (جنيه)', en:'Purchase Price (EGP)' },
-  a_warranty:{ ar:'الضمان (سنوات)', en:'Warranty (years)' },
-  a_status:{ ar:'الحالة', en:'Condition' },
-  a_working:{ ar:'يعمل', en:'Operational' },
-  a_maintenance_s:{ ar:'تحت الصيانة', en:'Under Maintenance' },
-  a_broken:{ ar:'معطل', en:'Defective' },
-  a_retired:{ ar:'مسقط', en:'Decommissioned' },
-  btn_ai_scan:{ ar:'🤖 مسح بالـ AI Agent', en:'🤖 AI Agent Scan' },
-  search_asset_ph:{ ar:'بحث بالاسم أو الرقم...', en:'Search by name or serial...' },
-  delete_asset_c:{ ar:'حذف هذا الأصل؟', en:'Delete this asset?' },
-  asset_required:{ ar:'أدخل اسم الأصل والفئة على الأقل', en:'Enter at least asset name and category' },
-  store_issue_title:{ ar:'🏪 صرف قطعة غيار', en:'🏪 Issue Spare Part' },
-  s_store_lbl:{ ar:'المخزن', en:'Warehouse' },
-  s_select_store:{ ar:'-- اختر المخزن --', en:'-- Select Warehouse --' },
-  s_ticket_lbl:{ ar:'البلاغ المرتبط (اختياري)', en:'Related Ticket (optional)' },
-  s_select_ticket:{ ar:'-- اختر بلاغ --', en:'-- Select Ticket --' },
-  s_location_lbl:{ ar:'الموقع (فصل / سيارة / مكتب)', en:'Location (Room / Vehicle / Office)' },
-  s_select_loc:{ ar:'-- اختر الموقع --', en:'-- Select Location --' },
-  s_item_lbl:{ ar:'القطعة', en:'Item' },
-  s_select_item:{ ar:'-- اختر القطعة --', en:'-- Select Item --' },
-  s_balance_lbl:{ ar:'الرصيد المتاح', en:'Available Stock' },
-  s_balance_ph:{ ar:'اختر قطعة أولاً', en:'Select an item first' },
-  s_qty_lbl:{ ar:'الكمية المصروفة', en:'Quantity Issued' },
-  s_unit_cost_lbl:{ ar:'سعر الوحدة (جنيه)', en:'Unit Price (EGP)' },
-  s_total_lbl:{ ar:'إجمالي التكلفة', en:'Total Cost' },
-  s_notes_lbl:{ ar:'ملاحظات', en:'Notes' },
-  s_notes_ph:{ ar:'أي ملاحظات إضافية', en:'Any additional notes' },
-  btn_issue_confirm:{ ar:'✅ تسجيل الصرف وخصم الرصيد', en:'✅ Confirm & Deduct Stock' },
-  s_required:{ ar:'اختر المخزن والقطعة', en:'Select warehouse and item' },
-  no_issues:{ ar:'لا توجد عمليات صرف', en:'No issuances recorded' },
-  issued_log:{ ar:'سجل الصرف', en:'Issuance Log' },
-  store_manage_title:{ ar:'📦 إدارة المخزن', en:'📦 Warehouse Management' },
-  btn_new_store:{ ar:'➕ مخزن جديد', en:'➕ New Warehouse' },
-  btn_issue_part:{ ar:'📤 صرف قطعة غيار', en:'📤 Issue Spare Part' },
-  btn_manage_store:{ ar:'⚙️ إدارة', en:'⚙️ Manage' },
-  btn_delete_store:{ ar:'🗑 حذف المخزن', en:'🗑 Delete Warehouse' },
-  no_inv_items:{ ar:'لا توجد قطع — أضف أولاً', en:'No items — add one first' },
-  low_stock:{ ar:'منخفض', en:'Low Stock' },
-  delete_store_c:{ ar:'حذف هذا المخزن بالكامل؟ لا يمكن التراجع', en:'Delete this entire warehouse? Cannot be undone.' },
-  new_store_name_pr:{ ar:'اسم المخزن الجديد:', en:'New warehouse name:' },
-  new_store_icon_pr:{ ar:'أيقونة المخزن (emoji):', en:'Warehouse icon (emoji):' },
-  new_store_desc_pr:{ ar:'وصف المخزن (اختياري):', en:'Description (optional):' },
-  users_modal_title:{ ar:'👤 إضافة مستخدم جديد', en:'👤 Add New User' },
-  u_name:{ ar:'الاسم الكامل', en:'Full Name' },
-  u_email_lbl:{ ar:'البريد الإلكتروني', en:'Email Address' },
-  u_pass:{ ar:'كلمة المرور', en:'Password' },
-  u_role:{ ar:'الصلاحية', en:'Role' },
-  u_dept_lbl:{ ar:'القسم (للفنيين)', en:'Department (technicians)' },
-  u_select:{ ar:'-- اختر --', en:'-- Select --' },
-  u_phone:{ ar:'رقم الهاتف', en:'Phone Number' },
-  btn_save_user:{ ar:'💾 حفظ المستخدم', en:'💾 Save User' },
-  u_required:{ ar:'أدخل الاسم والبريد وكلمة المرور', en:'Enter name, email and password' },
-  you_label:{ ar:'أنت', en:'You' },
-  not_authorized:{ ar:'غير مصرح', en:'Not authorized' },
-  delete_user_c:{ ar:'حذف هذا المستخدم؟', en:'Delete this user?' },
-  btn_add_user:{ ar:'➕ إضافة مستخدم', en:'➕ Add User' },
-  users_list:{ ar:'المستخدمون', en:'Users' },
-  completion_rate:{ ar:'معدل الإنجاز', en:'Completion Rate' },
-  avg_cost:{ ar:'متوسط التكلفة/بلاغ', en:'Avg. Cost / Ticket' },
-  top_rooms:{ ar:'📊 أعلى الفصول تكلفةً', en:'📊 Highest Cost Locations' },
-  tech_performance:{ ar:'🔧 أداء الفنيين', en:'🔧 Technician Performance' },
-  dept_dist:{ ar:'📋 توزيع البلاغات بالأقسام', en:'📋 Tickets by Department' },
-  no_data:{ ar:'لا توجد بيانات', en:'No data available' },
-  tickets_label:{ ar:'بلاغ', en:'tickets' },
-  settings_title:{ ar:'⚙️ الإعدادات والقوائم الديناميكية', en:'⚙️ Settings & Dynamic Lists' },
-  settings_buildings:{ ar:'المباني والأدوار', en:'Buildings & Floors' },
-  settings_depts:{ ar:'الأقسام والأنواع', en:'Departments & Types' },
-  settings_store:{ ar:'قطع الغيار', en:'Spare Parts' },
-  settings_email:{ ar:'📧 الإيميل', en:'📧 Email' },
-  floors_label:{ ar:'الأدوار', en:'Floors' },
-  rooms_label:{ ar:'الغرف والفصول', en:'Rooms & Classrooms' },
-  new_floor_ph:{ ar:'دور جديد...', en:'New floor...' },
-  new_room_ph:{ ar:'غرفة / فصل جديد...', en:'New room / classroom...' },
-  delete_building_c:{ ar:'حذف هذا المبنى بكل أدواره وغرفه؟', en:'Delete this building with all its floors and rooms?' },
-  type_ph:{ ar:'نوع جديد...', en:'New type...' },
-  btn_add_type:{ ar:'➕ إضافة نوع', en:'➕ Add Type' },
-  new_item_ph:{ ar:'قطعة جديدة...', en:'New item...' },
-  delete_dept_c:{ ar:'حذف هذا القسم؟', en:'Delete this department?' },
-  currency:{ ar:'ج', en:'EGP' },
-  filter_all_status:{ ar:'كل الحالات', en:'All Statuses' },
-  filter_all_depts:{ ar:'كل الأقسام', en:'All Departments' },
-  confirm_del_ticket:{ ar:'حذف هذا البلاغ نهائياً؟', en:'Permanently delete this ticket?' },
-  btn_run_scan:{ ar:'▶ Run Full Scan', en:'▶ Run Full Scan' },
-  btn_local_scan:{ ar:'🏫 مسح هذا الجهاز', en:'🏫 Scan This Machine' },
-  btn_export_csv:{ ar:'📥 Export CSV', en:'📥 Export CSV' },
-  btn_gen_script:{ ar:'📜 توليد Script للتثبيت', en:'📜 Generate Setup Script' },
+var L = {
+  // APP
+  app_subtitle:       {ar:'نظام الصيانة والمخزون المدرسي',   en:'School Maintenance & Inventory',         de:'Schulisches Wartungs- und Lagersystem'},
+  system_mgmt:        {ar:'نظام الإدارة',                     en:'Management System',                      de:'Verwaltungssystem'},
+  // LOGIN
+  login_title:        {ar:'تسجيل الدخول',                    en:'Sign In',                               de:'Anmelden'},
+  login_email:        {ar:'البريد الإلكتروني',               en:'Email Address',                         de:'E-Mail-Adresse'},
+  login_pass:         {ar:'كلمة المرور',                     en:'Password',                              de:'Kennwort'},
+  login_btn:          {ar:'تسجيل الدخول',                    en:'Sign In',                               de:'Anmelden'},
+  login_error:        {ar:'بيانات الدخول غير صحيحة',         en:'Invalid credentials',                   de:'Ungültige Anmeldedaten'},
+  // ROLES
+  role_admin:         {ar:'مدير النظام',                     en:'System Administrator',                  de:'Systemadministrator'},
+  role_teacher:       {ar:'معلم / موظف',                     en:'Teacher / Staff',                       de:'Lehrkraft / Mitarbeiter'},
+  role_technician:    {ar:'فني',                             en:'Technician',                            de:'Techniker'},
+  role_storekeeper:   {ar:'أمين مخزن',                       en:'Storekeeper',                           de:'Lagerverwalter'},
+  // NAV LABELS
+  nav_dashboard:      {ar:'لوحة التحكم',                     en:'Dashboard',                             de:'Übersicht'},
+  nav_tickets:        {ar:'بلاغات الصيانة',                  en:'Maintenance Tickets',                   de:'Wartungsaufträge'},
+  nav_my_tickets:     {ar:'بلاغاتي',                         en:'My Tickets',                            de:'Meine Aufträge'},
+  nav_assets:         {ar:'مخزون الأصول',                    en:'Asset Inventory',                       de:'Anlagenverwaltung'},
+  nav_store:          {ar:'قطع الغيار',                      en:'Spare Parts',                           de:'Ersatzteillager'},
+  nav_users:          {ar:'المستخدمون',                      en:'Users',                                 de:'Benutzerverwaltung'},
+  nav_reports:        {ar:'التقارير',                        en:'Reports',                               de:'Berichte'},
+  nav_settings:       {ar:'الإعدادات',                       en:'Settings',                              de:'Einstellungen'},
+  nav_agent:          {ar:'AI Agent - Inventory',             en:'AI Agent - Inventory',                  de:'KI-Agent - Bestandserfassung'},
+  nav_spare_req:      {ar:'طلب قطع غيار',                    en:'Request Spare Parts',                   de:'Ersatzteilanforderung'},
+  nav_sec_main:       {ar:'الرئيسية',                        en:'Main',                                  de:'Hauptmenü'},
+  nav_sec_inv:        {ar:'المخزون',                         en:'Inventory',                             de:'Lager'},
+  nav_sec_admin:      {ar:'الإدارة',                         en:'Administration',                        de:'Administration'},
+  nav_sec_adv:        {ar:'متقدم',                           en:'Advanced',                              de:'Erweitert'},
+  logout:             {ar:'تسجيل الخروج',                    en:'Sign Out',                              de:'Abmelden'},
+  // NOTIFICATIONS
+  notif_title:        {ar:'الإشعارات',                       en:'Notifications',                         de:'Benachrichtigungen'},
+  notif_read_all:     {ar:'قراءة الكل',                      en:'Mark all read',                         de:'Alle gelesen'},
+  notif_empty:        {ar:'لا توجد إشعارات',                 en:'No notifications',                      de:'Keine Benachrichtigungen'},
+  // DASHBOARD
+  stat_total:         {ar:'إجمالي البلاغات',                 en:'Total Tickets',                         de:'Aufträge gesamt'},
+  stat_pending:       {ar:'معلقة',                           en:'Pending',                               de:'Offen'},
+  stat_inprog:        {ar:'جارية',                           en:'In Progress',                           de:'In Bearbeitung'},
+  stat_done:          {ar:'منتهية',                          en:'Completed',                             de:'Abgeschlossen'},
+  stat_cost:          {ar:'إجمالي التكاليف',                 en:'Total Costs',                           de:'Gesamtkosten'},
+  egp:                {ar:'جنيه مصري',                       en:'Egyptian Pound (EGP)',                  de:'Ägyptisches Pfund (EGP)'},
+  recent_tickets:     {ar:'أحدث البلاغات',                   en:'Recent Tickets',                        de:'Aktuelle Aufträge'},
+  no_tickets:         {ar:'لا توجد بلاغات حتى الآن',         en:'No tickets yet',                        de:'Keine Aufträge vorhanden'},
+  btn_new_ticket:     {ar:'➕ بلاغ صيانة جديد',             en:'➕ New Maintenance Ticket',             de:'➕ Neuer Wartungsauftrag'},
+  btn_new_ticket_s:   {ar:'➕ بلاغ جديد',                   en:'➕ New Ticket',                         de:'➕ Neuer Auftrag'},
+  // TABLE HEADERS
+  th_num:             {ar:'#',                               en:'#',                                     de:'Nr.'},
+  th_location:        {ar:'الموقع',                          en:'Location',                              de:'Standort'},
+  th_dept:            {ar:'القسم',                           en:'Department',                            de:'Abteilung'},
+  th_type:            {ar:'نوع المشكلة',                     en:'Issue Type',                            de:'Störungsart'},
+  th_priority:        {ar:'الأولوية',                        en:'Priority',                              de:'Priorität'},
+  th_status:          {ar:'الحالة',                          en:'Status',                                de:'Status'},
+  th_submitter:       {ar:'المقدم',                          en:'Submitted By',                          de:'Erfasser'},
+  th_date:            {ar:'التاريخ',                         en:'Date',                                  de:'Datum'},
+  th_cost:            {ar:'التكلفة',                         en:'Cost',                                  de:'Kosten'},
+  th_actions:         {ar:'إجراءات',                         en:'Actions',                               de:'Aktionen'},
+  th_asset:           {ar:'الأصل',                           en:'Asset',                                 de:'Anlage'},
+  th_category:        {ar:'الفئة',                           en:'Category',                              de:'Anlagenklasse'},
+  th_serial:          {ar:'الرقم التسلسلي',                  en:'Serial No.',                            de:'Seriennummer'},
+  th_purchase_date:   {ar:'تاريخ الشراء',                    en:'Purchase Date',                         de:'Kaufdatum'},
+  th_value:           {ar:'القيمة',                          en:'Value',                                 de:'Wert'},
+  th_barcode:         {ar:'الباركود',                        en:'Barcode',                               de:'Barcode'},
+  th_store:           {ar:'المخزن',                          en:'Warehouse',                             de:'Lager'},
+  th_item:            {ar:'القطعة',                          en:'Item',                                  de:'Artikel'},
+  th_qty:             {ar:'الكمية',                          en:'Qty',                                   de:'Menge'},
+  th_unit_price:      {ar:'سعر الوحدة',                      en:'Unit Price',                            de:'Einzelpreis'},
+  th_total:           {ar:'الإجمالي',                        en:'Total',                                 de:'Gesamtbetrag'},
+  th_technician:      {ar:'الفني',                           en:'Technician',                            de:'Techniker'},
+  th_notes:           {ar:'ملاحظات',                         en:'Notes',                                 de:'Bemerkungen'},
+  th_ticket:          {ar:'البلاغ',                          en:'Ticket',                                de:'Auftrag'},
+  th_role:            {ar:'الصلاحية',                        en:'Role',                                  de:'Benutzerrolle'},
+  th_phone:           {ar:'الهاتف',                          en:'Phone',                                 de:'Telefon'},
+  th_balance:         {ar:'الرصيد الحالي',                   en:'Current Stock',                         de:'Aktueller Bestand'},
+  th_min_bal:         {ar:'الحد الأدنى',                     en:'Min. Stock',                            de:'Mindestbestand'},
+  th_adj:             {ar:'إضافة/خصم',                       en:'Add/Deduct',                            de:'Zugang/Abgang'},
+  th_unit:            {ar:'الوحدة',                          en:'Unit',                                  de:'Einheit'},
+  // STATUS / PRIORITY
+  s_pending:          {ar:'معلق',                            en:'Pending',                               de:'Offen'},
+  s_inprogress:       {ar:'جاري',                            en:'In Progress',                           de:'In Bearbeitung'},
+  s_done:             {ar:'منتهي',                           en:'Completed',                             de:'Abgeschlossen'},
+  p_high:             {ar:'🔴 عاجل',                        en:'🔴 Urgent',                             de:'🔴 Dringend'},
+  p_med:              {ar:'🟡 متوسط',                       en:'🟡 Medium',                             de:'🟡 Normal'},
+  p_low:              {ar:'🟢 منخفض',                       en:'🟢 Low',                                de:'🟢 Gering'},
+  p_high_opt:         {ar:'عاجلة',                           en:'Urgent',                                de:'Dringend'},
+  p_med_opt:          {ar:'متوسطة',                          en:'Medium',                                de:'Normal'},
+  p_low_opt:          {ar:'منخفضة',                          en:'Low',                                   de:'Gering'},
+  // TICKET MODAL
+  ticket_modal_h:     {ar:'📋 إنشاء بلاغ صيانة جديد',       en:'📋 New Maintenance Ticket',             de:'📋 Neuen Wartungsauftrag erstellen'},
+  lbl_dept:           {ar:'القسم / التخصص',                  en:'Department / Specialty',                de:'Abteilung / Fachbereich'},
+  lbl_type:           {ar:'نوع المشكلة',                     en:'Issue Type',                            de:'Störungsart'},
+  lbl_priority:       {ar:'الأولوية',                        en:'Priority',                              de:'Priorität'},
+  lbl_building:       {ar:'المبنى',                          en:'Building',                              de:'Gebäude'},
+  lbl_floor:          {ar:'الدور',                           en:'Floor',                                 de:'Etage'},
+  lbl_room:           {ar:'الفصل / الغرفة',                  en:'Classroom / Room',                      de:'Klassen-/Zimmer'},
+  lbl_desc:           {ar:'وصف المشكلة',                     en:'Problem Description',                   de:'Störungsbeschreibung'},
+  lbl_est_cost:       {ar:'التكلفة التقديرية (جنيه)',         en:'Estimated Cost (EGP)',                  de:'Geschätzte Kosten (EGP)'},
+  lbl_actual_cost:    {ar:'التكلفة الفعلية (جنيه)',           en:'Actual Cost (EGP)',                     de:'Tatsächliche Kosten (EGP)'},
+  sel_dept:           {ar:'-- اختر القسم --',                en:'-- Select Department --',               de:'-- Abteilung wählen --'},
+  sel_type:           {ar:'-- اختر النوع --',                en:'-- Select Type --',                     de:'-- Art wählen --'},
+  sel_building:       {ar:'-- المبنى --',                    en:'-- Building --',                        de:'-- Gebäude --'},
+  sel_floor:          {ar:'-- الدور --',                     en:'-- Floor --',                           de:'-- Etage --'},
+  sel_room:           {ar:'-- الغرفة --',                    en:'-- Room --',                            de:'-- Zimmer --'},
+  ph_desc:            {ar:'اكتب تفاصيل المشكلة بوضوح...',    en:'Describe the problem clearly...',       de:'Störung ausführlich beschreiben...'},
+  ph_tech_notes:      {ar:'اكتب تفاصيل ما تم...',           en:'Enter resolution details...',           de:'Lösungsdetails eingeben...'},
+  err_ticket_req:     {ar:'من فضلك أكمل البيانات المطلوبة',  en:'Please complete all required fields',    de:'Bitte alle Pflichtfelder ausfüllen'},
+  // TICKET DETAIL
+  lbl_status:         {ar:'الحالة',                          en:'Status',                                de:'Status'},
+  lbl_assigned:       {ar:'الفني المعين',                    en:'Assigned Technician',                   de:'Zugewiesener Techniker'},
+  lbl_not_assigned:   {ar:'لم يُعيَّن بعد',                  en:'Not assigned yet',                      de:'Noch nicht zugewiesen'},
+  lbl_submitter:      {ar:'مقدم البلاغ',                     en:'Submitted By',                          de:'Erfasst von'},
+  lbl_created_on:     {ar:'تاريخ الإنشاء',                   en:'Created On',                            de:'Erfassungsdatum'},
+  lbl_resolution:     {ar:'ملاحظات الفني / سبب الحل',        en:'Technician Notes / Resolution',         de:'Techniker-Notizen / Lösung'},
+  lbl_event_log:      {ar:'📋 سجل الأحداث',                  en:'📋 Event Log',                          de:'📋 Ereignisprotokoll'},
+  log_assigned:       {ar:'تم التعيين للفني',                en:'Assigned to technician',               de:'Techniker zugewiesen'},
+  log_transferred:    {ar:'تم التحويل من',                   en:'Transferred from',                      de:'Übertragen von'},
+  log_reopened:       {ar:'تم إعادة الفتح بواسطة',           en:'Reopened by',                           de:'Wiedereröffnet von'},
+  log_resolved:       {ar:'تم الحل بواسطة',                  en:'Resolved by',                           de:'Erledigt von'},
+  reopen_reason_pr:   {ar:'سبب إعادة الفتح (اختياري):',      en:'Reason for reopening (optional):',      de:'Grund (optional):'},
+  // BUTTONS
+  btn_close:          {ar:'إغلاق',                           en:'Close',                                 de:'Schließen'},
+  btn_cancel:         {ar:'إلغاء',                           en:'Cancel',                                de:'Abbrechen'},
+  btn_save:           {ar:'💾 حفظ',                          en:'💾 Save',                               de:'💾 Speichern'},
+  btn_add:            {ar:'➕ إضافة',                        en:'➕ Add',                                de:'➕ Hinzufügen'},
+  btn_delete:         {ar:'🗑 حذف',                          en:'🗑 Delete',                             de:'🗑 Löschen'},
+  btn_edit:           {ar:'✏️ تعديل',                        en:'✏️ Edit',                               de:'✏️ Bearbeiten'},
+  btn_submit_ticket:  {ar:'📤 إرسال البلاغ',                en:'📤 Submit Ticket',                      de:'📤 Auftrag einreichen'},
+  btn_reopen:         {ar:'🔄 إعادة فتح',                   en:'🔄 Reopen',                             de:'🔄 Erneut öffnen'},
+  btn_transfer:       {ar:'↔️ تحويل لفني آخر',              en:'↔️ Transfer',                           de:'↔️ Übertragen'},
+  btn_assign:         {ar:'👷 تعيين فني',                    en:'👷 Assign Technician',                  de:'👷 Techniker zuweisen'},
+  btn_start:          {ar:'▶ بدء العمل',                    en:'▶ Start Work',                          de:'▶ Bearbeitung starten'},
+  btn_done:           {ar:'✅ تم الحل',                      en:'✅ Mark Resolved',                      de:'✅ Als erledigt markieren'},
+  btn_barcode:        {ar:'🖨 باركود',                       en:'🖨 Barcode',                            de:'🖨 Barcode drucken'},
+  btn_save_barcode:   {ar:'🔖 حفظ وطباعة باركود',           en:'🔖 Save & Print Barcode',               de:'🔖 Speichern & Barcode drucken'},
+  btn_details:        {ar:'تفاصيل',                          en:'Details',                               de:'Details'},
+  btn_view:           {ar:'عرض',                             en:'View',                                  de:'Anzeigen'},
+  // ASSIGN / TRANSFER
+  assign_modal_h:     {ar:'👷 تعيين فني للبلاغ',            en:'👷 Assign Technician',                  de:'👷 Techniker zuweisen'},
+  assign_select_lbl:  {ar:'اختر الفني المناسب:',             en:'Select a technician:',                  de:'Techniker auswählen:'},
+  btn_assign_v:       {ar:'تعيين ✓',                         en:'Assign ✓',                              de:'Zuweisen ✓'},
+  assign_no_techs:    {ar:'لا يوجد فنيون مسجلون لهذا القسم',en:'No technicians for this department',    de:'Keine Techniker für diese Abteilung'},
+  transfer_modal_h:   {ar:'🔄 تحويل البلاغ لفني آخر',       en:'🔄 Transfer to Another Technician',     de:'🔄 An anderen Techniker übertragen'},
+  transfer_from_lbl:  {ar:'تحويل من:',                       en:'Transfer from:',                        de:'Übertragen von:'},
+  btn_transfer_v:     {ar:'تحويل ✓',                         en:'Transfer ✓',                            de:'Übertragen ✓'},
+  transfer_no_techs:  {ar:'لا يوجد فنيون آخرون في نفس القسم',en:'No other technicians available',       de:'Keine weiteren Techniker verfügbar'},
+  // ASSETS
+  asset_modal_h:      {ar:'📦 إضافة أصل جديد',              en:'📦 Add New Asset',                      de:'📦 Neue Anlage erfassen'},
+  lbl_asset_name:     {ar:'اسم الأصل',                       en:'Asset Name',                            de:'Anlagenbezeichnung'},
+  lbl_asset_cat:      {ar:'الفئة',                           en:'Category',                              de:'Anlagenklasse'},
+  sel_asset_cat:      {ar:'-- اختر الفئة --',                en:'-- Select Category --',                 de:'-- Klasse wählen --'},
+  lbl_serial:         {ar:'الرقم التسلسلي',                  en:'Serial Number',                         de:'Seriennummer'},
+  lbl_brand:          {ar:'الماركة / الموديل',               en:'Brand / Model',                         de:'Hersteller / Modell'},
+  lbl_asset_building: {ar:'المبنى',                          en:'Building',                              de:'Gebäude'},
+  lbl_asset_room:     {ar:'الدور / الغرفة',                  en:'Floor / Room',                          de:'Etage / Raum'},
+  lbl_purchase_date:  {ar:'تاريخ الشراء',                    en:'Purchase Date',                         de:'Kaufdatum'},
+  lbl_price:          {ar:'قيمة الشراء (جنيه)',              en:'Purchase Price (EGP)',                  de:'Anschaffungswert (EGP)'},
+  lbl_warranty:       {ar:'الضمان (سنوات)',                  en:'Warranty (years)',                      de:'Garantie (Jahre)'},
+  lbl_condition:      {ar:'الحالة',                          en:'Condition',                             de:'Zustand'},
+  a_working:          {ar:'يعمل',                            en:'Operational',                           de:'In Betrieb'},
+  a_maintenance:      {ar:'تحت الصيانة',                     en:'Under Maintenance',                     de:'In Wartung'},
+  a_broken:           {ar:'معطل',                            en:'Defective',                             de:'Defekt'},
+  a_retired:          {ar:'مسقط',                            en:'Decommissioned',                        de:'Außer Betrieb'},
+  no_assets:          {ar:'لا توجد أصول مسجلة',              en:'No assets registered',                  de:'Keine Anlagen erfasst'},
+  assets_registered:  {ar:'الأصول المسجلة',                  en:'Registered Assets',                     de:'Erfasste Anlagen'},
+  btn_ai_scan:        {ar:'🤖 مسح بالـ AI Agent',           en:'🤖 AI Agent Scan',                      de:'🤖 KI-Bestandserfassung'},
+  ph_search_asset:    {ar:'بحث بالاسم أو الرقم...',          en:'Search by name or serial...',           de:'Nach Name oder Seriennr. suchen...'},
+  del_asset_c:        {ar:'حذف هذا الأصل؟',                  en:'Delete this asset?',                    de:'Diese Anlage löschen?'},
+  asset_req_err:      {ar:'أدخل اسم الأصل والفئة على الأقل', en:'Enter at least name and category',      de:'Mindestens Bezeichnung und Klasse eingeben'},
+  // STORE
+  store_issue_h:      {ar:'🏪 صرف قطعة غيار',              en:'🏪 Issue Spare Part',                   de:'🏪 Ersatzteilausgabe'},
+  lbl_warehouse:      {ar:'المخزن',                          en:'Warehouse',                             de:'Lager'},
+  sel_warehouse:      {ar:'-- اختر المخزن --',              en:'-- Select Warehouse --',                de:'-- Lager wählen --'},
+  lbl_linked_ticket:  {ar:'البلاغ المرتبط (اختياري)',        en:'Related Ticket (optional)',             de:'Verknüpfter Auftrag (optional)'},
+  sel_ticket_opt:     {ar:'-- اختر بلاغ --',                en:'-- Select Ticket --',                   de:'-- Auftrag wählen --'},
+  lbl_loc:            {ar:'الموقع (فصل / سيارة / مكتب)',    en:'Location (Room / Vehicle / Office)',    de:'Standort (Klasse / Fahrzeug / Büro)'},
+  sel_loc:            {ar:'-- اختر الموقع --',              en:'-- Select Location --',                 de:'-- Standort wählen --'},
+  lbl_item:           {ar:'القطعة',                          en:'Item',                                  de:'Artikel'},
+  sel_item:           {ar:'-- اختر القطعة --',              en:'-- Select Item --',                     de:'-- Artikel wählen --'},
+  lbl_avail_stock:    {ar:'الرصيد المتاح',                   en:'Available Stock',                       de:'Verfügbarer Bestand'},
+  ph_sel_item_first:  {ar:'اختر قطعة أولاً',                en:'Select an item first',                 de:'Zuerst Artikel wählen'},
+  lbl_qty_issued:     {ar:'الكمية المصروفة',                 en:'Quantity Issued',                       de:'Ausgegebene Menge'},
+  lbl_unit_price:     {ar:'سعر الوحدة (جنيه)',              en:'Unit Price (EGP)',                      de:'Einzelpreis (EGP)'},
+  lbl_total_cost:     {ar:'إجمالي التكلفة',                  en:'Total Cost',                            de:'Gesamtkosten'},
+  lbl_notes:          {ar:'ملاحظات',                         en:'Notes',                                 de:'Bemerkungen'},
+  ph_notes:           {ar:'أي ملاحظات إضافية',              en:'Any additional notes',                  de:'Zusätzliche Bemerkungen'},
+  btn_issue_confirm:  {ar:'✅ تسجيل الصرف وخصم الرصيد',     en:'✅ Confirm & Deduct Stock',             de:'✅ Ausgabe bestätigen & Bestand buchen'},
+  err_store_req:      {ar:'اختر المخزن والقطعة',             en:'Select warehouse and item',             de:'Lager und Artikel auswählen'},
+  no_issues:          {ar:'لا توجد عمليات صرف',              en:'No issuances recorded',                 de:'Keine Ausgaben erfasst'},
+  issued_log:         {ar:'سجل الصرف',                       en:'Issuance Log',                          de:'Ausgabeprotokoll'},
+  store_manage_h:     {ar:'📦 إدارة المخزن',                 en:'📦 Warehouse Management',               de:'📦 Lagerverwaltung'},
+  btn_new_store:      {ar:'➕ مخزن جديد',                    en:'➕ New Warehouse',                      de:'➕ Neues Lager anlegen'},
+  btn_issue_part:     {ar:'📤 صرف قطعة غيار',               en:'📤 Issue Spare Part',                   de:'📤 Ersatzteil ausgeben'},
+  btn_manage_store:   {ar:'⚙️ إدارة',                        en:'⚙️ Manage',                             de:'⚙️ Verwalten'},
+  btn_del_store:      {ar:'🗑 حذف المخزن',                   en:'🗑 Delete Warehouse',                   de:'🗑 Lager löschen'},
+  ph_item_name:       {ar:'اسم القطعة',                      en:'Item Name',                             de:'Artikelbezeichnung'},
+  ph_unit:            {ar:'الوحدة (قطعة/م/كيلو)',           en:'Unit (pcs/m/kg)',                       de:'Einheit (Stk./m/kg)'},
+  ph_opening:         {ar:'الرصيد الابتدائي',                en:'Opening Stock',                         de:'Anfangsbestand'},
+  ph_min_stock:       {ar:'الحد الأدنى',                     en:'Minimum Stock',                         de:'Mindestbestand'},
+  ph_unit_price:      {ar:'سعر الوحدة (ج)',                  en:'Unit Price (EGP)',                      de:'Einzelpreis (EGP)'},
+  btn_add_item:       {ar:'➕ إضافة',                        en:'➕ Add Item',                            de:'➕ Artikel hinzufügen'},
+  no_inv_items:       {ar:'لا توجد قطع — أضف أولاً',        en:'No items — add one first',              de:'Keine Artikel vorhanden'},
+  low_stock:          {ar:'منخفض',                           en:'Low Stock',                             de:'Bestand niedrig'},
+  del_store_c:        {ar:'حذف هذا المخزن بالكامل؟ لا يمكن التراجع',en:'Delete this entire warehouse? Cannot be undone.',de:'Dieses Lager vollständig löschen? Nicht rückgängig machbar.'},
+  pr_store_name:      {ar:'اسم المخزن الجديد:',              en:'New warehouse name:',                   de:'Name des neuen Lagers:'},
+  pr_store_icon:      {ar:'أيقونة المخزن (emoji):',          en:'Warehouse icon (emoji):',               de:'Lager-Symbol (Emoji):'},
+  pr_store_desc:      {ar:'وصف المخزن (اختياري):',           en:'Description (optional):',               de:'Beschreibung (optional):'},
+  // USERS
+  user_modal_h:       {ar:'👤 إضافة مستخدم جديد',           en:'👤 Add New User',                       de:'👤 Neuen Benutzer anlegen'},
+  lbl_full_name:      {ar:'الاسم الكامل',                    en:'Full Name',                             de:'Vollständiger Name'},
+  lbl_email:          {ar:'البريد الإلكتروني',               en:'Email Address',                         de:'E-Mail-Adresse'},
+  lbl_password:       {ar:'كلمة المرور',                     en:'Password',                              de:'Kennwort'},
+  lbl_role:           {ar:'الصلاحية',                        en:'Role',                                  de:'Benutzerrolle'},
+  lbl_dept_tech:      {ar:'القسم (للفنيين)',                 en:'Department (for technicians)',          de:'Abteilung (für Techniker)'},
+  sel_dept_opt:       {ar:'-- اختر --',                      en:'-- Select --',                          de:'-- Auswählen --'},
+  lbl_phone:          {ar:'رقم الهاتف',                      en:'Phone Number',                          de:'Telefonnummer'},
+  btn_save_user:      {ar:'💾 حفظ المستخدم',                 en:'💾 Save User',                          de:'💾 Benutzer speichern'},
+  err_user_req:       {ar:'أدخل الاسم والبريد وكلمة المرور', en:'Enter name, email and password',        de:'Name, E-Mail und Kennwort eingeben'},
+  you_label:          {ar:'أنت',                             en:'You',                                   de:'Sie'},
+  not_auth:           {ar:'غير مصرح',                        en:'Not authorized',                        de:'Nicht autorisiert'},
+  del_user_c:         {ar:'حذف هذا المستخدم؟',               en:'Delete this user?',                     de:'Diesen Benutzer löschen?'},
+  btn_add_user:       {ar:'➕ إضافة مستخدم',                 en:'➕ Add User',                            de:'➕ Benutzer anlegen'},
+  users_list_h:       {ar:'المستخدمون',                      en:'Users',                                 de:'Benutzer'},
+  // REPORTS
+  completion_rate:    {ar:'معدل الإنجاز',                    en:'Completion Rate',                       de:'Erledigungsquote'},
+  avg_cost:           {ar:'متوسط التكلفة/بلاغ',             en:'Avg. Cost / Ticket',                    de:'Durchschn. Kosten/Auftrag'},
+  top_rooms_h:        {ar:'📊 أعلى الفصول تكلفةً',          en:'📊 Highest Cost Locations',             de:'📊 Standorte mit höchsten Kosten'},
+  tech_perf_h:        {ar:'🔧 أداء الفنيين',                 en:'🔧 Technician Performance',             de:'🔧 Techniker-Leistungsübersicht'},
+  dept_dist_h:        {ar:'📋 توزيع البلاغات بالأقسام',     en:'📋 Tickets by Department',              de:'📋 Auftragsverteilung nach Abteilung'},
+  no_data:            {ar:'لا توجد بيانات',                  en:'No data available',                     de:'Keine Daten vorhanden'},
+  tickets_lbl:        {ar:'بلاغ',                            en:'tickets',                               de:'Aufträge'},
+  // SETTINGS
+  settings_modal_h:   {ar:'⚙️ الإعدادات والقوائم الديناميكية',en:'⚙️ Settings & Dynamic Lists',          de:'⚙️ Einstellungen & Stammdaten'},
+  tab_buildings:      {ar:'المباني والأدوار',                en:'Buildings & Floors',                    de:'Gebäude & Etagen'},
+  tab_depts:          {ar:'الأقسام والأنواع',                en:'Departments & Types',                   de:'Abteilungen & Störungsarten'},
+  tab_store:          {ar:'قطع الغيار',                      en:'Spare Parts',                           de:'Ersatzteile'},
+  tab_email:          {ar:'📧 الإيميل',                      en:'📧 Email',                              de:'📧 E-Mail'},
+  ph_building_name:   {ar:'اسم المبنى',                      en:'Building Name',                         de:'Gebäudebezeichnung'},
+  lbl_floors:         {ar:'الأدوار',                         en:'Floors',                                de:'Etagen'},
+  lbl_rooms:          {ar:'الغرف والفصول',                   en:'Rooms & Classrooms',                    de:'Räume & Klassenzimmer'},
+  ph_new_floor:       {ar:'دور جديد...',                     en:'New floor...',                          de:'Neue Etage...'},
+  ph_new_room:        {ar:'غرفة / فصل جديد...',             en:'New room / classroom...',               de:'Neuer Raum / Klassenzimmer...'},
+  del_building_c:     {ar:'حذف هذا المبنى بكل أدواره وغرفه?',en:'Delete this building with all its floors and rooms?',de:'Dieses Gebäude mit allen Etagen und Räumen löschen?'},
+  ph_dept_name:       {ar:'اسم القسم',                       en:'Department Name',                       de:'Abteilungsbezeichnung'},
+  ph_new_type:        {ar:'نوع جديد...',                     en:'New type...',                           de:'Neue Störungsart...'},
+  btn_add_type:       {ar:'➕ إضافة نوع',                    en:'➕ Add Type',                            de:'➕ Art hinzufügen'},
+  ph_new_item:        {ar:'قطعة جديدة...',                   en:'New item...',                           de:'Neuer Artikel...'},
+  del_dept_c:         {ar:'حذف هذا القسم؟',                  en:'Delete this department?',               de:'Diese Abteilung löschen?'},
+  // GENERAL
+  currency:           {ar:'ج',                               en:'EGP',                                   de:'EGP'},
+  filter_all_status:  {ar:'كل الحالات',                      en:'All Statuses',                          de:'Alle Status'},
+  filter_all_depts:   {ar:'كل الأقسام',                      en:'All Departments',                       de:'Alle Abteilungen'},
+  del_ticket_c:       {ar:'حذف هذا البلاغ نهائياً؟',         en:'Permanently delete this ticket?',       de:'Diesen Auftrag endgültig löschen?'},
+  empty_tickets:      {ar:'لا توجد بلاغات',                  en:'No tickets found',                      de:'Keine Aufträge gefunden'},
+  // AGENT
+  btn_run_scan:       {ar:'▶ Run Full Scan',                 en:'▶ Run Full Scan',                       de:'▶ Vollständigen Scan starten'},
+  btn_local_scan:     {ar:'🏫 مسح هذا الجهاز',             en:'🏫 Scan This Machine',                  de:'🏫 Diesen Rechner scannen'},
+  btn_export_csv:     {ar:'📥 Export CSV',                   en:'📥 Export CSV',                         de:'📥 CSV exportieren'},
+  btn_gen_script:     {ar:'📜 توليد Script للتثبيت',        en:'📜 Generate Setup Script',              de:'📜 Setup-Skript generieren'},
 };
 
-function t(key) {
-  if (!i18n[key]) return key;
-  return i18n[key][currentLang] || i18n[key]['ar'] || key;
-}
+function t(k){ return (L[k]&&L[k][currentLang])||( L[k]&&L[k]['ar'])||k; }
 
-function applyLanguage(lang) {
+function applyLanguage(lang){
   currentLang = lang;
   localStorage.setItem('dsba_lang', lang);
-  var isRTL = lang === 'ar';
+  var rtl = lang==='ar';
   document.documentElement.lang = lang;
-  document.documentElement.dir = isRTL ? 'rtl' : 'ltr';
+  document.documentElement.dir = rtl ? 'rtl' : 'ltr';
+  // Update lang buttons
   document.querySelectorAll('.lang-btn').forEach(function(b){
-    b.classList.toggle('active-lang', b.dataset.lang === lang);
+    b.classList.toggle('active-lang', b.dataset.lang===lang);
   });
-  _applyStaticTranslations();
-  var active = document.querySelector('.nav-item.active');
-  if (active) {
-    var pid = active.id.replace('nav-', '');
-    var pages = {
-      dashboard:renderDashboard, tickets:renderTickets,
-      assets:renderAssets, store:renderStore,
-      users:renderUsers, reports:renderReports, agent:renderAgent
-    };
-    if (pages[pid]) pages[pid]();
+  // Re-render login or app
+  if(document.getElementById('loginScreen').style.display!=='none'||!CU){
+    renderLogin();
+  } else {
+    renderStaticUI();
+    refreshPage();
   }
 }
 
-function _applyStaticTranslations() {
-  var el;
-  el = document.querySelector('.login-logo p'); if(el) el.textContent = t('app_subtitle');
-  el = document.querySelector('.login-field:nth-child(1) label'); if(el) el.textContent = t('login_email');
-  el = document.querySelector('.login-field:nth-child(2) label'); if(el) el.textContent = t('login_password');
-  el = document.querySelector('.login-btn'); if(el) el.textContent = t('login_btn');
-  el = document.getElementById('loginError'); if(el) el.textContent = t('login_error');
-  el = document.querySelector('.sidebar-subtitle'); if(el) el.textContent = t('system_management');
-  el = document.querySelector('.logout-btn');
-  if(el) el.innerHTML = (currentLang==='ar'?'⬅ ':'➡ ') + t('logout');
-  var nh = document.querySelector('#notifPanel .notif-header');
-  if(nh) nh.innerHTML = t('notif_title') +
-    '<span style="font-size:11px;color:var(--text-muted);cursor:pointer;" onclick="markAllRead()">'
-    + t('notif_read_all') + '</span>';
-  if(CU) {
-    el = document.getElementById('sidebarRole'); if(el) el.textContent = role_label(CU.role);
-    buildNav();
-  }
-  // Modal titles
-  el = document.querySelector('#ticketModal .modal-title'); if(el) el.textContent = t('ticket_modal_title');
-  el = document.querySelector('#storeModal .modal-title'); if(el) el.textContent = t('store_issue_title');
-  el = document.querySelector('#userModal .modal-title'); if(el) el.textContent = t('users_modal_title');
-  el = document.querySelector('#assetModal .modal-title'); if(el) el.textContent = t('asset_modal_title');
-  el = document.querySelector('#settingsModal .modal-title'); if(el) el.textContent = t('settings_title');
-  // Settings tabs
-  var tabs = document.querySelectorAll('#settingsTabs .tab');
-  var tabKeys = ['settings_buildings','settings_depts','settings_store','settings_email'];
-  tabs.forEach(function(tab,i){ if(tabKeys[i]) tab.textContent = t(tabKeys[i]); });
-  // Assign modal
-  el = document.querySelector('#assignModal .modal-title'); if(el) el.textContent = t('assign_title');
-  el = document.querySelector('#assignModal p'); if(el) el.textContent = t('assign_select');
-  // Ticket modal labels
-  _updateLabels([
-    ['label[for-field="t_dept"]', 'ticket_dept'],
-  ]);
-  // Update all data-i18n elements
-  document.querySelectorAll('[data-i18n]').forEach(function(el){
-    var key = el.getAttribute('data-i18n');
-    if(key) el.textContent = t(key);
-  });
-  document.querySelectorAll('[data-i18n-ph]').forEach(function(el){
-    var key = el.getAttribute('data-i18n-ph');
-    if(key) el.placeholder = t(key);
-  });
-  // Page title
-  var active2 = document.querySelector('.nav-item.active');
-  if(active2){
-    var pid2 = active2.id.replace('nav-','');
-    var titleMap={dashboard:'nav_dashboard',tickets:'nav_tickets',assets:'nav_assets',
-      store:'nav_store',users:'nav_users',reports:'nav_reports',settings:'nav_settings',agent:'nav_agent'};
-    el = document.getElementById('pageTitle');
-    if(el && titleMap[pid2]) el.textContent = t(titleMap[pid2]);
-  }
+function renderLogin(){
+  var isRTL = currentLang==='ar';
+  document.documentElement.dir = isRTL?'rtl':'ltr';
+  document.getElementById('loginScreen').innerHTML = `
+    <div class="login-box">
+      <div class="login-logo">
+        <div class="logo-circle">DS</div>
+        <h1>DSBA</h1>
+        <p>${t('app_subtitle')}</p>
+      </div>
+      <div style="display:flex;justify-content:center;gap:6px;margin-bottom:20px;">
+        <button class="lang-btn ${currentLang==='ar'?'active-lang':''}" data-lang="ar" onclick="applyLanguage('ar')">عربي</button>
+        <button class="lang-btn ${currentLang==='en'?'active-lang':''}" data-lang="en" onclick="applyLanguage('en')">English</button>
+        <button class="lang-btn ${currentLang==='de'?'active-lang':''}" data-lang="de" onclick="applyLanguage('de')">Deutsch</button>
+      </div>
+      <div class="login-field">
+        <label>${t('login_email')}</label>
+        <input id="loginEmail" type="email" placeholder="user@dsba.edu.eg">
+      </div>
+      <div class="login-field">
+        <label>${t('login_pass')}</label>
+        <input id="loginPass" type="password" placeholder="••••••••">
+      </div>
+      <button class="login-btn" onclick="doLogin()">${t('login_btn')}</button>
+      <div class="login-error" id="loginError" style="display:none;">${t('login_error')}</div>
+    </div>
+  `;
 }
-function _updateLabels(pairs){ pairs.forEach(function(p){ var el=document.querySelector(p[0]); if(el) el.textContent=t(p[1]); }); }
 
+function renderStaticUI(){
+  // Sidebar subtitle
+  var ss=document.getElementById('sidebarSubtitle'); if(ss) ss.textContent=t('system_mgmt');
+  // Logout
+  var lo=document.getElementById('logoutBtn');
+  if(lo) lo.innerHTML=(currentLang==='ar'?'⬅ ':'➡ ')+t('logout');
+  // Lang switcher in topbar
+  var ls=document.getElementById('langSwitcher');
+  if(ls) ls.innerHTML=
+    '<button class="lang-btn '+(currentLang==='ar'?'active-lang':'')+'" data-lang="ar" onclick="applyLanguage('ar')">عربي</button>'+
+    '<button class="lang-btn '+(currentLang==='en'?'active-lang':'')+'" data-lang="en" onclick="applyLanguage('en')">English</button>'+
+    '<button class="lang-btn '+(currentLang==='de'?'active-lang':'')+'" data-lang="de" onclick="applyLanguage('de')">Deutsch</button>';
+  // Role
+  if(CU){ var ur=document.getElementById('sidebarRole'); if(ur) ur.textContent=role_label(CU.role); }
+  // Notifications header
+  var nh=document.querySelector('#notifPanel .notif-header');
+  if(nh) nh.innerHTML='<span>'+t('notif_title')+'</span><span style="font-size:11px;color:var(--text-muted);cursor:pointer;" onclick="markAllRead()">'+ t('notif_read_all')+'</span>';
+  // Rebuild nav
+  if(CU) buildNav();
+  // Modals
+  renderModals();
+}
 
+function renderModals(){
+  document.getElementById('modalsContainer').innerHTML = buildAllModals();
+  // Re-attach overlay close
+  document.querySelectorAll('.modal-overlay').forEach(function(ov){
+    ov.addEventListener('click',function(e){ if(e.target===ov) ov.classList.remove('open'); });
+  });
+}
+
+function buildAllModals(){
+  return `
+  <!-- New Ticket Modal -->
+  <div class="modal-overlay" id="ticketModal">
+    <div class="modal" style="width:640px;">
+      <button class="modal-close" onclick="closeModal('ticketModal')">✕</button>
+      <div class="modal-title">${t('ticket_modal_h')}</div>
+      <div class="form-grid">
+        <div class="form-group"><label>${t('lbl_dept')}</label>
+          <select id="t_dept" onchange="updateTypeOptions()"><option value="">${t('sel_dept')}</option></select></div>
+        <div class="form-group"><label>${t('lbl_type')}</label>
+          <select id="t_type"><option value="">${t('sel_type')}</option></select></div>
+        <div class="form-group"><label>${t('lbl_priority')}</label>
+          <select id="t_priority">
+            <option value="low">${t('p_low_opt')}</option>
+            <option value="medium" selected>${t('p_med_opt')}</option>
+            <option value="high">${t('p_high_opt')}</option>
+          </select></div>
+        <div class="form-group"><label>${t('lbl_building')}</label>
+          <select id="t_building"><option value="">${t('sel_building')}</option></select></div>
+        <div class="form-group"><label>${t('lbl_floor')}</label>
+          <select id="t_floor"><option value="">${t('sel_floor')}</option></select></div>
+        <div class="form-group"><label>${t('lbl_room')}</label>
+          <select id="t_room"><option value="">${t('sel_room')}</option></select></div>
+        <div class="form-group form-full"><label>${t('lbl_desc')}</label>
+          <textarea id="t_desc" placeholder="${t('ph_desc')}"></textarea></div>
+        <div class="form-group"><label>${t('lbl_est_cost')}</label>
+          <input id="t_cost" type="number" placeholder="0"></div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-outline" onclick="closeModal('ticketModal')">${t('btn_cancel')}</button>
+        <button class="btn btn-primary" onclick="submitTicket()">${t('btn_submit_ticket')}</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- User Modal -->
+  <div class="modal-overlay" id="userModal">
+    <div class="modal">
+      <button class="modal-close" onclick="closeModal('userModal')">✕</button>
+      <div class="modal-title">${t('user_modal_h')}</div>
+      <div class="form-grid">
+        <div class="form-group"><label>${t('lbl_full_name')}</label><input id="u_name" placeholder="${t('lbl_full_name')}"></div>
+        <div class="form-group"><label>${t('lbl_email')}</label><input id="u_email" type="email" placeholder="user@dsba.edu.eg"></div>
+        <div class="form-group"><label>${t('lbl_password')}</label><input id="u_pass" type="password" placeholder="••••••••"></div>
+        <div class="form-group"><label>${t('lbl_role')}</label>
+          <select id="u_role">
+            <option value="teacher">${t('role_teacher')}</option>
+            <option value="technician">${t('role_technician')}</option>
+            <option value="admin">${t('role_admin')}</option>
+            <option value="storekeeper">${t('role_storekeeper')}</option>
+          </select></div>
+        <div class="form-group"><label>${t('lbl_dept_tech')}</label>
+          <select id="u_dept">
+            <option value="">${t('sel_dept_opt')}</option>
+            <option value="it">IT / كمبيوتر</option>
+            <option value="electricity">كهرباء / Electrical</option>
+            <option value="civil">مدني / Civil</option>
+            <option value="plumbing">سباكة / Plumbing</option>
+          </select></div>
+        <div class="form-group"><label>${t('lbl_phone')}</label><input id="u_phone" placeholder="+20xxxxxxxxx"></div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-outline" onclick="closeModal('userModal')">${t('btn_cancel')}</button>
+        <button class="btn btn-primary" onclick="submitUser()">${t('btn_save_user')}</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Asset Modal -->
+  <div class="modal-overlay" id="assetModal">
+    <div class="modal" style="width:640px;">
+      <button class="modal-close" onclick="closeModal('assetModal')">✕</button>
+      <div class="modal-title">${t('asset_modal_h')}</div>
+      <div class="form-grid">
+        <div class="form-group"><label>${t('lbl_asset_name')}</label><input id="a_name" placeholder="e.g. Dell Computer"></div>
+        <div class="form-group"><label>${t('lbl_asset_cat')}</label>
+          <select id="a_cat">
+            <option value="">${t('sel_asset_cat')}</option>
+            <option value="computer">Computer / كمبيوتر</option>
+            <option value="laptop">Laptop / لابتوب</option>
+            <option value="projector">Projector / بروجيكتور</option>
+            <option value="printer">Printer / طابعة</option>
+            <option value="ac">A/C / تكييف</option>
+            <option value="fan">Fan / مروحة</option>
+            <option value="light">Light / إنارة</option>
+            <option value="screen">Screen / شاشة</option>
+            <option value="camera">Camera / كاميرا</option>
+            <option value="accesspoint">Access Point</option>
+            <option value="vehicle">Vehicle / سيارة</option>
+            <option value="furniture">Furniture / أثاث</option>
+            <option value="other">Other / أخرى</option>
+          </select></div>
+        <div class="form-group"><label>${t('lbl_serial')}</label><input id="a_serial" placeholder="SN-XXXXXXXXX"></div>
+        <div class="form-group"><label>${t('lbl_brand')}</label><input id="a_brand" placeholder="Dell / HP / ..."></div>
+        <div class="form-group"><label>${t('lbl_asset_building')}</label>
+          <select id="a_building"><option value="">${t('sel_building')}</option></select></div>
+        <div class="form-group"><label>${t('lbl_asset_room')}</label><input id="a_room" placeholder="A-101"></div>
+        <div class="form-group"><label>${t('lbl_purchase_date')}</label><input id="a_date" type="date"></div>
+        <div class="form-group"><label>${t('lbl_price')}</label><input id="a_price" type="number" placeholder="0"></div>
+        <div class="form-group"><label>${t('lbl_warranty')}</label><input id="a_warranty" type="number" placeholder="1"></div>
+        <div class="form-group"><label>${t('lbl_condition')}</label>
+          <select id="a_status">
+            <option value="working">${t('a_working')}</option>
+            <option value="maintenance">${t('a_maintenance')}</option>
+            <option value="broken">${t('a_broken')}</option>
+            <option value="retired">${t('a_retired')}</option>
+          </select></div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-outline" onclick="closeModal('assetModal')">${t('btn_cancel')}</button>
+        <button class="btn btn-accent" onclick="submitAsset()">${t('btn_save_barcode')}</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Ticket Detail Modal -->
+  <div class="modal-overlay" id="ticketDetailModal">
+    <div class="modal" style="width:640px;">
+      <button class="modal-close" onclick="closeModal('ticketDetailModal')">✕</button>
+      <div class="modal-title" id="tdTitle"></div>
+      <div id="tdBody"></div>
+      <div class="modal-footer" id="tdFooter"></div>
+    </div>
+  </div>
+
+  <!-- Store Issue Modal -->
+  <div class="modal-overlay" id="storeModal">
+    <div class="modal" style="width:620px;">
+      <button class="modal-close" onclick="closeModal('storeModal')">✕</button>
+      <div class="modal-title">${t('store_issue_h')}</div>
+      <div class="form-grid">
+        <div class="form-group"><label>${t('lbl_warehouse')}</label>
+          <select id="s_store" onchange="onStoreChange()"><option value="">${t('sel_warehouse')}</option></select></div>
+        <div class="form-group"><label>${t('lbl_linked_ticket')}</label>
+          <select id="s_ticket"><option value="">${t('sel_ticket_opt')}</option></select></div>
+        <div class="form-group"><label>${t('lbl_loc')}</label>
+          <select id="s_location"><option value="">${t('sel_loc')}</option></select></div>
+        <div class="form-group"><label>${t('lbl_item')}</label>
+          <select id="s_item_select" onchange="onItemSelect()"><option value="">${t('sel_item')}</option></select></div>
+        <div class="form-group"><label>${t('lbl_avail_stock')}</label>
+          <div id="s_balance" style="padding:9px 12px;background:#f9fafb;border:1px solid #e5e7eb;border-radius:8px;font-size:13px;color:var(--text-muted);">${t('ph_sel_item_first')}</div></div>
+        <div class="form-group"><label>${t('lbl_qty_issued')}</label>
+          <input id="s_qty" type="number" value="1" min="1" oninput="calcStoreCost()"></div>
+        <div class="form-group"><label>${t('lbl_unit_price')}</label>
+          <input id="s_unit_cost" type="number" placeholder="0" oninput="calcStoreCost()"></div>
+        <div class="form-group"><label>${t('lbl_total_cost')}</label>
+          <div id="s_total_display" style="padding:9px 12px;background:#eef5fb;border:1px solid #b5d4f4;border-radius:8px;font-size:15px;font-weight:700;color:var(--primary);">0 ${t('currency')}</div></div>
+        <div class="form-group form-full"><label>${t('lbl_notes')}</label>
+          <input id="s_note" placeholder="${t('ph_notes')}"></div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-outline" onclick="closeModal('storeModal')">${t('btn_cancel')}</button>
+        <button class="btn btn-accent" onclick="submitStoreIssue()">${t('btn_issue_confirm')}</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Store Inventory Modal -->
+  <div class="modal-overlay" id="storeInventoryModal">
+    <div class="modal" style="width:720px;">
+      <button class="modal-close" onclick="closeModal('storeInventoryModal')">✕</button>
+      <div class="modal-title" id="storeInvTitle">${t('store_manage_h')}</div>
+      <div id="storeInvBody"></div>
+    </div>
+  </div>
+
+  <!-- Assign/Transfer Modal -->
+  <div class="modal-overlay" id="assignModal">
+    <div class="modal">
+      <button class="modal-close" onclick="closeModal('assignModal')">✕</button>
+      <div class="modal-title" id="assignModalTitle">${t('assign_modal_h')}</div>
+      <p style="font-size:13px;color:var(--text-muted);margin-bottom:16px;" id="assignModalSub">${t('assign_select_lbl')}</p>
+      <div id="techList"></div>
+      <div class="modal-footer">
+        <button class="btn btn-outline" onclick="closeModal('assignModal')">${t('btn_cancel')}</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Settings Modal -->
+  <div class="modal-overlay" id="settingsModal">
+    <div class="modal" style="width:680px;">
+      <button class="modal-close" onclick="closeModal('settingsModal')">✕</button>
+      <div class="modal-title">${t('settings_modal_h')}</div>
+      <div class="tabs" id="settingsTabs">
+        <div class="tab active" onclick="switchSettingsTab('buildings')">${t('tab_buildings')}</div>
+        <div class="tab" onclick="switchSettingsTab('depts')">${t('tab_depts')}</div>
+        <div class="tab" onclick="switchSettingsTab('store_items')">${t('tab_store')}</div>
+        <div class="tab" onclick="switchSettingsTab('email')">${t('tab_email')}</div>
+      </div>
+      <div id="settingsContent"></div>
+    </div>
+  </div>
+  `;
+}
 
 const cfg = {
   apiKey: "AIzaSyCUgpm_0w-vbtShNGvHMrnQ-om1cbO8Yuo",
@@ -1130,55 +1055,12 @@ const cfg = {
   appId: "1:625229329187:web:0d1b8a5e4324f409455296"
 };
 
-
-// ─── CORE HELPERS ───
-var $ = function(id){ return document.getElementById(id); };
-var fmt_date = function(ts){ return ts ? new Date(ts).toLocaleDateString('ar-EG') : '—'; };
-var fmt_time = function(ts){ return ts ? new Date(ts).toLocaleString('ar-EG') : '—'; };
-var now = function(){ return Date.now(); };
-var rand_id = function(){ return Math.random().toString(36).substr(2,6).toUpperCase(); };
-
-function role_label(r){
-  var map={admin:'role_admin',teacher:'role_teacher',technician:'role_technician',storekeeper:'role_storekeeper'};
-  return map[r] ? t(map[r]) : r;
-}
-function dept_badge(dept){
-  var cls={it:'badge-it',electricity:'badge-elec',civil:'badge-civil',plumbing:'badge-civil'};
-  var dobj = (settings.depts||[]).find(function(d){return d.id===dept;});
-  return '<span class="badge '+(cls[dept]||'badge-it')+'">'+(dobj?dobj.icon+' '+dobj.name:dept)+'</span>';
-}
-function status_badge(s){
-  var m={pending:'badge-pending',inprogress:'badge-inprogress',done:'badge-done'};
-  var l={pending:t('status_pending'),inprogress:t('status_inprogress'),done:t('status_done')};
-  return '<span class="badge '+(m[s]||'badge-pending')+'">'+(l[s]||s)+'</span>';
-}
-function priority_span(p){
-  var m={
-    high:'<span class="priority-high">'+t('priority_high')+'</span>',
-    medium:'<span class="priority-med">'+t('priority_med')+'</span>',
-    low:'<span class="priority-low">'+t('priority_low')+'</span>'
-  };
-  return m[p]||p;
-}
-function asset_icon(cat){
-  return {computer:'🖥️',laptop:'💻',projector:'📽️',printer:'🖨️',ac:'❄️',fan:'💨',light:'💡',screen:'🖥️',camera:'📷',accesspoint:'📡',vehicle:'🚌',furniture:'🪑',other:'📦'}[cat]||'📦';
-}
-
-// ─── EMAIL via Firebase Functions (Nodemailer) ───────────────────────────────
-// Emails are sent automatically by Cloud Functions when:
-//   1. A new ticket is created → all technicians of that dept receive an email
-//   2. A ticket is resolved   → the ticket creator receives a resolution email
-// No configuration needed here — configure secrets on the server side.
-
-function emailNewTicket(ticketId, ticketData) {
-  // Handled automatically by Firebase Cloud Function: onTicketCreated
-  // This client-side call is a no-op (kept for compatibility)
-  console.log('📧 [Cloud Function] onTicketCreated will email technicians for ticket:', ticketId);
-}
-
-function emailTicketResolved(ticketId, ticketData, resolution, cost) {
-  // Handled automatically by Firebase Cloud Function: onTicketResolved
-  console.log('📧 [Cloud Function] onTicketResolved will email requester for ticket:', ticketId);
+// ─── EMAIL STUBS ───
+function emailNewTicket(ticketId,d){ console.log('📧 Cloud Function will email technicians for:',ticketId); }
+function emailTicketResolved(id,d,res,cost){ console.log('📧 Cloud Function will email requester for:',id); }
+function callFirebaseFn(name,data){
+  if(typeof firebase==='undefined'||!firebase.functions) return Promise.reject('Functions not loaded');
+  return firebase.functions().httpsCallable(name)(data);
 }
 
 // ─── STORE MODAL OPEN ───
@@ -1943,6 +1825,566 @@ document.addEventListener('click',e=>{
   if(panel&&btn&&!panel.contains(e.target)&&!btn.contains(e.target)) panel.classList.remove('open');
 });
 
+
+
+
+// ─── AUTH ───
+window.doLogin = function(){
+  var e=$('loginEmail').value.trim(), p=$('loginPass').value;
+  var errEl=$('loginError');
+  if(!e||!p){ if(errEl){errEl.style.display='block'; errEl.textContent=t('login_error');} return; }
+  if(errEl) errEl.style.display='none';
+  signInWithEmailAndPassword(auth,e,p)
+    .then(function(res){ loadCurrentUser(res.user.uid); })
+    .catch(function(){ if(errEl){errEl.style.display='block'; errEl.textContent=t('login_error');} });
+};
+
+window.doLogout = function(){
+  signOut(auth).then(function(){
+    CU=null; CID=null;
+    document.getElementById('app').style.display='none';
+    document.getElementById('loginScreen').style.display='flex';
+    renderLogin();
+  });
+};
+
+function loadCurrentUser(uid){
+  get(ref(db,'users/'+uid)).then(function(snap){
+    var u=snap.val();
+    if(!u){ u={name:'Admin',role:'admin',email:auth.currentUser?.email||''}; set(ref(db,'users/'+uid),u); }
+    CU=u; CID=uid;
+    document.getElementById('loginScreen').style.display='none';
+    document.getElementById('app').style.display='flex';
+    document.getElementById('sidebarName').textContent=CU.name||CU.email||'—';
+    document.getElementById('sidebarAvatar').textContent=(CU.name||'?').charAt(0).toUpperCase();
+    renderStaticUI();
+    renderModals();
+    startListeners();
+    showPage('dashboard');
+  });
+}
+
+function startListeners(){
+  onValue(ref(db,'tickets'),function(snap){ tickets=snap.val()||{}; updateBadges(); refreshPage(); });
+  onValue(ref(db,'assets'),function(snap){ assets=snap.val()||{}; refreshPage(); });
+  onValue(ref(db,'users'),function(snap){ users=snap.val()||{}; refreshPage(); });
+  onValue(ref(db,'notifications'),function(snap){
+    var all=snap.val()||{};
+    notifications=Object.entries(all)
+      .filter(function(e){ return e[1].to===CID||e[1].to==='all'; })
+      .map(function(e){ return Object.assign({id:e[0]},e[1]); })
+      .sort(function(a,b){ return b.time-a.time; });
+    renderNotifications();
+  });
+}
+
+function updateBadges(){
+  var unread=notifications.filter(function(n){return !n.read;}).length;
+  var badge=$('notifBadge');
+  if(badge){ badge.textContent=unread; badge.style.display=unread>0?'':'none'; }
+}
+
+function sendNotification(to,title,msg,ticketId){
+  push(ref(db,'notifications'),{to:to,title:title,msg:msg,ticketId:ticketId||'',time:Date.now(),read:false});
+}
+
+function renderNotifications(){
+  updateBadges();
+  var list=$('notifList'); if(!list) return;
+  list.innerHTML=notifications.length
+    ? notifications.slice(0,20).map(function(n){
+        return '<div class="notif-item '+(n.read?'':'unread')+'" onclick="readNotif(''+n.id+'',''+n.ticketId+'')">'+
+          '<div class="notif-title">'+(n.title||'')+'</div>'+
+          '<div class="notif-msg">'+(n.msg||'')+'</div>'+
+          '<div class="notif-time">'+fmt_time(n.time)+'</div></div>';
+      }).join('')
+    : '<div style="padding:20px;text-align:center;color:var(--text-muted);font-size:13px;">'+t('notif_empty')+'</div>';
+}
+
+window.readNotif=function(id,ticketId){
+  update(ref(db,'notifications/'+id),{read:true});
+  if(ticketId) showTicketDetail(ticketId);
+  toggleNotif();
+};
+window.markAllRead=function(){ notifications.forEach(function(n){ if(!n.read) update(ref(db,'notifications/'+n.id),{read:true}); }); };
+window.toggleNotif=function(){ $('notifPanel').classList.toggle('open'); };
+
+// ─── NAV ───
+function buildNav(){
+  var isRTL=currentLang==='ar';
+  var ADMIN=[
+    {id:'dashboard',icon:'📊',label:t('nav_dashboard'),sec:t('nav_sec_main')},
+    {id:'tickets',icon:'🛠️',label:t('nav_tickets'),sec:''},
+    {id:'assets',icon:'📦',label:t('nav_assets'),sec:t('nav_sec_inv')},
+    {id:'store',icon:'🏪',label:t('nav_store'),sec:''},
+    {id:'users',icon:'👥',label:t('nav_users'),sec:t('nav_sec_admin')},
+    {id:'reports',icon:'📈',label:t('nav_reports'),sec:''},
+    {id:'settings',icon:'⚙️',label:t('nav_settings'),sec:''},
+    {id:'agent',icon:'🤖',label:t('nav_agent'),sec:t('nav_sec_adv')}
+  ];
+  var TECH=[
+    {id:'dashboard',icon:'📊',label:t('nav_dashboard'),sec:t('nav_sec_main')},
+    {id:'tickets',icon:'🛠️',label:t('nav_my_tickets'),sec:''},
+    {id:'store',icon:'🏪',label:t('nav_spare_req'),sec:''}
+  ];
+  var TEACHER=[
+    {id:'dashboard',icon:'📊',label:t('nav_dashboard'),sec:t('nav_sec_main')},
+    {id:'tickets',icon:'🛠️',label:t('nav_my_tickets'),sec:''}
+  ];
+  var STORE=[
+    {id:'dashboard',icon:'📊',label:t('nav_dashboard'),sec:t('nav_sec_main')},
+    {id:'store',icon:'🏪',label:t('nav_store'),sec:t('nav_sec_inv')},
+    {id:'assets',icon:'📦',label:t('nav_assets'),sec:''}
+  ];
+  var maps={admin:ADMIN,technician:TECH,teacher:TEACHER,storekeeper:STORE};
+  var items=maps[CU.role]||TEACHER;
+  var html=''; var lastSec='';
+  items.forEach(function(item){
+    if(item.sec&&item.sec!==lastSec){
+      html+='<div class="nav-section">'+item.sec+'</div>';
+      lastSec=item.sec;
+    }
+    html+='<div class="nav-item" id="nav-'+item.id+'" onclick="showPage(''+item.id+'')">'+
+      '<span class="nav-icon">'+item.icon+'</span>'+item.label+'</div>';
+  });
+  $('sidebarNav').innerHTML=html;
+  // Re-mark active
+  var active=document.querySelector('.nav-item.active');
+  if(!active){ var first=$('sidebarNav').querySelector('.nav-item'); if(first) first.classList.add('active'); }
+}
+
+window.showPage=function(id){
+  $('mainContent').innerHTML='';
+  document.querySelectorAll('.nav-item').forEach(function(n){n.classList.remove('active');});
+  var ni=$('nav-'+id); if(ni) ni.classList.add('active');
+  var titleMap={dashboard:'nav_dashboard',tickets:CU.role==='teacher'?'nav_my_tickets':'nav_tickets',
+    assets:'nav_assets',store:'nav_store',users:'nav_users',reports:'nav_reports',settings:'nav_settings',agent:'nav_agent'};
+  $('pageTitle').textContent=t(titleMap[id]||id);
+  var pages={dashboard:renderDashboard,tickets:renderTickets,assets:renderAssets,
+    store:renderStore,users:renderUsers,reports:renderReports,
+    settings:function(){openModal('settingsModal');},agent:renderAgent};
+  if(pages[id]) pages[id]();
+};
+
+function refreshPage(){
+  var active=document.querySelector('.nav-item.active');
+  if(!active) return;
+  var pid=active.id.replace('nav-','');
+  if(pid==='settings') return;
+  window.showPage(pid);
+}
+
+// ─── HELPERS ───
+var $=function(id){return document.getElementById(id);};
+var fmt_date=function(ts){return ts?new Date(ts).toLocaleDateString():'—';};
+var fmt_time=function(ts){return ts?new Date(ts).toLocaleString():'—';};
+var now=function(){return Date.now();};
+var rand_id=function(){return Math.random().toString(36).substr(2,6).toUpperCase();};
+
+function role_label(r){
+  var m={admin:'role_admin',teacher:'role_teacher',technician:'role_technician',storekeeper:'role_storekeeper'};
+  return m[r]?t(m[r]):r;
+}
+function dept_badge(dept){
+  var cls={it:'badge-it',electricity:'badge-elec',civil:'badge-civil',plumbing:'badge-civil'};
+  var dobj=(settings.depts||[]).find(function(d){return d.id===dept;});
+  return '<span class="badge '+(cls[dept]||'badge-it')+'">'+(dobj?dobj.icon+' '+dobj.name:dept)+'</span>';
+}
+function status_badge(s){
+  var m={pending:'badge-pending',inprogress:'badge-inprogress',done:'badge-done'};
+  var l={pending:t('s_pending'),inprogress:t('s_inprogress'),done:t('s_done')};
+  return '<span class="badge '+(m[s]||'badge-pending')+'">'+( l[s]||s)+'</span>';
+}
+function priority_span(p){
+  var m={
+    high:'<span class="priority-high">'+t('p_high')+'</span>',
+    medium:'<span class="priority-med">'+t('p_med')+'</span>',
+    low:'<span class="priority-low">'+t('p_low')+'</span>'
+  };
+  return m[p]||p;
+}
+function asset_icon(cat){
+  return {computer:'🖥️',laptop:'💻',projector:'📽️',printer:'🖨️',ac:'❄️',fan:'💨',light:'💡',
+    screen:'🖥️',camera:'📷',accesspoint:'📡',vehicle:'🚌',furniture:'🪑',other:'📦'}[cat]||'📦';
+}
+
+// ─── MODAL HELPERS ───
+window.openModal=function(id){
+  var el=$(id); if(!el) return;
+  // Re-render modals content for current language before opening
+  renderModals();
+  $(id).classList.add('open');
+  if(id==='settingsModal'){ loadSettings(); switchSettingsTab('buildings'); }
+  if(id==='storeModal'){ openStoreModal(); }
+};
+window.closeModal=function(id){ var el=$(id); if(el) el.classList.remove('open'); };
+
+// ─── RENDER DASHBOARD ───
+function renderDashboard(){
+  var arr=Object.entries(tickets).map(function(e){return Object.assign({id:e[0]},e[1]);});
+  var total=arr.length;
+  var pending=arr.filter(function(t){return t.status==='pending';}).length;
+  var inprog=arr.filter(function(t){return t.status==='inprogress';}).length;
+  var done=arr.filter(function(t){return t.status==='done';}).length;
+  var totalCost=arr.reduce(function(s,t){return s+(parseFloat(t.cost)||0);},0);
+  var myTickets=CU.role==='teacher'?arr.filter(function(t){return t.createdBy===CID;}):
+    CU.role==='technician'?arr.filter(function(t){return t.dept===CU.dept;}):arr;
+  var recent=[].concat(myTickets).sort(function(a,b){return b.createdAt-a.createdAt;}).slice(0,5);
+
+  $('mainContent').innerHTML=
+    '<div class="stats-grid">'+
+    '<div class="stat-card blue"><div class="stat-label">'+t('stat_total')+'</div><div class="stat-value">'+total+'</div></div>'+
+    '<div class="stat-card gold"><div class="stat-label">'+t('stat_pending')+'</div><div class="stat-value">'+pending+'</div></div>'+
+    '<div class="stat-card blue"><div class="stat-label">'+t('stat_inprog')+'</div><div class="stat-value">'+inprog+'</div></div>'+
+    '<div class="stat-card green"><div class="stat-label">'+t('stat_done')+'</div><div class="stat-value">'+done+'</div></div>'+
+    (CU.role==='admin'?'<div class="stat-card red"><div class="stat-label">'+t('stat_cost')+'</div><div class="stat-value" style="font-size:18px;">'+totalCost.toLocaleString()+'</div><div class="stat-sub">'+t('currency')+'</div></div>':'')+
+    '</div>'+
+    ((CU.role!=='technician')?'<div class="card"><button class="btn btn-primary" onclick="openTicketModal()">'+t('btn_new_ticket')+'</button></div>':'')+
+    '<div class="card"><div class="card-title"><span class="icon">🕐</span> '+t('recent_tickets')+'</div>'+
+    (recent.length?
+      '<div class="tbl-wrap"><table><thead><tr>'+
+      ['th_num','th_location','th_dept','th_type','th_priority','th_status','th_date','th_actions'].map(function(k){return'<th>'+t(k)+'</th>';}).join('')+
+      '</tr></thead><tbody>'+
+      recent.map(function(tk){
+        return '<tr><td><code style="font-size:11px;">'+tk.id.substr(0,8)+'</code></td>'+
+          '<td style="font-size:12px;">'+ [tk.building,tk.floor,tk.room].filter(Boolean).join(' - ')+'</td>'+
+          '<td>'+dept_badge(tk.dept)+'</td>'+
+          '<td style="font-size:12px;">'+( tk.type||'—')+'</td>'+
+          '<td>'+priority_span(tk.priority)+'</td>'+
+          '<td>'+status_badge(tk.status)+'</td>'+
+          '<td style="font-size:12px;">'+fmt_date(tk.createdAt)+'</td>'+
+          '<td><button class="btn btn-sm btn-outline" onclick="showTicketDetail(\''+ tk.id+'\')">'+t('btn_view')+'</button></td></tr>';
+      }).join('')+'</tbody></table></div>'
+    :'<div class="empty"><div class="empty-icon">📋</div><div class="empty-text">'+t('no_tickets')+'</div></div>')+
+    '</div>';
+}
+
+// ─── RENDER TICKETS ───
+function renderTickets(){
+  var arr=Object.entries(tickets).map(function(e){return Object.assign({id:e[0]},e[1]);});
+  if(CU.role==='teacher') arr=arr.filter(function(t){return t.createdBy===CID;});
+  if(CU.role==='technician') arr=arr.filter(function(t){return t.dept===CU.dept;});
+  arr.sort(function(a,b){return b.createdAt-a.createdAt;});
+
+  $('mainContent').innerHTML=
+    '<div class="card" style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:16px;">'+
+    (CU.role!=='technician'?'<button class="btn btn-primary" onclick="openTicketModal()">'+t('btn_new_ticket_s')+'</button>':'')+
+    '<select onchange="filterTickets(this.value,\'status\')" style="padding:8px 12px;border:1px solid #d1d5db;border-radius:8px;font-family:Cairo,sans-serif;font-size:13px;">'+
+    '<option value="">'+t('filter_all_status')+'</option>'+
+    ['pending','inprogress','done'].map(function(s){return'<option value="'+s+'">'+t('s_'+s)+'</option>';}).join('')+
+    '</select>'+
+    '<select onchange="filterTickets(this.value,\'dept\')" style="padding:8px 12px;border:1px solid #d1d5db;border-radius:8px;font-family:Cairo,sans-serif;font-size:13px;">'+
+    '<option value="">'+t('filter_all_depts')+'</option>'+
+    (settings.depts||[]).map(function(d){return'<option value="'+d.id+'">'+d.icon+' '+d.name+'</option>';}).join('')+
+    '</select></div>'+
+    '<div class="card"><div class="card-title"><span class="icon">🛠️</span> '+t('nav_tickets')+' ('+arr.length+')</div>'+
+    '<div class="tbl-wrap" id="ticketsTable">'+buildTicketsTable(arr)+'</div></div>';
+}
+
+function buildTicketsTable(arr){
+  if(!arr.length) return '<div class="empty"><div class="empty-icon">📋</div><div class="empty-text">'+t('empty_tickets')+'</div></div>';
+  return '<table><thead><tr>'+
+    ['th_num','th_location','th_dept','th_type','th_priority','th_status','th_submitter','th_date','th_cost','th_actions'].map(function(k){return'<th>'+t(k)+'</th>';}).join('')+
+    '</tr></thead><tbody>'+
+    arr.map(function(tk){
+      return '<tr><td><code style="font-size:11px;">'+tk.id.substr(0,8)+'</code></td>'+
+        '<td style="font-size:12px;">'+ [tk.building,tk.floor,tk.room].filter(Boolean).join(' - ')||'—'+'</td>'+
+        '<td>'+dept_badge(tk.dept)+'</td>'+
+        '<td style="font-size:12px;">'+( tk.type||'—')+'</td>'+
+        '<td>'+priority_span(tk.priority)+'</td>'+
+        '<td>'+status_badge(tk.status)+'</td>'+
+        '<td style="font-size:12px;">'+( tk.createdByName||'—')+'</td>'+
+        '<td style="font-size:12px;">'+fmt_date(tk.createdAt)+'</td>'+
+        '<td>'+(tk.cost?'<span class="cost-tag">'+ parseFloat(tk.cost).toLocaleString()+' '+t('currency')+'</span>':'—')+'</td>'+
+        '<td style="white-space:nowrap;">'+
+        '<button class="btn btn-sm btn-outline" onclick="showTicketDetail(\''+ tk.id+'\')">'+t('btn_details')+'</button>'+
+        (CU.role==='admin'&&tk.status==='pending'?'<button class="btn btn-sm btn-accent" style="margin-right:4px;" onclick="openAssignModal(\''+ tk.id+'\')")>👷</button>':'')+
+        (CU.role==='admin'?'<button class="btn btn-sm btn-danger" style="margin-right:4px;" onclick="deleteTicket(\''+ tk.id+'\')">🗑</button>':'')+
+        '</td></tr>';
+    }).join('')+'</tbody></table>';
+}
+
+window.filterTickets=function(val,field){
+  var arr=Object.entries(tickets).map(function(e){return Object.assign({id:e[0]},e[1]);});
+  if(CU.role==='teacher') arr=arr.filter(function(t){return t.createdBy===CID;});
+  if(CU.role==='technician') arr=arr.filter(function(t){return t.dept===CU.dept;});
+  if(val) arr=arr.filter(function(t){return t[field]===val;});
+  arr.sort(function(a,b){return b.createdAt-a.createdAt;});
+  var tbl=$('ticketsTable'); if(tbl) tbl.innerHTML=buildTicketsTable(arr);
+};
+
+window.deleteTicket=function(id){
+  if(confirm(t('del_ticket_c'))) remove(ref(db,'tickets/'+id));
+};
+
+window.openTicketModal=function(){
+  openModal('ticketModal');
+  var dsel=$('t_dept'); if(!dsel) return;
+  dsel.innerHTML='<option value="">'+t('sel_dept')+'</option>';
+  (settings.depts||[]).forEach(function(d){ dsel.innerHTML+='<option value="'+d.id+'">'+d.icon+' '+d.name+'</option>'; });
+  $('t_type').innerHTML='<option value="">'+t('sel_type')+'</option>';
+  $('t_floor').innerHTML='<option value="">'+t('sel_floor')+'</option>';
+  $('t_room').innerHTML='<option value="">'+t('sel_room')+'</option>';
+  var bsel=$('t_building');
+  if(bsel){
+    bsel.innerHTML='<option value="">'+t('sel_building')+'</option>';
+    (settings.buildings||[]).forEach(function(b){ bsel.innerHTML+='<option value="'+b.id+'">'+b.name+'</option>'; });
+    bsel.onchange=function(){ updateFloorRoom('t_building','t_floor','t_room'); };
+  }
+};
+
+window.updateTypeOptions=function(){
+  var dv=$('t_dept').value;
+  var tsel=$('t_type'); tsel.innerHTML='<option value="">'+t('sel_type')+'</option>';
+  var dept=(settings.depts||[]).find(function(d){return d.id===dv;});
+  if(dept) dept.types.forEach(function(tp){ tsel.innerHTML+='<option value="'+tp+'">'+tp+'</option>'; });
+};
+
+function updateFloorRoom(bId,fId,rId){
+  var bv=$(bId)?$(bId).value:'';
+  var bldg=(settings.buildings||[]).find(function(b){return b.id===bv;});
+  var fsel=$(fId); var rsel=$(rId);
+  if(fsel){ fsel.innerHTML='<option value="">'+t('sel_floor')+'</option>'; if(bldg) bldg.floors.forEach(function(f){fsel.innerHTML+='<option>'+f+'</option>';}); }
+  if(rsel){ rsel.innerHTML='<option value="">'+t('sel_room')+'</option>'; if(bldg) bldg.rooms.forEach(function(r){rsel.innerHTML+='<option>'+r+'</option>';}); }
+}
+
+window.submitTicket=function(){
+  var dept=$('t_dept').value, type=$('t_type').value, priority=$('t_priority').value;
+  var building=$('t_building').value, floor=$('t_floor').value, room=$('t_room').value;
+  var desc=$('t_desc').value, cost=$('t_cost').value;
+  if(!dept||!type||!desc){ alert(t('err_ticket_req')); return; }
+  var bname=(settings.buildings||[]).find(function(b){return b.id===building;}); bname=bname?bname.name:building;
+  var payload={dept:dept,type:type,priority:priority,building:bname,floor:floor,room:room,desc:desc,
+    cost:parseFloat(cost)||0,status:'pending',createdAt:now(),
+    createdBy:CID,createdByName:CU.name||'',createdByEmail:auth.currentUser?auth.currentUser.email:''};
+  var newRef=push(ref(db,'tickets'),payload);
+  Object.entries(users).filter(function(e){return e[1].role==='technician'&&e[1].dept===dept;}).forEach(function(e){
+    sendNotification(e[0],'🔔 '+type,(room?room+' - ':'')+ desc.substring(0,60),newRef.key);
+  });
+  emailNewTicket(newRef.key,payload);
+  closeModal('ticketModal');
+  $('t_desc').value=''; $('t_cost').value='';
+};
+
+// ─── RENDER ASSETS ───
+function renderAssets(){
+  var arr=Object.entries(assets).map(function(e){return Object.assign({id:e[0]},e[1]);});
+  arr.sort(function(a,b){return b.addedAt-a.addedAt;});
+  $('mainContent').innerHTML=
+    '<div class="card" style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-bottom:16px;">'+
+    (['admin','storekeeper'].includes(CU.role)?'<button class="btn btn-primary" onclick="openModal(\'assetModal\')">'+t('btn_add')+' '+t('lbl_asset_name')+'</button>':'')+
+    '<button class="btn btn-accent" onclick="runAgentScan()">'+t('btn_ai_scan')+'</button>'+
+    '<input placeholder="'+t('ph_search_asset')+'" style="padding:8px 12px;border:1px solid #d1d5db;border-radius:8px;font-family:Cairo,sans-serif;font-size:13px;min-width:200px;" oninput="searchAssets(this.value)">'+
+    '</div><div class="card"><div class="card-title"><span class="icon">📦</span> '+t('assets_registered')+' ('+arr.length+')</div>'+
+    '<div class="tbl-wrap" id="assetsTable">'+buildAssetsTable(arr)+'</div></div>';
+  // populate asset building select
+  var ab=$('a_building');
+  if(ab){ ab.innerHTML='<option value="">'+t('sel_building')+'</option>';
+    (settings.buildings||[]).forEach(function(b){ab.innerHTML+='<option value="'+b.id+'">'+b.name+'</option>';});}
+}
+
+function buildAssetsTable(arr){
+  if(!arr.length) return '<div class="empty"><div class="empty-icon">📦</div><div class="empty-text">'+t('no_assets')+'</div></div>';
+  return '<table><thead><tr>'+
+    ['th_asset','th_category','th_location','th_serial','th_purchase_date','th_value','th_status','th_barcode','th_actions'].map(function(k){return'<th>'+t(k)+'</th>';}).join('')+
+    '</tr></thead><tbody>'+
+    arr.map(function(a){
+      var cond={working:t('a_working'),maintenance:t('a_maintenance'),broken:t('a_broken'),retired:t('a_retired')};
+      var condBadge={working:'badge-done',maintenance:'badge-inprogress',broken:'badge-pending',retired:''};
+      return '<tr><td><strong>'+(a.name||'—')+'</strong><br><span style="font-size:11px;color:var(--text-muted);">'+( a.brand||'')+'</span></td>'+
+        '<td>'+ asset_icon(a.cat)+' '+(a.cat||'—')+'</td>'+
+        '<td style="font-size:12px;">'+(a.location||a.room||'—')+'</td>'+
+        '<td><code style="font-size:11px;">'+(a.serial||'—')+'</code></td>'+
+        '<td style="font-size:12px;">'+fmt_date(a.purchaseDate||a.addedAt)+'</td>'+
+        '<td>'+(a.price?'<span class="cost-tag">'+ parseFloat(a.price).toLocaleString()+' '+t('currency')+'</span>':'—')+'</td>'+
+        '<td>'+(a.status?'<span class="badge '+(condBadge[a.status]||'')+'">'+( cond[a.status]||a.status)+'</span>':'—')+'</td>'+
+        '<td><span class="barcode-badge">'+(a.barcode||a.id.substr(0,10))+'</span></td>'+
+        '<td>'+
+        '<button class="btn btn-sm btn-outline" onclick="printBarcode(\''+ a.id+'\')">'+t('btn_barcode')+'</button>'+
+        (['admin','storekeeper'].includes(CU.role)?'<button class="btn btn-sm btn-danger" style="margin-right:4px;" onclick="deleteAsset(\''+ a.id+'\')">🗑</button>':'')+
+        '</td></tr>';
+    }).join('')+'</tbody></table>';
+}
+
+window.searchAssets=function(q){
+  var arr=Object.entries(assets).map(function(e){return Object.assign({id:e[0]},e[1]);})
+    .filter(function(a){return !q||(a.name||'').includes(q)||(a.serial||''). includes(q)||(a.brand||''). includes(q);});
+  var tbl=$('assetsTable'); if(tbl) tbl.innerHTML=buildAssetsTable(arr);
+};
+
+window.submitAsset=function(){
+  var name=$('a_name').value,cat=$('a_cat').value,serial=$('a_serial').value;
+  var brand=$('a_brand').value,room=$('a_room').value,date=$('a_date').value;
+  var price=$('a_price').value,warranty=$('a_warranty').value,status=$('a_status').value;
+  var building=$('a_building').value;
+  var bname=(settings.buildings||[]).find(function(b){return b.id===building;}); bname=bname?bname.name:building;
+  if(!name||!cat){ alert(t('asset_req_err')); return; }
+  var barcode='DSBA-'+rand_id()+'-'+rand_id();
+  var newRef=push(ref(db,'assets'),{name:name,cat:cat,serial:serial,brand:brand,
+    location:[bname,room].filter(Boolean).join(' - '),room:room,
+    purchaseDate:date?new Date(date).getTime():null,price:parseFloat(price)||0,
+    warranty:parseInt(warranty)||1,status:status,barcode:barcode,addedAt:now(),addedBy:CID});
+  closeModal('assetModal');
+  setTimeout(function(){printBarcode(newRef.key);},300);
+};
+
+window.deleteAsset=function(id){ if(confirm(t('del_asset_c'))) remove(ref(db,'assets/'+id)); };
+
+window.printBarcode=function(id){
+  var a=assets[id]; if(!a) return;
+  var bc=a.barcode||id;
+  var bars=bc.split('').map(function(c){
+    var code=c.charCodeAt(0);
+    return '<div style="display:inline-block;width:'+(2+(code%3))+'px;height:60px;background:'+(code%2===0?'#000':'#fff')+';margin:0;"></div>';
+  }).join('');
+  $('printContent').innerHTML='<div style="text-align:center;font-family:monospace;border:2px solid #000;padding:20px;display:inline-block;min-width:300px;">'+
+    '<div style="font-size:14px;font-weight:bold;margin-bottom:4px;">DSBA SCHOOL</div>'+
+    '<div style="font-size:12px;margin-bottom:10px;">'+(a.name||'')+'</div>'+
+    '<div style="line-height:0;margin-bottom:8px;">'+bars+'</div>'+
+    '<div style="font-size:14px;font-weight:bold;letter-spacing:.15em;">'+ bc+'</div>'+
+    '<div style="font-size:10px;color:#666;margin-top:4px;">'+(a.cat||'')+' | '+(a.location||'')+'</div>'+
+    '<div style="font-size:10px;color:#666;">'+fmt_date(a.purchaseDate||a.addedAt)+'</div></div>';
+  $('printArea').style.display='block';
+  window.print();
+  setTimeout(function(){$('printArea').style.display='none';},1000);
+};
+
+// ─── RENDER USERS ───
+function renderUsers(){
+  if(CU.role!=='admin'){ $('mainContent').innerHTML='<div class="empty"><div class="empty-icon">🔒</div><div class="empty-text">'+ t('not_auth')+'</div></div>'; return; }
+  var arr=Object.entries(users).map(function(e){return Object.assign({id:e[0]},e[1]);});
+  $('mainContent').innerHTML=
+    '<div class="card" style="margin-bottom:16px;"><button class="btn btn-primary" onclick="openModal(\'userModal\')">'+t('btn_add_user')+'</button></div>'+
+    '<div class="card"><div class="card-title"><span class="icon">👥</span> '+t('users_list_h')+' ('+arr.length+')</div>'+
+    '<div class="tbl-wrap"><table><thead><tr>'+
+    ['th_num','lbl_full_name','lbl_email','th_role','th_dept','th_phone','th_actions'].map(function(k){return'<th>'+t(k)+'</th>';}).join('')+
+    '</tr></thead><tbody>'+
+    arr.map(function(u,i){
+      return '<tr><td>'+(i+1)+'</td><td><strong>'+(u.name||'—')+'</strong></td>'+
+        '<td style="font-size:12px;">'+(u.email||'—')+'</td>'+
+        '<td><span class="badge badge-inprogress">'+ role_label(u.role)+'</span></td>'+
+        '<td>'+(u.dept?dept_badge(u.dept):'—')+'</td>'+
+        '<td style="font-size:12px;">'+(u.phone||'—')+'</td>'+
+        '<td>'+(u.id!==CID?'<button class="btn btn-sm btn-danger" onclick="deleteUser(\''+ u.id+'\')">🗑</button>':'<span class="badge badge-done">'+ t('you_label')+'</span>')+'</td></tr>';
+    }).join('')+'</tbody></table></div></div>';
+}
+
+window.submitUser=function(){
+  var name=$('u_name').value,email=$('u_email').value,pass=$('u_pass').value;
+  var role=$('u_role').value,dept=$('u_dept').value,phone=$('u_phone').value;
+  if(!name||!email||!pass){ alert(t('err_user_req')); return; }
+  createUserWithEmailAndPassword(auth,email,pass)
+    .then(function(res){
+      set(ref(db,'users/'+res.user.uid),{name:name,email:email,role:role,dept:dept,phone:phone});
+      closeModal('userModal');
+    }).catch(function(e){ alert(t('u_error'||'Error')+': '+e.message); });
+};
+window.deleteUser=function(id){ if(confirm(t('del_user_c'))) remove(ref(db,'users/'+id)); };
+
+// ─── RENDER REPORTS ───
+function renderReports(){
+  var arr=Object.entries(tickets).map(function(e){return Object.assign({id:e[0]},e[1]);});
+  var total=arr.length, done=arr.filter(function(t){return t.status==='done';}).length;
+  var totalCost=arr.reduce(function(s,t){return s+(t.cost||0);},0);
+  var roomCosts={};
+  arr.forEach(function(t){ var r=t.room||'—'; roomCosts[r]=(roomCosts[r]||0)+(t.cost||0); });
+  var topRooms=Object.entries(roomCosts).sort(function(a,b){return b[1]-a[1];}).slice(0,6);
+  var maxRoom=topRooms[0]?topRooms[0][1]:1;
+  var techPerf={};
+  arr.filter(function(t){return t.status==='done'&&t.resolvedBy;}).forEach(function(t){
+    var uid=t.resolvedBy;
+    if(!techPerf[uid]) techPerf[uid]={name:users[uid]?users[uid].name:uid,done:0};
+    techPerf[uid].done++;
+  });
+  var maxTech=Math.max.apply(null,[1].concat(Object.values(techPerf).map(function(t){return t.done;})));
+  $('mainContent').innerHTML=
+    '<div class="stats-grid">'+
+    '<div class="stat-card green"><div class="stat-label">'+t('completion_rate')+'</div><div class="stat-value">'+(total?Math.round(done/total*100):0)+'%</div></div>'+
+    '<div class="stat-card red"><div class="stat-label">'+t('stat_cost')+'</div><div class="stat-value" style="font-size:18px;">'+ totalCost.toLocaleString()+'</div><div class="stat-sub">'+ t('currency')+'</div></div>'+
+    '<div class="stat-card blue"><div class="stat-label">'+t('avg_cost')+'</div><div class="stat-value" style="font-size:18px;">'+(total?Math.round(totalCost/total).toLocaleString():0)+'</div></div>'+
+    '</div>'+
+    '<div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;">'+
+    '<div class="report-block"><h4>'+t('top_rooms_h')+'</h4><div class="bar-chart">'+(
+      topRooms.length?topRooms.map(function(r){
+        return '<div class="bar-row"><div class="bar-label">'+ r[0]+'</div><div class="bar-fill-wrap"><div class="bar-fill" style="width:'+ Math.round(r[1]/maxRoom*100)+'%;background:var(--primary);">'+Math.round(r[1]).toLocaleString()+' '+t('currency')+'</div></div></div>';
+      }).join(''):'<div class="empty" style="padding:20px;"><div class="empty-text">'+ t('no_data')+'</div></div>'
+    )+'</div></div>'+
+    '<div class="report-block"><h4>'+ t('tech_perf_h')+'</h4>'+(
+      Object.values(techPerf).length?Object.values(techPerf).map(function(tp){
+        return '<div class="bar-row"><div class="bar-label">'+tp.name+'</div><div class="bar-fill-wrap"><div class="bar-fill" style="width:'+Math.round(tp.done/maxTech*100)+'%;background:var(--success);">'+tp.done+' '+t('tickets_lbl')+'</div></div></div>';
+      }).join(''):'<div class="empty" style="padding:20px;"><div class="empty-text">'+ t('no_data')+'</div></div>'
+    )+'</div></div>'+
+    '<div class="report-block"><h4>'+ t('dept_dist_h')+'</h4><div style="display:flex;gap:14px;flex-wrap:wrap;">'+(
+      (settings.depts||[]).map(function(d){
+        var count=arr.filter(function(tk){return tk.dept===d.id;}).length;
+        var costS=arr.filter(function(tk){return tk.dept===d.id;}).reduce(function(s,tk){return s+(tk.cost||0);},0);
+        return '<div class="stat-card blue" style="min-width:150px;"><div class="stat-label">'+d.icon+' '+d.name+'</div><div class="stat-value" style="font-size:22px;">'+ count+'</div><div class="stat-sub">'+ costS.toLocaleString()+' '+t('currency')+'</div></div>';
+      }).join('')
+    )+'</div></div>';
+}
+
+// ─── RENDER AGENT ───
+function renderAgent(){
+  $('mainContent').innerHTML=
+    '<div class="card"><div class="card-title"><span class="icon">🤖</span> AI Inventory Agent</div>'+
+    '<div class="agent-log" id="agentLog"><p class="info">▶ DSBA Inventory Agent v2.0</p><p class="cmd">$ Ready. Click Run Scan to start...</p></div>'+
+    '<div style="margin-top:14px;display:flex;gap:10px;flex-wrap:wrap;">'+
+    '<button class="btn btn-primary" onclick="runAgentScan()">'+ t('btn_run_scan')+'</button>'+
+    '<button class="btn btn-outline" onclick="agentScanRoom()">'+ t('btn_local_scan')+'</button>'+
+    '<button class="btn btn-outline" onclick="exportInventoryCSV()">'+ t('btn_export_csv')+'</button>'+
+    '<button class="btn btn-accent" onclick="generateSetupScript()">'+ t('btn_gen_script')+'</button>'+
+    '</div></div>';
+}
+
+// close notif on outside click
+document.addEventListener('click',function(e){
+  var panel=$('notifPanel'),btn=$('notifBtn');
+  if(panel&&btn&&!panel.contains(e.target)&&!btn.contains(e.target)) panel.classList.remove('open');
+});
+
+// ─── INIT ───
+var localCfg = {
+  apiKey: "AIzaSyCUgpm_0w-vbtShNGvHMrnQ-om1cbO8Yuo",
+  authDomain: "ticketing-system-2651c.firebaseapp.com",
+  databaseURL: "https://ticketing-system-2651c-default-rtdb.firebaseio.com",
+  projectId: "ticketing-system-2651c",
+  storageBucket: "ticketing-system-2651c.appspot.com",
+  messagingSenderId: "625229329187",
+  appId: "1:625229329187:web:0d1b8a5e4324f409455296"
+};
+
+var theApp = firebase_app.initializeApp(localCfg);
+var db  = firebase_database.getDatabase(theApp);
+var auth= firebase_auth.getAuth(theApp);
+
+var CU=null,CID=null,tickets={},assets={},users={},notifications=[];
+var settings={
+  buildings:[
+    {id:'B1',name:'المبنى الرئيسي',floors:['الدور الأرضي','الدور الأول','الدور الثاني'],rooms:['A-101','A-102','A-103','A-201','A-202','مكتب المدير','غرفة المعلمين','المعمل']},
+    {id:'B2',name:'مبنى الابتدائي',floors:['الدور الأرضي','الدور الأول'],rooms:['B-101','B-102','B-103','B-201','المكتبة']},
+    {id:'B3',name:'مبنى الإدارة',floors:['الدور الأرضي'],rooms:['سكرتارية','مالية','شئون طلاب']}
+  ],
+  depts:[
+    {id:'it',name:'IT / كمبيوتر',icon:'💻',types:['كمبيوتر معطل','لابتوب معطل','شبكة / إنترنت','شاشة','طابعة','بروجيكتور','كاميرا','أكسس بوينت','أخرى IT']},
+    {id:'electricity',name:'كهرباء',icon:'⚡',types:['لمبة إنارة','مروحة','تكييف','فيشة كهرباء','كابل تالف','قاطع كهرباء','أخرى كهرباء']},
+    {id:'civil',name:'مدني / نجارة',icon:'🔨',types:['باب تالف','نافذة','أرضية','سقف','دهانات','أخرى مدني']},
+    {id:'plumbing',name:'سباكة',icon:'🔧',types:['صنبور','حمام','سباكة عامة']}
+  ],
+  store_it:['كابل شبكة','موزع شبكة','ذاكرة RAM','هارد ديسك','كابل HDMI','بطاقة شبكة','أخرى IT'],
+  store_elec:['لمبة LED','مروحة احتياط','قاطع كهرباء','فيشة','كابل كهرباء','مفتاح إنارة','أخرى كهرباء'],
+  vehicles:['باص أبيض 1','باص أبيض 2','ميكروباص 1']
+};
+
+function loadSettings(){
+  get(ref(db,'settings')).then(function(snap){
+    if(snap.val()) Object.assign(settings,snap.val());
+    else set(ref(db,'settings'),settings);
+  });
+}
+function saveSettings(){ set(ref(db,'settings'),settings); }
+
+// Render login on page load
+renderLogin();
 
 </script>
 </body>
