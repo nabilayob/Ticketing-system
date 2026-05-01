@@ -1934,7 +1934,7 @@ function loadCurrentUser(uid){
     if(!u){ u={name:'Admin',role:'admin',email:auth.currentUser?.email||''}; set(ref(db,'users/'+uid),u); }
     CU=u; CID=uid;
     setMyOnlineState(true);
-    try{ ref(db,'users/'+uid).onDisconnect().update({online:false,lastSeen:Date.now()}); }catch(e){}
+    setupOnlinePresence(uid);
     if(window._onlineHeartbeat) clearInterval(window._onlineHeartbeat);
     window._onlineHeartbeat=setInterval(function(){ setMyOnlineState(true); },60000);
     document.getElementById('loginScreen').style.display='none';
@@ -1972,9 +1972,43 @@ function sendNotification(to,title,msg,ticketId){
   push(ref(db,'notifications'),{to:to,title:title,msg:msg,ticketId:ticketId||'',time:Date.now(),read:false});
 }
 
+function normEmail(e){ return (e||'').toString().trim().toLowerCase(); }
+function currentUserEmail(){ return normEmail((CU&&CU.email)||(auth.currentUser&&auth.currentUser.email)||''); }
+
+function setupOnlinePresence(uid){
+  // Realtime Firebase presence: if the browser loses connection, Firebase sets the user offline automatically.
+  try{ ref(db,'users/'+uid).onDisconnect().update({online:false,lastSeen:Date.now()}); }catch(e){}
+  // Also protect against duplicated user records with the same email (common after manual user creation).
+  try{
+    get(ref(db,'users')).then(function(snap){
+      var email=currentUserEmail();
+      var all=snap.val()||{};
+      Object.keys(all).forEach(function(id){
+        if(id!==uid && email && normEmail(all[id].email)===email){
+          try{ ref(db,'users/'+id).onDisconnect().update({online:false,lastSeen:Date.now()}); }catch(e){}
+        }
+      });
+    });
+  }catch(e){}
+}
+
 function setMyOnlineState(isOnline){
   if(!CID) return;
-  update(ref(db,'users/'+CID),{online:!!isOnline,lastSeen:Date.now()}).catch(function(){});
+  var data={online:!!isOnline,lastSeen:Date.now()};
+  update(ref(db,'users/'+CID),data).catch(function(){});
+  // Update any duplicate row that has the same email, so the Users table shows the real status.
+  try{
+    get(ref(db,'users')).then(function(snap){
+      var email=currentUserEmail();
+      if(!email) return;
+      var all=snap.val()||{};
+      Object.keys(all).forEach(function(id){
+        if(id!==CID && normEmail(all[id].email)===email){
+          update(ref(db,'users/'+id),data).catch(function(){});
+        }
+      });
+    });
+  }catch(e){}
 }
 function fmtLastSeen(ts){
   if(!ts) return '—';
@@ -1984,8 +2018,13 @@ function fmtLastSeen(ts){
   if(diff<86400000) return Math.floor(diff/3600000)+' h';
   return fmt_date(ts);
 }
+function userIsOnline(u){
+  if(!u) return false;
+  // Treat fresh heartbeat as online even if the boolean flag was not written yet.
+  return !!u.online || (!!u.lastSeen && (Date.now()-Number(u.lastSeen) < 130000));
+}
 function onlineBadge(u,withLastSeen){
-  var isOn=!!(u&&u.online);
+  var isOn=userIsOnline(u);
   var html='<span class="online-dot '+(isOn?'on':'off')+'"></span><span class="'+(isOn?'status-online':'status-offline')+'">'+(isOn?t('online_yes'):t('online_no'))+'</span>';
   if(withLastSeen && !isOn) html+='<div style="font-size:10px;color:var(--text-muted);margin-top:2px;">'+t('last_seen')+': '+fmtLastSeen(u&&u.lastSeen)+'</div>';
   return html;
