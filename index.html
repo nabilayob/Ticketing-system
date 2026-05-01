@@ -2616,12 +2616,43 @@ function renderAgent(){
     '<div class="card"><div class="card-title"><span class="icon">🤖</span> AI Inventory Agent</div>'+
     '<div class="agent-log" id="agentLog"><p class="info">▶ DSBA Inventory Agent v2.0</p><p class="cmd">$ Ready. Click Run Scan to start...</p></div>'+
     '<div style="margin-top:14px;display:flex;gap:10px;flex-wrap:wrap;">'+
-    '<button class="btn btn-primary" onclick="runAgentScan()">'+ t('btn_run_scan')+'</button>'+
-    '<button class="btn btn-outline" onclick="agentScanRoom()">'+ t('btn_local_scan')+'</button>'+
-    '<button class="btn btn-outline" onclick="exportInventoryCSV()">'+ t('btn_export_csv')+'</button>'+
-    '<button class="btn btn-accent" onclick="generateSetupScript()">'+ t('btn_gen_script')+'</button>'+
+    '<button type="button" id="agentRunFullBtn" class="btn btn-primary" onclick="return runAgentScanSafe(event)">'+ t('btn_run_scan')+'</button>'+
+    '<button type="button" id="agentScanMachineBtn" class="btn btn-outline" onclick="return agentScanRoomSafe(event)">'+ t('btn_local_scan')+'</button>'+
+    '<button type="button" id="agentExportCsvBtn" class="btn btn-outline" onclick="return exportInventoryCSVSafe(event)">'+ t('btn_export_csv')+'</button>'+
+    '<button type="button" id="agentSetupScriptBtn" class="btn btn-accent" onclick="return generateSetupScriptSafe(event)">'+ t('btn_gen_script')+'</button>'+
     '</div></div>';
 }
+
+
+// Extra safe button wrappers: ensure Agent buttons work even if inline handlers are blocked
+window.agentScanRoomSafe=function(e){
+  if(e){ try{ e.preventDefault(); e.stopPropagation(); }catch(_e){} }
+  if(typeof window.agentScanRoom==='function') window.agentScanRoom();
+  return false;
+};
+window.runAgentScanSafe=function(e){
+  if(e){ try{ e.preventDefault(); e.stopPropagation(); }catch(_e){} }
+  if(typeof window.runAgentScan==='function') window.runAgentScan();
+  return false;
+};
+window.exportInventoryCSVSafe=function(e){
+  if(e){ try{ e.preventDefault(); e.stopPropagation(); }catch(_e){} }
+  if(typeof window.exportInventoryCSV==='function') window.exportInventoryCSV();
+  return false;
+};
+window.generateSetupScriptSafe=function(e){
+  if(e){ try{ e.preventDefault(); e.stopPropagation(); }catch(_e){} }
+  if(typeof window.generateSetupScript==='function') window.generateSetupScript();
+  return false;
+};
+document.addEventListener('click',function(e){
+  var btn=e.target && e.target.closest ? e.target.closest('#agentScanMachineBtn,#agentRunFullBtn,#agentExportCsvBtn,#agentSetupScriptBtn') : null;
+  if(!btn) return;
+  if(btn.id==='agentScanMachineBtn') return window.agentScanRoomSafe(e);
+  if(btn.id==='agentRunFullBtn') return window.runAgentScanSafe(e);
+  if(btn.id==='agentExportCsvBtn') return window.exportInventoryCSVSafe(e);
+  if(btn.id==='agentSetupScriptBtn') return window.generateSetupScriptSafe(e);
+},true);
 
 // Render login on page load — called last after all defs
 renderLogin();
