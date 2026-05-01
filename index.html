@@ -362,6 +362,14 @@ tbody tr:hover { background:#f8f9ff; }
 .empty-icon { font-size:40px; margin-bottom:12px; }
 .empty-text { font-size:14px; }
 
+
+/* ONLINE STATUS */
+.online-dot { width:10px; height:10px; border-radius:50%; display:inline-block; margin:0 4px; }
+.online-dot.on { background:var(--success); box-shadow:0 0 0 3px rgba(29,158,117,.12); }
+.online-dot.off { background:#9ca3af; }
+.status-online { color:var(--success); font-weight:700; font-size:11px; }
+.status-offline { color:var(--text-muted); font-weight:600; font-size:11px; }
+
 /* COST TAG */
 .cost-tag { background:#eef5fb; color:var(--primary); padding:3px 10px; border-radius:6px; font-size:12px; font-weight:700; }
 
@@ -635,6 +643,10 @@ var L = {
   th_ticket:          {ar:'البلاغ',                          en:'Ticket',                                de:'Auftrag'},
   th_role:            {ar:'الصلاحية',                        en:'Role',                                  de:'Benutzerrolle'},
   th_phone:           {ar:'الهاتف',                          en:'Phone',                                 de:'Telefon'},
+  th_online:          {ar:'Online',                          en:'Online',                                de:'Online'},
+  online_yes:         {ar:'🟢 Online',                       en:'🟢 Online',                             de:'🟢 Online'},
+  online_no:          {ar:'⚪ Offline',                      en:'⚪ Offline',                            de:'⚪ Offline'},
+  last_seen:          {ar:'آخر ظهور',                         en:'Last seen',                             de:'Zuletzt gesehen'},
   th_balance:         {ar:'الرصيد الحالي',                   en:'Current Stock',                         de:'Aktueller Bestand'},
   th_min_bal:         {ar:'الحد الأدنى',                     en:'Min. Stock',                            de:'Mindestbestand'},
   th_adj:             {ar:'إضافة/خصم',                       en:'Add/Deduct',                            de:'Zugang/Abgang'},
@@ -1424,7 +1436,7 @@ window.openAssignModal=function(ticketId){
       <div style="display:flex;align-items:center;justify-content:space-between;padding:12px;border:1px solid var(--border);border-radius:10px;margin-bottom:8px;">
         <div style="display:flex;align-items:center;gap:10px;">
           <div style="width:38px;height:38px;border-radius:50%;background:var(--primary);display:flex;align-items:center;justify-content:center;color:#fff;font-weight:700;">${(u.name||'?').charAt(0)}</div>
-          <div><div style="font-weight:600;font-size:13px;">${u.name}</div><div style="font-size:11px;color:var(--text-muted);">${dept_badge(u.dept)}</div></div>
+          <div><div style="font-weight:600;font-size:13px;">${u.name} ${onlineBadge(u,false)}</div><div style="font-size:11px;color:var(--text-muted);">${dept_badge(u.dept)} ${!u.online?' · '+t('last_seen')+': '+fmtLastSeen(u.lastSeen):''}</div></div>
         </div>
         <button class="btn btn-primary btn-sm" onclick="assignTicket('${ticketId}','${uid}','${u.name}')">تعيين ✓</button>
       </div>`).join('')
@@ -1508,8 +1520,8 @@ window.openTransferModal=function(ticketId){
         <div style="display:flex;align-items:center;gap:10px;">
           <div style="width:38px;height:38px;border-radius:50%;background:var(--accent);display:flex;align-items:center;justify-content:center;color:#fff;font-weight:700;font-size:14px;">${(u.name||'?').charAt(0)}</div>
           <div>
-            <div style="font-weight:600;font-size:13px;">${u.name}</div>
-            <div style="font-size:11px;color:var(--text-muted);">${dept_badge(u.dept)}</div>
+            <div style="font-weight:600;font-size:13px;">${u.name} ${onlineBadge(u,false)}</div>
+            <div style="font-size:11px;color:var(--text-muted);">${dept_badge(u.dept)} ${!u.online?' · '+t('last_seen')+': '+fmtLastSeen(u.lastSeen):''}</div>
           </div>
         </div>
         <button class="btn btn-sm btn-accent" onclick="transferTicket('${ticketId}','${uid}','${u.name}')">تحويل ✓</button>
@@ -1907,6 +1919,7 @@ window.doLogin = function(){
 };
 
 window.doLogout = function(){
+  setMyOnlineState(false);
   signOut(auth).then(function(){
     CU=null; CID=null;
     document.getElementById('app').style.display='none';
@@ -1920,6 +1933,10 @@ function loadCurrentUser(uid){
     var u=snap.val();
     if(!u){ u={name:'Admin',role:'admin',email:auth.currentUser?.email||''}; set(ref(db,'users/'+uid),u); }
     CU=u; CID=uid;
+    setMyOnlineState(true);
+    try{ ref(db,'users/'+uid).onDisconnect().update({online:false,lastSeen:Date.now()}); }catch(e){}
+    if(window._onlineHeartbeat) clearInterval(window._onlineHeartbeat);
+    window._onlineHeartbeat=setInterval(function(){ setMyOnlineState(true); },60000);
     document.getElementById('loginScreen').style.display='none';
     document.getElementById('app').style.display='flex';
     document.getElementById('sidebarName').textContent=CU.name||CU.email||'—';
@@ -1954,6 +1971,26 @@ function updateBadges(){
 function sendNotification(to,title,msg,ticketId){
   push(ref(db,'notifications'),{to:to,title:title,msg:msg,ticketId:ticketId||'',time:Date.now(),read:false});
 }
+
+function setMyOnlineState(isOnline){
+  if(!CID) return;
+  update(ref(db,'users/'+CID),{online:!!isOnline,lastSeen:Date.now()}).catch(function(){});
+}
+function fmtLastSeen(ts){
+  if(!ts) return '—';
+  var diff=Date.now()-ts;
+  if(diff<60000) return currentLang==='ar'?'الآن':'now';
+  if(diff<3600000) return Math.floor(diff/60000)+' min';
+  if(diff<86400000) return Math.floor(diff/3600000)+' h';
+  return fmt_date(ts);
+}
+function onlineBadge(u,withLastSeen){
+  var isOn=!!(u&&u.online);
+  var html='<span class="online-dot '+(isOn?'on':'off')+'"></span><span class="'+(isOn?'status-online':'status-offline')+'">'+(isOn?t('online_yes'):t('online_no'))+'</span>';
+  if(withLastSeen && !isOn) html+='<div style="font-size:10px;color:var(--text-muted);margin-top:2px;">'+t('last_seen')+': '+fmtLastSeen(u&&u.lastSeen)+'</div>';
+  return html;
+}
+window.addEventListener('beforeunload',function(){ if(CID) setMyOnlineState(false); });
 
 function renderNotifications(){
   updateBadges();
@@ -2330,7 +2367,7 @@ function renderUsers(){
     '<div class="card" style="margin-bottom:16px;"><button class="btn btn-primary" onclick="openModal(\'userModal\')">'+t('btn_add_user')+'</button></div>'+
     '<div class="card"><div class="card-title"><span class="icon">👥</span> '+t('users_list_h')+' ('+arr.length+')</div>'+
     '<div class="tbl-wrap"><table><thead><tr>'+
-    ['th_num','lbl_full_name','lbl_email','th_role','th_dept','th_phone','th_actions'].map(function(k){return'<th>'+t(k)+'</th>';}).join('')+
+    ['th_num','lbl_full_name','lbl_email','th_role','th_dept','th_phone','th_online','th_actions'].map(function(k){return'<th>'+t(k)+'</th>';}).join('')+
     '</tr></thead><tbody>'+
     arr.map(function(u,i){
       return '<tr><td>'+(i+1)+'</td><td><strong>'+(u.name||'—')+'</strong></td>'+
@@ -2338,6 +2375,7 @@ function renderUsers(){
         '<td><span class="badge badge-inprogress">'+ role_label(u.role)+'</span></td>'+
         '<td>'+(u.dept?dept_badge(u.dept):'—')+'</td>'+
         '<td style="font-size:12px;">'+(u.phone||'—')+'</td>'+
+        '<td>'+onlineBadge(u,true)+'</td>'+
         '<td>'+(u.id!==CID?'<button class="btn btn-sm btn-danger" onclick="deleteUser(\''+ u.id+'\')">🗑</button>':'<span class="badge badge-done">'+ t('you_label')+'</span>')+'</td></tr>';
     }).join('')+'</tbody></table></div></div>';
 }
@@ -2348,7 +2386,7 @@ window.submitUser=function(){
   if(!name||!email||!pass){ alert(t('err_user_req')); return; }
   createUserWithEmailAndPassword(auth,email,pass)
     .then(function(res){
-      set(ref(db,'users/'+res.user.uid),{name:name,email:email,role:role,dept:dept,phone:phone});
+      set(ref(db,'users/'+res.user.uid),{name:name,email:email,role:role,dept:dept,phone:phone,online:false,lastSeen:null});
       closeModal('userModal');
     }).catch(function(e){ alert(t('u_error'||'Error')+': '+e.message); });
 };
