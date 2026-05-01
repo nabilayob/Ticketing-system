@@ -2171,7 +2171,7 @@ function buildTicketsTable(arr){
         '<td>'+(tk.cost?'<span class="cost-tag">'+ parseFloat(tk.cost).toLocaleString()+' '+t('currency')+'</span>':'—')+'</td>'+
         '<td style="white-space:nowrap;">'+
         '<button class="btn btn-sm btn-outline" onclick="showTicketDetail(\''+ tk.id+'\')">'+t('btn_details')+'</button>'+
-        (CU.role==='admin'&&tk.status==='pending'?'<button class="btn btn-sm btn-accent" style="margin-right:4px;" onclick="openAssignModal(\''+ tk.id+'\')")>👷</button>':'')+
+        (CU.role==='admin'&&tk.status==='pending'?'<button class="btn btn-sm btn-accent" style="margin-right:4px;" onclick="openAssignModal(\''+ tk.id+'\')">👷</button>':'')+
         (CU.role==='admin'?'<button class="btn btn-sm btn-danger" style="margin-right:4px;" onclick="deleteTicket(\''+ tk.id+'\')">🗑</button>':'')+
         '</td></tr>';
     }).join('')+'</tbody></table>';
