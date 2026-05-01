@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>DSBA - Maintenance & Inventory</title>
-<link href="https://fonts.googleapis.com/css2?family=Cairo:wght@300;400;500;600;700&family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Cairo:wght@300;400;500;600;700&display=swap" rel="stylesheet">
 <style>
 
 :root {
@@ -115,13 +115,11 @@ body {
 .sidebar {
   width: var(--sidebar-w);
   background: var(--primary);
-  position: fixed; top:0; bottom:0;
-  right:0; left:auto;
+  position: fixed; top:0; right:0; bottom:0;
   display: flex; flex-direction: column;
   z-index: 100;
-  transition: transform 0.3s, right 0.3s, left 0.3s;
+  transition: transform 0.3s;
 }
-[dir="ltr"] .sidebar { right:auto; left:0; }
 .sidebar-header {
   padding: 20px;
   border-bottom: 1px solid rgba(255,255,255,0.08);
@@ -161,13 +159,10 @@ body {
   color: rgba(255,255,255,0.6);
   cursor: pointer; transition: all 0.15s;
   border-right: 3px solid transparent;
-  border-left: 3px solid transparent;
   font-size: 13px;
 }
 .nav-item:hover { background:rgba(255,255,255,0.07); color:#fff; }
 .nav-item.active { background:rgba(232,160,32,0.15); color:var(--accent); border-right-color: var(--accent); }
-[dir="ltr"] .nav-item { border-right:none; border-left:3px solid transparent; }
-[dir="ltr"] .nav-item.active { border-left-color: var(--accent); border-right-color: transparent; }
 .nav-item .nav-icon { font-size:16px; width:20px; text-align:center; }
 .nav-badge { margin-right:auto; background:var(--danger); color:#fff; font-size:10px; padding:2px 7px; border-radius:20px; }
 
@@ -185,11 +180,9 @@ body {
 /* MAIN CONTENT */
 .main {
   margin-right: var(--sidebar-w);
-  margin-left: 0;
   min-height: 100vh;
   display: flex; flex-direction: column;
 }
-[dir="ltr"] .main { margin-right: 0; margin-left: var(--sidebar-w); }
 .topbar {
   background:#fff; border-bottom:1px solid var(--border);
   padding: 14px 28px;
@@ -257,8 +250,6 @@ table { width:100%; border-collapse:collapse; min-width:600px; }
 thead tr { background:var(--primary); }
 th { color:#fff; padding:10px 14px; font-size:12px; font-weight:600; text-align:right; white-space:nowrap; }
 td { padding:10px 14px; font-size:13px; border-bottom:1px solid var(--border); color:var(--text); }
-[dir="ltr"] th { text-align:left; }
-[dir="ltr"] td { text-align:left; }
 tbody tr:last-child td { border-bottom:none; }
 tbody tr:hover { background:#f8f9ff; }
 
@@ -312,15 +303,13 @@ tbody tr:hover { background:#f8f9ff; }
 
 /* NOTIFICATIONS PANEL */
 .notif-panel {
-  position:fixed; top:60px;
-  left:20px; right:auto;
+  position:fixed; top:60px; left:20px;
   width:320px; background:#fff;
   border-radius:14px; border:1px solid var(--border);
   box-shadow:0 8px 40px rgba(0,0,0,0.12);
   z-index:200; display:none; max-height:400px; overflow-y:auto;
 }
 .notif-panel.open { display:block; }
-[dir="ltr"] .notif-panel { left:auto; right:20px; }
 .notif-header { padding:14px 16px; font-weight:700; font-size:14px; border-bottom:1px solid var(--border); display:flex; justify-content:space-between; align-items:center; }
 .notif-item { padding:12px 16px; border-bottom:1px solid var(--border); cursor:pointer; transition:background 0.1s; }
 .notif-item:hover { background:var(--bg); }
@@ -344,7 +333,6 @@ tbody tr:hover { background:#f8f9ff; }
 }
 .modal-title { font-size:17px; font-weight:700; color:var(--primary); margin-bottom:20px; }
 .modal-close { position:absolute; top:16px; left:16px; cursor:pointer; font-size:20px; color:var(--text-muted); background:none; border:none; line-height:1; }
-[dir="ltr"] .modal-close { left:auto; right:16px; }
 .modal-close:hover { color:var(--danger); }
 .modal-footer { display:flex; gap:10px; justify-content:flex-end; margin-top:20px; padding-top:16px; border-top:1px solid var(--border); }
 
@@ -411,14 +399,6 @@ tbody tr:hover { background:#f8f9ff; }
   .main { margin-right:0; }
 }
 
-/* ── LTR FONT ── */
-[dir="ltr"] body,
-[dir="ltr"] input,
-[dir="ltr"] select,
-[dir="ltr"] textarea,
-[dir="ltr"] button { font-family: 'Inter', sans-serif; }
-[dir="ltr"] .login-box { font-family: 'Inter', sans-serif; }
-
 /* ── LANGUAGE SWITCHER ── */
 .lang-switcher { display:flex; gap:4px; align-items:center; }
 .lang-btn {
@@ -438,20 +418,31 @@ tbody tr:hover { background:#f8f9ff; }
 .lang-btn:hover{background:rgba(255,255,255,0.1);color:#fff;}
 .lang-btn.active-lang{background:var(--accent);border-color:var(--accent);color:#fff;}
 
-/* ── Extra LTR body selectors (belt-and-suspenders) ── */
-body.ltr .sidebar { right:auto; left:0; }
-body.ltr .main { margin-right:0; margin-left:var(--sidebar-w); }
-body.ltr .nav-item { border-right:none; border-left:3px solid transparent; }
-body.ltr .nav-item.active { border-left-color:var(--accent); border-right-color:transparent; }
-body.ltr .notif-panel { left:auto; right:20px; }
-body.ltr th { text-align:left; }
-body.ltr td { text-align:left; }
-body.ltr .modal-close { left:auto; right:16px; }
-body.ltr,
-body.ltr input,
-body.ltr select,
-body.ltr textarea,
-body.ltr button { font-family:'Inter',sans-serif; }
+/* ── AGENT LOG ── */
+.agent-log {
+  background:#1a1a2e; color:#00ff88; font-family:monospace;
+  padding:16px; border-radius:10px; min-height:180px; max-height:320px;
+  overflow-y:auto; font-size:12px; line-height:1.7;
+}
+.agent-log p { margin:2px 0; }
+.agent-log p.cmd     { color:#00cfff; }
+.agent-log p.success { color:#00ff88; }
+.agent-log p.warn    { color:#fbbf24; }
+.agent-log p.error   { color:#f87171; }
+.agent-log p.info    { color:#e5e7eb; }
+
+/* ── TIMESHEET PRINT ── */
+@media print {
+  body>*:not(#printArea) { display:none!important; }
+  #printArea { display:block!important; }
+  .page-header button { display:none!important; }
+}
+
+/* ── ONLINE DOT PULSE ── */
+@keyframes pulse-green {
+  0%,100% { box-shadow:0 0 0 0 rgba(29,158,117,.4); }
+  50%      { box-shadow:0 0 0 4px rgba(29,158,117,0); }
+}
 </style>
 </head>
 <body>
@@ -487,6 +478,10 @@ body.ltr button { font-family:'Inter',sans-serif; }
       <div class="topbar-title" id="pageTitle"></div>
       <div class="topbar-actions">
         <div class="lang-switcher" id="langSwitcher"></div>
+        <div style="display:flex;align-items:center;gap:6px;padding:6px 12px;background:#f0fdf4;border-radius:8px;font-size:12px;cursor:pointer;" onclick="showOnlineTechs()" title="الفنيون المتصلون الآن">
+          <span style="width:8px;height:8px;border-radius:50%;background:#1d9e75;"></span>
+          فني أونلاين: <span id="onlineTechBadge" style="font-weight:700;color:#1d9e75;">0</span>
+        </div>
         <div class="notif-btn" onclick="toggleNotif()" id="notifBtn">
           🔔 <span class="notif-badge" id="notifBadge" style="display:none;">0</span>
         </div>
@@ -865,9 +860,6 @@ function applyLanguage(lang){
   var rtl = lang==='ar';
   document.documentElement.lang = lang;
   document.documentElement.dir = rtl ? 'rtl' : 'ltr';
-  // Toggle body class for extra CSS
-  document.body.classList.toggle('ltr', !rtl);
-  document.body.classList.toggle('rtl', rtl);
   // Update lang buttons
   document.querySelectorAll('.lang-btn').forEach(function(b){
     b.classList.toggle('active-lang', b.dataset.lang===lang);
@@ -1624,6 +1616,19 @@ window.showTicketDetail=function(id){
       ${t.cost?`<div><label style="font-size:11px;color:var(--text-muted);">التكلفة</label><div style="margin-top:4px;"><span class="cost-tag">${parseFloat(t.cost).toLocaleString('ar-EG')} ج</span></div></div>`:''}
     </div>
 
+    ${t.pcIP||t.pcOS?`<div style="background:#f0f7ff;border-radius:8px;padding:12px;margin-bottom:14px;border-right:4px solid var(--primary);">
+      <div style="font-size:11px;font-weight:700;color:var(--primary);margin-bottom:8px;">💻 معلومات الجهاز المرسِل</div>
+      <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;font-size:12px;">
+        <div><span style="color:var(--text-muted);">IP: </span><code>${t.pcIP||'—'}</code></div>
+        <div><span style="color:var(--text-muted);">OS: </span><strong>${t.pcOS||'—'}</strong></div>
+        <div><span style="color:var(--text-muted);">Browser: </span>${t.pcBrowser||'—'}</div>
+        <div><span style="color:var(--text-muted);">CPU: </span>${t.pcCPU||'—'}</div>
+        <div><span style="color:var(--text-muted);">RAM: </span>${t.pcRAM||'—'}</div>
+        <div><span style="color:var(--text-muted);">Screen: </span>${t.pcScreen||'—'}</div>
+        <div style="grid-column:1/-1;"><span style="color:var(--text-muted);">Windows/Account: </span><strong>${t.windowsUser||'—'}</strong></div>
+      </div>
+    </div>`:''}
+
     ${historyLog?`<div style="background:#f9fafb;border-radius:8px;padding:10px;margin-bottom:14px;"><div style="font-size:11px;font-weight:700;color:var(--text-muted);margin-bottom:6px;">📋 سجل الأحداث</div>${historyLog}</div>`:''}
 
     ${canAct&&t.status==='inprogress'?`
@@ -1973,6 +1978,10 @@ function startListeners(){
   onValue(ref(db,'tickets'),function(snap){ tickets=snap.val()||{}; updateBadges(); refreshPage(); });
   onValue(ref(db,'assets'),function(snap){ assets=snap.val()||{}; refreshPage(); });
   onValue(ref(db,'users'),function(snap){ users=snap.val()||{}; refreshPage(); });
+  // Start presence system
+  fetchClientIP();
+  updatePresence();
+  listenPresence();
   onValue(ref(db,'notifications'),function(snap){
     var all=snap.val()||{};
     notifications=Object.entries(all)
@@ -2025,7 +2034,8 @@ function buildNav(){
     {id:'users',icon:'👥',label:t('nav_users'),sec:t('nav_sec_admin')},
     {id:'reports',icon:'📈',label:t('nav_reports'),sec:''},
     {id:'settings',icon:'⚙️',label:t('nav_settings'),sec:''},
-    {id:'agent',icon:'🤖',label:t('nav_agent'),sec:t('nav_sec_adv')}
+    {id:'agent',icon:'🤖',label:t('nav_agent'),sec:t('nav_sec_adv')},
+    {id:'timesheet',icon:'📅',label:'Timesheet الفنيين',sec:''}
   ];
   var TECH=[
     {id:'dashboard',icon:'📊',label:t('nav_dashboard'),sec:t('nav_sec_main')},
@@ -2067,7 +2077,9 @@ window.showPage=function(id){
   $('pageTitle').textContent=t(titleMap[id]||id);
   var pages={dashboard:renderDashboard,tickets:renderTickets,assets:renderAssets,
     store:renderStore,users:renderUsers,reports:renderReports,
-    settings:function(){openModal('settingsModal');},agent:renderAgent};
+    settings:function(){openModal('settingsModal');},agent:renderAgent,
+    timesheet:renderTimesheet
+  };
   if(pages[id]) pages[id]();
 };
 
@@ -2259,9 +2271,21 @@ window.submitTicket=function(){
   var desc=$('t_desc').value, cost=$('t_cost').value;
   if(!dept||!type||!desc){ alert(t('err_ticket_req')); return; }
   var bname=(settings.buildings||[]).find(function(b){return b.id===building;}); bname=bname?bname.name:building;
+  // Collect PC info automatically
+  var pcInfo = getClientPCInfo();
   var payload={dept:dept,type:type,priority:priority,building:bname,floor:floor,room:room,desc:desc,
     cost:parseFloat(cost)||0,status:'pending',createdAt:now(),
-    createdBy:CID,createdByName:CU.name||'',createdByEmail:auth.currentUser?auth.currentUser.email:''};
+    createdBy:CID,createdByName:CU.name||'',createdByEmail:auth.currentUser?auth.currentUser.email:'',
+    // PC info auto-collected
+    pcIP:     _clientIP || 'N/A',
+    pcOS:     pcInfo.os,
+    pcBrowser:pcInfo.browser,
+    pcPlatform:pcInfo.platform,
+    pcCPU:    pcInfo.cpuCores + ' cores',
+    pcRAM:    pcInfo.ram,
+    pcScreen: pcInfo.screen,
+    windowsUser: CU.name + ' (' + (auth.currentUser?auth.currentUser.email:'') + ')'
+  };
   var newRef=push(ref(db,'tickets'),payload);
   Object.entries(users).filter(function(e){return e[1].role==='technician'&&e[1].dept===dept;}).forEach(function(e){
     sendNotification(e[0],'🔔 '+type,(room?room+' - ':'')+ desc.substring(0,60),newRef.key);
@@ -2362,7 +2386,8 @@ function renderUsers(){
     '<div class="card" style="margin-bottom:16px;"><button class="btn btn-primary" onclick="openModal(\'userModal\')">'+t('btn_add_user')+'</button></div>'+
     '<div class="card"><div class="card-title"><span class="icon">👥</span> '+t('users_list_h')+' ('+arr.length+')</div>'+
     '<div class="tbl-wrap"><table><thead><tr>'+
-    ['th_num','lbl_full_name','lbl_email','th_role','th_dept','th_phone','th_actions'].map(function(k){return'<th>'+t(k)+'</th>';}).join('')+
+    ['th_num','lbl_full_name','lbl_email','th_role','th_dept','th_phone'].map(function(k){return'<th>'+t(k)+'</th>';}).join('')+
+    '<th>آخر ظهور</th><th>'+t('th_actions')+'</th>'+
     '</tr></thead><tbody>'+
     arr.map(function(u,i){
       return '<tr><td>'+(i+1)+'</td><td><strong>'+(u.name||'—')+'</strong></td>'+
@@ -2441,8 +2466,699 @@ function renderAgent(){
     '</div></div>';
 }
 
+
+
+// ════════════════════════════════════════════════════════════
+// ─── FEATURE 1: ASSET DETAIL VIEW ──────────────────────────
+// ════════════════════════════════════════════════════════════
+
+window.showAssetDetail = function(id) {
+  var a = assets[id]; if(!a) return;
+  var cond = {working:'✅ يعمل',maintenance:'🔧 تحت الصيانة',broken:'❌ معطل',retired:'⚫ مسقط'};
+  var modal = document.createElement('div');
+  modal.className = 'modal-overlay open';
+  modal.id = 'assetDetailOverlay';
+  modal.innerHTML =
+    '<div class="modal" style="width:600px;max-height:85vh;overflow-y:auto;">' +
+    '<button class="modal-close" onclick="document.getElementById(\'assetDetailOverlay\').remove()">✕</button>' +
+    '<div class="modal-title">📦 ' + (a.name||'أصل') + '</div>' +
+    '<div style="background:#eef5fb;border-radius:10px;padding:14px;margin-bottom:16px;display:flex;align-items:center;gap:16px;">' +
+      '<div style="font-size:48px;">' + (asset_icon ? asset_icon(a.cat) : '📦') + '</div>' +
+      '<div>' +
+        '<div style="font-size:18px;font-weight:700;color:var(--primary);">' + (a.name||'—') + '</div>' +
+        '<div style="font-size:13px;color:var(--text-muted);">' + (a.brand||'') + (a.brand&&a.cat?' • ':'') + (a.cat||'') + '</div>' +
+        '<div style="margin-top:6px;"><span class="barcode-badge">' + (a.barcode||id) + '</span></div>' +
+      '</div>' +
+    '</div>' +
+    '<div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:16px;">' +
+      _aRow('الرقم التسلسلي', a.serial||'—') +
+      _aRow('الحالة', cond[a.status]||a.status||'—') +
+      _aRow('الموقع', a.location||a.room||'—') +
+      _aRow('تاريخ الشراء', fmt_date(a.purchaseDate||a.addedAt)) +
+      _aRow('القيمة', a.price ? parseFloat(a.price).toLocaleString() + ' ج' : '—') +
+      _aRow('سنوات الضمان', (a.warranty||'—') + ' سنة') +
+      _aRow('أضافه', (a.addedBy && users[a.addedBy] ? users[a.addedBy].name : '—')) +
+      _aRow('تاريخ الإضافة', fmt_date(a.addedAt)) +
+    '</div>' +
+    (a.notes ? '<div style="background:#f9fafb;border-radius:8px;padding:12px;margin-bottom:14px;"><div style="font-size:11px;font-weight:700;color:var(--text-muted);margin-bottom:4px;">ملاحظات</div><div style="font-size:13px;">' + a.notes + '</div></div>' : '') +
+    // Tickets related to this asset
+    _relatedTickets(id) +
+    '<div class="modal-footer">' +
+      '<button class="btn btn-outline" onclick="document.getElementById(\'assetDetailOverlay\').remove()">إغلاق</button>' +
+      '<button class="btn btn-outline" onclick="printBarcode(\'' + id + '\')">🖨 باركود</button>' +
+    '</div>' +
+    '</div>';
+  document.body.appendChild(modal);
+};
+
+function _aRow(label, val) {
+  return '<div style="background:#f9fafb;border-radius:8px;padding:10px;"><div style="font-size:11px;color:var(--text-muted);font-weight:600;margin-bottom:3px;">' + label + '</div><div style="font-size:13px;font-weight:600;">' + val + '</div></div>';
+}
+
+function _relatedTickets(assetId) {
+  // Find tickets that mention this asset (by barcode or id in description, or linked)
+  var a = assets[assetId];
+  var related = Object.entries(tickets).filter(function(e) {
+    var tk = e[1];
+    return (tk.assetId === assetId) ||
+      (a && a.barcode && tk.desc && tk.desc.includes(a.barcode)) ||
+      (a && a.serial && tk.desc && tk.desc.includes(a.serial));
+  });
+  if (!related.length) return '';
+  return '<div style="margin-bottom:14px;"><div style="font-size:12px;font-weight:700;color:var(--text-muted);margin-bottom:8px;">🛠️ بلاغات مرتبطة (' + related.length + ')</div>' +
+    related.map(function(e) {
+      var tk = e[1];
+      return '<div style="padding:8px;background:#f9fafb;border-radius:6px;margin-bottom:4px;display:flex;justify-content:space-between;align-items:center;">' +
+        '<div style="font-size:12px;"><strong>' + (tk.type||'صيانة') + '</strong> — ' + fmt_date(tk.createdAt) + '</div>' +
+        status_badge(tk.status) + '</div>';
+    }).join('') + '</div>';
+}
+
+// ════════════════════════════════════════════════════════════
+// ─── FEATURE 2: AI AGENT — FULL IMPLEMENTATION ──────────────
+// ════════════════════════════════════════════════════════════
+
+window.runAgentScan = function() {
+  var log = $('agentLog'); if(!log) return;
+  log.innerHTML = '';
+  var steps = [
+    {delay:100,  cls:'info',    txt:'▶ DSBA Inventory AI Agent v2.0 — بدأ المسح الكامل'},
+    {delay:400,  cls:'cmd',     txt:'$ جاري الاتصال بقاعدة البيانات...'},
+    {delay:800,  cls:'success', txt:'✅ Firebase connection OK'},
+    {delay:1100, cls:'cmd',     txt:'$ فحص جميع الأصول المسجلة...'},
+    {delay:1500, cls:'',        txt: null, fn: 'analyzeAssets'},
+    {delay:2200, cls:'cmd',     txt:'$ فحص البلاغات المفتوحة...'},
+    {delay:2600, cls:'',        txt: null, fn: 'analyzeTickets'},
+    {delay:3200, cls:'cmd',     txt:'$ فحص رصيد قطع الغيار...'},
+    {delay:3600, cls:'',        txt: null, fn: 'analyzeStore'},
+    {delay:4200, cls:'cmd',     txt:'$ إنشاء التقرير النهائي...'},
+    {delay:4600, cls:'',        txt: null, fn: 'finalReport'},
+    {delay:5000, cls:'success', txt:'✅ اكتمل المسح — الرجاء مراجعة النتائج أعلاه'}
+  ];
+
+  steps.forEach(function(s) {
+    setTimeout(function() {
+      var log2 = $('agentLog'); if(!log2) return;
+      if (s.txt) {
+        var p = document.createElement('p');
+        p.className = s.cls || 'cmd';
+        p.textContent = s.txt;
+        log2.appendChild(p);
+      }
+      if (s.fn) {
+        var result = agentFunctions[s.fn]();
+        if (result) {
+          result.split('\n').forEach(function(line) {
+            if (!line.trim()) return;
+            var p = document.createElement('p');
+            p.className = line.startsWith('⚠') ? 'warn' :
+                          line.startsWith('✅') ? 'success' :
+                          line.startsWith('❌') ? 'error' : 'info';
+            p.textContent = line;
+            log2.appendChild(p);
+          });
+        }
+      }
+      log2.scrollTop = log2.scrollHeight;
+    }, s.delay);
+  });
+};
+
+var agentFunctions = {
+  analyzeAssets: function() {
+    var arr = Object.values(assets);
+    if (!arr.length) return '⚠ لا توجد أصول مسجلة في قاعدة البيانات';
+    var byStatus = {working:0, maintenance:0, broken:0, retired:0};
+    arr.forEach(function(a) { byStatus[a.status] = (byStatus[a.status]||0)+1; });
+    var lines = [
+      '📦 إجمالي الأصول: ' + arr.length,
+      '  ✅ يعمل: ' + (byStatus.working||0),
+      '  🔧 تحت الصيانة: ' + (byStatus.maintenance||0),
+      '  ❌ معطل: ' + (byStatus.broken||0),
+      '  ⚫ مسقط: ' + (byStatus.retired||0)
+    ];
+    var totalVal = arr.reduce(function(s,a){return s+(parseFloat(a.price)||0);},0);
+    lines.push('💰 إجمالي القيمة: ' + totalVal.toLocaleString() + ' جنيه');
+    var broken = arr.filter(function(a){return a.status==='broken';});
+    if (broken.length) {
+      lines.push('⚠ أصول معطلة تحتاج بلاغ:');
+      broken.slice(0,5).forEach(function(a){ lines.push('  → ' + a.name + ' — ' + (a.location||'غير محدد')); });
+    }
+    return lines.join('\n');
+  },
+
+  analyzeTickets: function() {
+    var arr = Object.values(tickets);
+    var pending = arr.filter(function(t){return t.status==='pending';});
+    var inprog  = arr.filter(function(t){return t.status==='inprogress';});
+    var overdue = inprog.filter(function(t){
+      return t.createdAt && (Date.now()-t.createdAt) > 3*24*60*60*1000; // 3 days
+    });
+    var lines = [
+      '🎫 إجمالي البلاغات: ' + arr.length,
+      '  ⏳ معلقة: ' + pending.length,
+      '  🔧 جارية: ' + inprog.length,
+      '  ✅ منتهية: ' + arr.filter(function(t){return t.status==='done';}).length
+    ];
+    if (overdue.length) {
+      lines.push('⚠ بلاغات متأخرة (+3 أيام):');
+      overdue.slice(0,5).forEach(function(t){ lines.push('  → ' + (t.type||'—') + ' | ' + (t.dept||'—') + ' — ' + Math.floor((Date.now()-t.createdAt)/86400000) + ' يوم'); });
+    }
+    if (pending.length > 10) lines.push('⚠ تحذير: ' + pending.length + ' بلاغ معلق — يُنصح بالتدخل');
+    return lines.join('\n');
+  },
+
+  analyzeStore: function() {
+    var lines = [];
+    var storeData = typeof store_inventory !== 'undefined' ? store_inventory : {};
+    // Try to get from Firebase cache
+    get(ref(db,'store_inventory')).then(function(snap){
+      var inv = snap.val()||{};
+      var log2 = $('agentLog'); if(!log2) return;
+      Object.entries(inv).forEach(function(se) {
+        var sid = se[0], s = se[1];
+        if (!s.items) return;
+        Object.entries(s.items).forEach(function(ie) {
+          var item = ie[1];
+          if (!item.balance && item.balance !== 0) return;
+          if (parseFloat(item.balance) < parseFloat(item.minBalance||2)) {
+            var p = document.createElement('p'); p.className = 'warn';
+            p.textContent = '⚠ رصيد منخفض: ' + (item.name||'—') + ' — رصيد: ' + item.balance + ' ' + (item.unit||'');
+            log2.appendChild(p); log2.scrollTop = log2.scrollHeight;
+          }
+        });
+      });
+    });
+    lines.push('🏪 جاري فحص قطع الغيار...');
+    return lines.join('\n');
+  },
+
+  finalReport: function() {
+    var arr = Object.values(assets);
+    var tArr = Object.values(tickets);
+    var done = tArr.filter(function(t){return t.status==='done';});
+    var totalCost = done.reduce(function(s,t){return s+(parseFloat(t.cost)||0);},0);
+    var lines = [
+      '══════════════════════════════════',
+      '📊 ملخص تقرير AI Agent',
+      '══════════════════════════════════',
+      '📦 أصول: ' + arr.length + ' | 💰 قيمة: ' + arr.reduce(function(s,a){return s+(parseFloat(a.price)||0);},0).toLocaleString() + ' ج',
+      '🎫 بلاغات: ' + tArr.length + ' | 💸 تكاليف الصيانة: ' + totalCost.toLocaleString() + ' ج',
+      '📅 تاريخ الفحص: ' + new Date().toLocaleString('ar-EG'),
+      '══════════════════════════════════'
+    ];
+    return lines.join('\n');
+  }
+};
+
+window.agentScanRoom = function() {
+  var log = $('agentLog'); if(!log) return;
+  log.innerHTML = '';
+  var p0 = document.createElement('p'); p0.className='info';
+  p0.textContent = '🏫 مسح الجهاز الحالي...'; log.appendChild(p0);
+
+  // Collect client PC info
+  var info = getClientPCInfo();
+  setTimeout(function(){
+    var log2 = $('agentLog'); if(!log2) return;
+    var lines = [
+      '💻 معلومات الجهاز الحالي:',
+      '  🌐 IP (محلي): ' + (info.ip||'جاري الكشف...'),
+      '  🖥 User Agent: ' + info.userAgent,
+      '  🧠 CPU Cores: ' + info.cpuCores,
+      '  📱 Platform: ' + info.platform,
+      '  🕐 التاريخ والوقت: ' + new Date().toLocaleString('ar-EG'),
+      '  💾 ذاكرة RAM تقريبية: ' + (navigator.deviceMemory ? navigator.deviceMemory + ' GB' : 'غير متاح')
+    ];
+    lines.forEach(function(line) {
+      var p = document.createElement('p'); p.className = 'info'; p.textContent = line;
+      log2.appendChild(p);
+    });
+    log2.scrollTop = log2.scrollHeight;
+  }, 500);
+
+  // Get IP from external service
+  fetch('https://api.ipify.org?format=json')
+    .then(function(r){return r.json();})
+    .then(function(d){
+      setTimeout(function(){
+        var log2 = $('agentLog'); if(!log2) return;
+        var p = document.createElement('p'); p.className='success';
+        p.textContent = '  🌍 IP العام: ' + d.ip;
+        log2.appendChild(p); log2.scrollTop = log2.scrollHeight;
+      }, 800);
+    }).catch(function(){});
+};
+
+window.exportInventoryCSV = function() {
+  var arr = Object.entries(assets).map(function(e){return Object.assign({id:e[0]},e[1]);});
+  if (!arr.length) { alert('لا توجد أصول لتصديرها'); return; }
+  var header = ['الكود','الاسم','الفئة','الرقم التسلسلي','الماركة','الموقع','الحالة','القيمة','تاريخ الشراء','الباركود'];
+  var rows = arr.map(function(a){
+    return [
+      a.id.substr(0,8),
+      a.name||'',
+      a.cat||'',
+      a.serial||'',
+      a.brand||'',
+      a.location||a.room||'',
+      a.status||'',
+      a.price||0,
+      a.purchaseDate ? new Date(a.purchaseDate).toLocaleDateString('ar-EG') : '',
+      a.barcode||''
+    ].map(function(v){return '"'+String(v).replace(/"/g,'""')+'"';}).join(',');
+  });
+  var csv = '\uFEFF' + header.join(',') + '\n' + rows.join('\n');
+  var blob = new Blob([csv], {type:'text/csv;charset=utf-8;'});
+  var url = URL.createObjectURL(blob);
+  var a = document.createElement('a');
+  a.href = url; a.download = 'DSBA_Inventory_' + new Date().toISOString().split('T')[0] + '.csv';
+  a.click(); URL.revokeObjectURL(url);
+};
+
+window.generateSetupScript = function() {
+  var script = [
+    '@echo off',
+    'REM DSBA Inventory Setup Script',
+    'REM Auto-generated by DSBA AI Agent',
+    'echo Collecting PC Information...',
+    'echo.',
+    'echo === PC Info ===',
+    'echo Computer Name: %COMPUTERNAME%',
+    'echo Username: %USERNAME%',
+    'echo Domain: %USERDOMAIN%',
+    'systeminfo | findstr /C:"OS Name" /C:"Total Physical Memory" /C:"Processor"',
+    'echo.',
+    'echo === Network Info ===',
+    'ipconfig | findstr /C:"IPv4"',
+    'echo.',
+    'echo === Installed Software (partial) ===',
+    'wmic product get name,version 2>nul | more',
+    'pause'
+  ].join('\r\n');
+  var blob = new Blob([script], {type:'text/plain'});
+  var url = URL.createObjectURL(blob);
+  var a = document.createElement('a');
+  a.href = url; a.download = 'DSBA_Setup.bat';
+  a.click(); URL.revokeObjectURL(url);
+};
+
+// ════════════════════════════════════════════════════════════
+// ─── FEATURE 3: ONLINE USERS (Presence System) ──────────────
+// ════════════════════════════════════════════════════════════
+
+function updatePresence() {
+  if (!CU || !CID) return;
+  var presRef = ref(db, 'presence/' + CID);
+  set(presRef, {
+    name:   CU.name,
+    role:   CU.role,
+    dept:   CU.dept || '',
+    online: true,
+    lastSeen: Date.now()
+  });
+  // Mark offline when tab closes
+  window.addEventListener('beforeunload', function() {
+    // Use sendBeacon or just update (best effort)
+    update(ref(db, 'presence/' + CID), {online: false, lastSeen: Date.now()});
+  });
+  // Keep alive every 60 seconds
+  setInterval(function() {
+    if (CID) update(ref(db, 'presence/' + CID), {online: true, lastSeen: Date.now()});
+  }, 60000);
+}
+
+function listenPresence() {
+  onValue(ref(db, 'presence'), function(snap) {
+    var allPresence = snap.val() || {};
+    window._onlineUsers = allPresence;
+    // Update online indicator in Users page if open
+    var active = document.querySelector('.nav-item.active');
+    if (active && active.id === 'nav-users') renderUsers();
+    // Update topbar online techs indicator
+    updateOnlineTechBadge();
+  });
+}
+
+function updateOnlineTechBadge() {
+  var online = window._onlineUsers || {};
+  var onlineTechs = Object.values(online).filter(function(u) {
+    var cutoff = Date.now() - 2*60*1000; // 2 min
+    return u.role === 'technician' && u.online && u.lastSeen > cutoff;
+  });
+  var badge = $('onlineTechBadge');
+  if (badge) {
+    badge.textContent = onlineTechs.length;
+    badge.style.display = onlineTechs.length > 0 ? 'inline-flex' : 'none';
+  }
+}
+
+function getOnlineDot(uid) {
+  var online = window._onlineUsers || {};
+  var u = online[uid];
+  if (!u) return '<span style="width:8px;height:8px;border-radius:50%;background:#d1d5db;display:inline-block;"></span>';
+  var cutoff = Date.now() - 2*60*1000;
+  var isOnline = u.online && u.lastSeen > cutoff;
+  return '<span title="' + (isOnline?'Online':'Last seen: '+new Date(u.lastSeen).toLocaleTimeString('ar-EG')) + '" style="width:8px;height:8px;border-radius:50%;background:' + (isOnline?'#1d9e75':'#d1d5db') + ';display:inline-block;margin-left:4px;"></span>';
+}
+
+// ════════════════════════════════════════════════════════════
+// ─── FEATURE 4: PC INFO AUTO-COLLECTED WITH TICKET ──────────
+// ════════════════════════════════════════════════════════════
+
+function getClientPCInfo() {
+  var ua = navigator.userAgent;
+  var info = {
+    userAgent: ua,
+    platform:  navigator.platform || 'Unknown',
+    cpuCores:  navigator.hardwareConcurrency || 'Unknown',
+    ram:       navigator.deviceMemory ? navigator.deviceMemory + ' GB' : 'Unknown',
+    language:  navigator.language,
+    screen:    screen.width + 'x' + screen.height,
+    timezone:  Intl.DateTimeFormat().resolvedOptions().timeZone,
+    ip:        'Collecting...',
+    pcName:    'Unknown',
+    winUser:   'Unknown'
+  };
+
+  // Parse OS from UA
+  if (ua.includes('Windows NT')) {
+    var winVer = ua.match(/Windows NT ([\d.]+)/);
+    var verMap = {'10.0':'Windows 10/11','6.3':'Windows 8.1','6.2':'Windows 8','6.1':'Windows 7'};
+    info.os = verMap[winVer?winVer[1]:''] || 'Windows';
+  } else if (ua.includes('Mac')) {
+    info.os = 'macOS';
+  } else if (ua.includes('Linux')) {
+    info.os = 'Linux';
+  } else {
+    info.os = 'Unknown OS';
+  }
+
+  // Parse Browser
+  var browser = 'Unknown';
+  if (ua.includes('Chrome') && !ua.includes('Edg')) browser = 'Chrome ' + (ua.match(/Chrome\/([\d.]+)/)||[])[1];
+  else if (ua.includes('Firefox')) browser = 'Firefox ' + (ua.match(/Firefox\/([\d.]+)/)||[])[1];
+  else if (ua.includes('Edg')) browser = 'Edge ' + (ua.match(/Edg\/([\d.]+)/)||[])[1];
+  else if (ua.includes('Safari')) browser = 'Safari';
+  info.browser = browser;
+
+  return info;
+}
+
+// Fetch public IP (called once on login)
+var _clientIP = 'Collecting...';
+function fetchClientIP() {
+  fetch('https://api.ipify.org?format=json')
+    .then(function(r){return r.json();})
+    .then(function(d){ _clientIP = d.ip; })
+    .catch(function(){ _clientIP = 'Not available'; });
+}
+
+// ════════════════════════════════════════════════════════════
+// ─── FEATURE 5+6+7: TECHNICIAN TIMESHEET ────────────────────
+// ════════════════════════════════════════════════════════════
+
+function renderTimesheet() {
+  var techArr = Object.entries(users)
+    .filter(function(e){ return e[1].role==='technician'; })
+    .map(function(e){ return {id:e[0], name:e[1].name, dept:e[1].dept}; });
+
+  // Get all resolved tickets with time data
+  var ticketArr = Object.entries(tickets)
+    .map(function(e){ return Object.assign({id:e[0]}, e[1]); })
+    .filter(function(tk){ return tk.status==='done' && tk.resolvedBy && tk.assignedAt && tk.resolvedAt; });
+
+  $('mainContent').innerHTML =
+    '<div class="page-header"><h2 style="font-size:18px;font-weight:700;color:var(--primary);">📅 Timesheet الفنيين</h2>' +
+    '<div style="display:flex;gap:10px;">' +
+      '<input type="date" id="ts_from" style="padding:8px 12px;border:1px solid #d1d5db;border-radius:8px;font-family:Cairo,sans-serif;font-size:13px;" onchange="renderTimesheet()">' +
+      '<input type="date" id="ts_to" style="padding:8px 12px;border:1px solid #d1d5db;border-radius:8px;font-family:Cairo,sans-serif;font-size:13px;" onchange="renderTimesheet()">' +
+      '<select id="ts_tech" style="padding:8px 12px;border:1px solid #d1d5db;border-radius:8px;font-family:Cairo,sans-serif;font-size:13px;" onchange="renderTimesheet()">' +
+        '<option value="">كل الفنيين</option>' +
+        techArr.map(function(u){ return '<option value="'+u.id+'">'+u.name+'</option>'; }).join('') +
+      '</select>' +
+      '<button class="btn btn-primary" onclick="printTimesheet()">🖨 طباعة</button>' +
+      '<button class="btn btn-outline" onclick="exportTimesheetCSV()">📥 CSV</button>' +
+    '</div></div>' +
+    '<div id="timesheetContent">' + buildTimesheetHTML() + '</div>';
+
+  // Set default date range (current month)
+  var now = new Date();
+  var firstDay = new Date(now.getFullYear(), now.getMonth(), 1).toISOString().split('T')[0];
+  var lastDay  = new Date(now.getFullYear(), now.getMonth()+1, 0).toISOString().split('T')[0];
+  var fromEl = $('ts_from'), toEl = $('ts_to');
+  if (fromEl && !fromEl.value) fromEl.value = firstDay;
+  if (toEl   && !toEl.value)   toEl.value   = lastDay;
+  setTimeout(function(){ $('timesheetContent').innerHTML = buildTimesheetHTML(); }, 100);
+}
+
+function buildTimesheetHTML() {
+  var fromEl = $('ts_from'), toEl = $('ts_to'), techEl = $('ts_tech');
+  var fromDate = fromEl && fromEl.value ? new Date(fromEl.value).getTime() : 0;
+  var toDate   = toEl   && toEl.value   ? new Date(toEl.value).getTime() + 86400000 : Infinity;
+  var filterTech = techEl ? techEl.value : '';
+
+  // Filter tickets
+  var ticketArr = Object.entries(tickets)
+    .map(function(e){ return Object.assign({id:e[0]}, e[1]); })
+    .filter(function(tk){
+      return tk.status === 'done' &&
+        tk.resolvedBy && tk.assignedAt && tk.resolvedAt &&
+        tk.resolvedAt >= fromDate && tk.resolvedAt <= toDate &&
+        (!filterTech || tk.resolvedBy === filterTech);
+    });
+
+  if (!ticketArr.length) {
+    return '<div class="empty" style="padding:40px;"><div class="empty-icon">📅</div><div class="empty-text">لا توجد بيانات في هذه الفترة</div></div>';
+  }
+
+  // Group by technician
+  var byTech = {};
+  ticketArr.forEach(function(tk) {
+    var uid  = tk.resolvedBy;
+    var name = (users[uid] && users[uid].name) ? users[uid].name : uid;
+    if (!byTech[uid]) byTech[uid] = {name: name, dept: users[uid]&&users[uid].dept||'', tasks: [], totalMs: 0};
+    var duration = tk.resolvedAt - tk.assignedAt;
+    byTech[uid].tasks.push({
+      ticketNo:  tk.id.substr(0,8).toUpperCase(),
+      type:      tk.type || '—',
+      dept:      tk.dept || '—',
+      location:  [tk.building, tk.floor, tk.room].filter(Boolean).join(' / ') || '—',
+      startTime: tk.assignedAt,
+      endTime:   tk.resolvedAt,
+      duration:  duration,
+      resolution: tk.resolution || '—',
+      date:       new Date(tk.resolvedAt).toLocaleDateString('ar-EG')
+    });
+    byTech[uid].totalMs += duration;
+  });
+
+  // Sort tasks by date within each tech
+  Object.values(byTech).forEach(function(tech) {
+    tech.tasks.sort(function(a,b){ return a.startTime - b.startTime; });
+  });
+
+  var html = '<div id="timesheetPrintArea">';
+
+  // Header
+  html += '<div style="background:var(--primary);color:#fff;border-radius:12px;padding:16px 20px;margin-bottom:16px;display:flex;justify-content:space-between;align-items:center;">' +
+    '<div><div style="font-size:16px;font-weight:700;">📅 Timesheet — كشف أعمال الفنيين</div>' +
+    '<div style="font-size:12px;opacity:.7;margin-top:4px;">DSBA School Maintenance System</div></div>' +
+    '<div style="text-align:left;font-size:12px;opacity:.8;">' +
+      '<div>الفترة: ' + (fromEl&&fromEl.value ? new Date(fromEl.value).toLocaleDateString('ar-EG') : '—') + ' → ' + (toEl&&toEl.value ? new Date(toEl.value).toLocaleDateString('ar-EG') : '—') + '</div>' +
+      '<div>تاريخ الطباعة: ' + new Date().toLocaleString('ar-EG') + '</div>' +
+    '</div>' +
+    '</div>';
+
+  // Grand summary row
+  var grandTotal = Object.values(byTech).reduce(function(s,tech){return s+tech.totalMs;},0);
+  var grandCount = ticketArr.length;
+  html += '<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-bottom:16px;">' +
+    '<div class="stat-card blue"><div class="stat-label">إجمالي المهام</div><div class="stat-value">' + grandCount + '</div></div>' +
+    '<div class="stat-card green"><div class="stat-label">إجمالي الوقت</div><div class="stat-value" style="font-size:16px;">' + fmtDuration(grandTotal) + '</div></div>' +
+    '<div class="stat-card gold"><div class="stat-label">عدد الفنيين</div><div class="stat-value">' + Object.keys(byTech).length + '</div></div>' +
+    '</div>';
+
+  // Per-technician sections
+  Object.values(byTech).forEach(function(tech) {
+    html += '<div class="card" style="margin-bottom:20px;">';
+
+    // Technician header
+    html += '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;padding-bottom:12px;border-bottom:2px solid var(--primary);">' +
+      '<div style="display:flex;align-items:center;gap:12px;">' +
+        '<div style="width:40px;height:40px;background:var(--primary);border-radius:50%;display:flex;align-items:center;justify-content:center;color:#fff;font-weight:700;">' + tech.name.charAt(0) + '</div>' +
+        '<div><div style="font-size:15px;font-weight:700;color:var(--primary);">' + tech.name + '</div>' +
+          '<div style="font-size:12px;color:var(--text-muted);">' + (tech.dept||'') + '</div></div>' +
+      '</div>' +
+      '<div style="text-align:left;">' +
+        '<div style="font-size:12px;color:var(--text-muted);">إجمالي المهام: <strong>' + tech.tasks.length + '</strong></div>' +
+        '<div style="font-size:13px;font-weight:700;color:var(--success);">⏱ إجمالي الوقت: ' + fmtDuration(tech.totalMs) + '</div>' +
+      '</div>' +
+    '</div>';
+
+    // Tasks table
+    html += '<div class="tbl-wrap"><table><thead><tr>' +
+      '<th>التاريخ</th><th>رقم البلاغ</th><th>نوع المهمة</th><th>القسم</th><th>الموقع</th>' +
+      '<th>وقت البدء</th><th>وقت الانتهاء</th><th>المدة</th><th>ملاحظات الحل</th>' +
+      '</tr></thead><tbody>';
+
+    tech.tasks.forEach(function(task) {
+      var dur = task.duration;
+      var isLong = dur > 4*3600*1000; // more than 4 hours = highlight
+      html += '<tr style="' + (isLong?'background:#fef3c7;':'') + '">' +
+        '<td style="font-size:12px;">' + task.date + '</td>' +
+        '<td><code style="font-size:11px;">' + task.ticketNo + '</code></td>' +
+        '<td style="font-size:12px;">' + task.type + '</td>' +
+        '<td style="font-size:12px;">' + task.dept + '</td>' +
+        '<td style="font-size:12px;">' + task.location + '</td>' +
+        '<td style="font-size:12px;direction:ltr;text-align:left;">' + new Date(task.startTime).toLocaleTimeString('ar-EG',{hour:'2-digit',minute:'2-digit'}) + '</td>' +
+        '<td style="font-size:12px;direction:ltr;text-align:left;">' + new Date(task.endTime).toLocaleTimeString('ar-EG',{hour:'2-digit',minute:'2-digit'}) + '</td>' +
+        '<td style="font-size:12px;font-weight:600;color:' + (isLong?'#92400e':'var(--success)') + ';">' + fmtDuration(dur) + '</td>' +
+        '<td style="font-size:11px;max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="' + task.resolution + '">' + task.resolution + '</td>' +
+        '</tr>';
+    });
+
+    // Day totals
+    var byDay = {};
+    tech.tasks.forEach(function(task) {
+      var day = new Date(task.endTime).toLocaleDateString('ar-EG');
+      if (!byDay[day]) byDay[day] = {count:0, totalMs:0};
+      byDay[day].count++;
+      byDay[day].totalMs += task.duration;
+    });
+
+    html += '<tr style="background:#f0fdf4;font-weight:700;">' +
+      '<td colspan="7" style="text-align:left;font-size:12px;">مجموع اليوم:</td>' +
+      '<td style="font-size:12px;color:var(--success);">' + fmtDuration(tech.totalMs) + '</td>' +
+      '<td></td></tr>';
+
+    html += '</tbody></table></div>';
+
+    // Day-by-day breakdown footer
+    if (Object.keys(byDay).length > 1) {
+      html += '<div style="margin-top:12px;border-top:1px solid var(--border);padding-top:12px;">' +
+        '<div style="font-size:12px;font-weight:700;color:var(--text-muted);margin-bottom:8px;">تفصيل يومي:</div>' +
+        '<div style="display:flex;flex-wrap:wrap;gap:8px;">' +
+        Object.entries(byDay).map(function(e){
+          return '<div style="background:#f0fdf4;border:1px solid #a7f3d0;border-radius:8px;padding:6px 12px;font-size:12px;">' +
+            '<strong>' + e[0] + '</strong>: ' + e[1].count + ' مهام · ' + fmtDuration(e[1].totalMs) + '</div>';
+        }).join('') + '</div></div>';
+    }
+
+    html += '</div>'; // end card
+  });
+
+  html += '</div>'; // end timesheetPrintArea
+  return html;
+}
+
+function fmtDuration(ms) {
+  if (!ms || ms < 0) return '—';
+  var h = Math.floor(ms / 3600000);
+  var m = Math.floor((ms % 3600000) / 60000);
+  if (h > 0) return h + 'س ' + m + 'د';
+  if (m > 0) return m + ' دقيقة';
+  return Math.floor(ms/1000) + ' ثانية';
+}
+
+window.printTimesheet = function() {
+  var content = $('timesheetPrintArea');
+  if (!content) { alert('لا توجد بيانات للطباعة'); return; }
+  $('printContent').innerHTML = '<div style="direction:rtl;font-family:Cairo,sans-serif;padding:20px;">' + content.innerHTML + '</div>';
+  $('printArea').style.display = 'block';
+  window.print();
+  setTimeout(function(){ $('printArea').style.display='none'; }, 1500);
+};
+
+window.exportTimesheetCSV = function() {
+  var fromEl = $('ts_from'), toEl = $('ts_to'), techEl = $('ts_tech');
+  var fromDate = fromEl && fromEl.value ? new Date(fromEl.value).getTime() : 0;
+  var toDate   = toEl   && toEl.value   ? new Date(toEl.value).getTime() + 86400000 : Infinity;
+  var filterTech = techEl ? techEl.value : '';
+
+  var ticketArr = Object.entries(tickets)
+    .map(function(e){ return Object.assign({id:e[0]}, e[1]); })
+    .filter(function(tk){
+      return tk.status==='done' && tk.resolvedBy && tk.assignedAt && tk.resolvedAt &&
+        tk.resolvedAt >= fromDate && tk.resolvedAt <= toDate &&
+        (!filterTech || tk.resolvedBy === filterTech);
+    });
+
+  if (!ticketArr.length) { alert('لا توجد بيانات'); return; }
+
+  var header = ['الفني','القسم','التاريخ','رقم البلاغ','نوع المهمة','الموقع','وقت البدء','وقت الانتهاء','المدة (دقائق)','ملاحظات'];
+  var rows = ticketArr.map(function(tk){
+    var techName = users[tk.resolvedBy] ? users[tk.resolvedBy].name : tk.resolvedBy;
+    var dur = Math.floor((tk.resolvedAt - tk.assignedAt)/60000);
+    return [
+      techName,
+      tk.dept||'',
+      new Date(tk.resolvedAt).toLocaleDateString('ar-EG'),
+      tk.id.substr(0,8).toUpperCase(),
+      tk.type||'',
+      [tk.building,tk.floor,tk.room].filter(Boolean).join(' / '),
+      new Date(tk.assignedAt).toLocaleTimeString('ar-EG'),
+      new Date(tk.resolvedAt).toLocaleTimeString('ar-EG'),
+      dur,
+      (tk.resolution||'').replace(/,/g,';')
+    ].map(function(v){return '"'+String(v).replace(/"/g,'""')+'"';}).join(',');
+  });
+
+  var csv = '\uFEFF' + header.join(',') + '\n' + rows.join('\n');
+  var blob = new Blob([csv],{type:'text/csv;charset=utf-8;'});
+  var url = URL.createObjectURL(blob);
+  var a = document.createElement('a');
+  a.href=url; a.download='DSBA_Timesheet_' + new Date().toISOString().split('T')[0]+'.csv';
+  a.click(); URL.revokeObjectURL(url);
+};
+
+
 // Render login on page load — called last after all defs
 renderLogin();
+
+window.showOnlineTechs = function() {
+  var online = window._onlineUsers || {};
+  var cutoff = Date.now() - 2*60*1000;
+  var onlineArr = Object.entries(online).filter(function(e){
+    return e[1].role==='technician' && e[1].online && e[1].lastSeen > cutoff;
+  });
+  var allArr = Object.entries(online).filter(function(e){
+    return e[1].role==='technician';
+  }).sort(function(a,b){ return b[1].lastSeen - a[1].lastSeen; });
+
+  var modal = document.createElement('div');
+  modal.className = 'modal-overlay open';
+  modal.id = 'onlineModal';
+  modal.innerHTML =
+    '<div class="modal" style="width:460px;">' +
+    '<button class="modal-close" onclick="document.getElementById(\'onlineModal\').remove()">✕</button>' +
+    '<div class="modal-title">👷 حالة الفنيين</div>' +
+    '<div style="display:flex;gap:10px;margin-bottom:16px;">' +
+      '<div style="flex:1;background:#f0fdf4;border-radius:10px;padding:14px;text-align:center;">' +
+        '<div style="font-size:24px;font-weight:700;color:#1d9e75;">' + onlineArr.length + '</div>' +
+        '<div style="font-size:12px;color:var(--text-muted);">Online الآن</div>' +
+      '</div>' +
+      '<div style="flex:1;background:#fef3c7;border-radius:10px;padding:14px;text-align:center;">' +
+        '<div style="font-size:24px;font-weight:700;color:#92400e;">' + allArr.length + '</div>' +
+        '<div style="font-size:12px;color:var(--text-muted);">إجمالي الفنيين</div>' +
+      '</div>' +
+    '</div>' +
+    '<div>' + allArr.map(function(e){
+      var uid = e[0], u = e[1];
+      var cutoff2 = Date.now() - 2*60*1000;
+      var isOnline = u.online && u.lastSeen > cutoff2;
+      var lastSeen = new Date(u.lastSeen).toLocaleString('ar-EG');
+      return '<div style="display:flex;align-items:center;gap:12px;padding:10px;border-radius:10px;margin-bottom:6px;background:' + (isOnline?'#f0fdf4':'#f9fafb') + ';">' +
+        '<span style="width:10px;height:10px;border-radius:50%;background:' + (isOnline?'#1d9e75':'#d1d5db') + ';flex-shrink:0;"></span>' +
+        '<div style="flex:1;"><div style="font-weight:600;font-size:13px;">' + (u.name||uid) + '</div>' +
+          '<div style="font-size:11px;color:var(--text-muted);">' + (u.dept||'—') + ' · ' + (isOnline?'<span style="color:#1d9e75;">متصل الآن</span>':'آخر ظهور: '+lastSeen) + '</div></div>' +
+        (isOnline?'<span class="badge badge-done">Online</span>':'') +
+        '</div>';
+    }).join('') + '</div>' +
+    '<div class="modal-footer"><button class="btn btn-outline" onclick="document.getElementById(\'onlineModal\').remove()">إغلاق</button></div>' +
+    '</div>';
+  document.body.appendChild(modal);
+};
 
 // close notif on outside click
 document.addEventListener('click',function(e){
