@@ -2622,10 +2622,10 @@ window.generateSetupScript=function(){
 function renderAgent(){
   $('mainContent').innerHTML=
     '<div class="card"><div class="card-title"><span class="icon">🤖</span> AI Inventory Agent</div>'+
-    '<div class="agent-log" id="agentLog"><p class="info">▶ DSBA Inventory Agent v2.1</p><p class="cmd">$ Ready. Click Run Scan to start...</p></div>'+
+    '<div class="agent-log" id="agentLog"><p class="info">▶ DSBA Inventory Agent v3.0</p><p class="cmd">$ Ready. Click Run Scan to start...</p></div>'+
     '<div style="margin-top:14px;display:flex;gap:10px;flex-wrap:wrap;">'+
     '<button type="button" id="agentRunFullBtn" data-agent-action="full" class="btn btn-primary">'+ t('btn_run_scan')+'</button>'+
-    '<button type="button" id="agentScanMachineBtn" data-agent-action="machine" class="btn btn-outline">'+ t('btn_local_scan')+'</button>'+
+    '<button type="button" id="agentScanMachineBtn" data-agent-action="machine" onclick="return agentScanRoomSafe(event)" onmousedown="return agentScanRoomSafe(event)" ontouchstart="return agentScanRoomSafe(event)" class="btn btn-outline">'+ t('btn_local_scan')+'</button>'+
     '<button type="button" id="agentExportCsvBtn" data-agent-action="csv" class="btn btn-outline">'+ t('btn_export_csv')+'</button>'+
     '<button type="button" id="agentSetupScriptBtn" data-agent-action="script" class="btn btn-accent">'+ t('btn_gen_script')+'</button>'+
     '</div></div>';
@@ -2665,7 +2665,12 @@ function bindAgentButtons(){
 // Extra safe button wrappers: ensure Agent buttons work even if inline handlers are blocked
 window.agentScanRoomSafe=function(e){
   if(e){ try{ e.preventDefault(); e.stopPropagation(); }catch(_e){} }
-  if(typeof window.agentScanRoom==='function') window.agentScanRoom();
+  try{
+    var log=document.getElementById('agentLog');
+    if(log){ var p=document.createElement('p'); p.className='cmd'; p.textContent=' --this-machine clicked'; log.appendChild(p); log.scrollTop=log.scrollHeight; }
+  }catch(_e){}
+  if(typeof window.agentScanRoom==='function'){ window.agentScanRoom(); }
+  else { alert('agentScanRoom function is missing'); }
   return false;
 };
 window.runAgentScanSafe=function(e){
@@ -2690,6 +2695,24 @@ document.addEventListener('click',function(e){
   return handleAgentButton(action,e);
 },true);
 
+// FINAL EMERGENCY AGENT BINDER - works even if normal binding fails
+(function(){
+  function emergencyAgentClick(ev){
+    var target = ev.target && ev.target.closest ? ev.target.closest('button') : null;
+    if(!target) return;
+    var txt=(target.textContent||'').trim();
+    if(target.id==='agentScanMachineBtn' || txt.indexOf('مسح هذا الجهاز')>-1 || txt.indexOf('Scan This Machine')>-1 || txt.indexOf('Diesen Rechner')>-1){
+      try{ ev.preventDefault(); ev.stopPropagation(); }catch(_e){}
+      if(window.agentScanRoomSafe) return window.agentScanRoomSafe(ev);
+      if(window.agentScanRoom) { window.agentScanRoom(); return false; }
+      alert('Scan function not loaded');
+      return false;
+    }
+  }
+  document.addEventListener('click', emergencyAgentClick, true);
+  document.addEventListener('mousedown', emergencyAgentClick, true);
+  document.addEventListener('touchstart', emergencyAgentClick, true);
+})();
 // Render login on page load — called last after all defs
 renderLogin();
 
