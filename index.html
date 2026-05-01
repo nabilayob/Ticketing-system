@@ -2509,6 +2509,7 @@ window.agentScanRoom=function(){
   var logOk=false;
   try{
     agentLog('$ scan --this-machine','cmd');
+    agentLog('Scanning this machine now...','info');
     logOk=true;
   }catch(e){ console.error('Agent log error',e); }
   try{
@@ -2554,7 +2555,14 @@ window.agentScanRoom=function(){
     payload.scannedByName = (CU && CU.name) ? CU.name : '';
 
     if(typeof db==='undefined' || !db || typeof push!=='function' || typeof ref!=='function'){
-      throw new Error('Firebase connection is not ready');
+      var localAssets = JSON.parse(localStorage.getItem('dsba_pending_assets')||'[]');
+      localAssets.push(payload);
+      localStorage.setItem('dsba_pending_assets', JSON.stringify(localAssets));
+      assets = assets || {};
+      assets[payload.barcode] = payload;
+      agentLog('Saved locally because Firebase is not ready','info');
+      try{ refreshPage(); }catch(_e){}
+      return;
     }
 
     push(ref(db,'assets'),payload).then(function(){
@@ -2614,13 +2622,43 @@ window.generateSetupScript=function(){
 function renderAgent(){
   $('mainContent').innerHTML=
     '<div class="card"><div class="card-title"><span class="icon">🤖</span> AI Inventory Agent</div>'+
-    '<div class="agent-log" id="agentLog"><p class="info">▶ DSBA Inventory Agent v2.0</p><p class="cmd">$ Ready. Click Run Scan to start...</p></div>'+
+    '<div class="agent-log" id="agentLog"><p class="info">▶ DSBA Inventory Agent v2.1</p><p class="cmd">$ Ready. Click Run Scan to start...</p></div>'+
     '<div style="margin-top:14px;display:flex;gap:10px;flex-wrap:wrap;">'+
-    '<button type="button" id="agentRunFullBtn" class="btn btn-primary" onclick="return runAgentScanSafe(event)">'+ t('btn_run_scan')+'</button>'+
-    '<button type="button" id="agentScanMachineBtn" class="btn btn-outline" onclick="return agentScanRoomSafe(event)">'+ t('btn_local_scan')+'</button>'+
-    '<button type="button" id="agentExportCsvBtn" class="btn btn-outline" onclick="return exportInventoryCSVSafe(event)">'+ t('btn_export_csv')+'</button>'+
-    '<button type="button" id="agentSetupScriptBtn" class="btn btn-accent" onclick="return generateSetupScriptSafe(event)">'+ t('btn_gen_script')+'</button>'+
+    '<button type="button" id="agentRunFullBtn" data-agent-action="full" class="btn btn-primary">'+ t('btn_run_scan')+'</button>'+
+    '<button type="button" id="agentScanMachineBtn" data-agent-action="machine" class="btn btn-outline">'+ t('btn_local_scan')+'</button>'+
+    '<button type="button" id="agentExportCsvBtn" data-agent-action="csv" class="btn btn-outline">'+ t('btn_export_csv')+'</button>'+
+    '<button type="button" id="agentSetupScriptBtn" data-agent-action="script" class="btn btn-accent">'+ t('btn_gen_script')+'</button>'+
     '</div></div>';
+  setTimeout(bindAgentButtons,0);
+}
+
+
+// HARD BIND AGENT BUTTONS
+function handleAgentButton(action,e){
+  if(e){ try{ e.preventDefault(); e.stopPropagation(); }catch(_e){} }
+  try{
+    if(action==='machine') return window.agentScanRoomSafe(e);
+    if(action==='full') return window.runAgentScanSafe(e);
+    if(action==='csv') return window.exportInventoryCSVSafe(e);
+    if(action==='script') return window.generateSetupScriptSafe(e);
+  }catch(err){
+    console.error('Agent button error',err);
+    try{ agentLog('Agent button error: '+(err&&err.message?err.message:err),'warn'); }catch(_e){}
+    alert('Agent button error: '+(err&&err.message?err.message:err));
+  }
+  return false;
+}
+function bindAgentButtons(){
+  var map={agentScanMachineBtn:'machine',agentRunFullBtn:'full',agentExportCsvBtn:'csv',agentSetupScriptBtn:'script'};
+  Object.keys(map).forEach(function(id){
+    var el=document.getElementById(id);
+    if(!el || el.dataset.boundAgent==='1') return;
+    el.dataset.boundAgent='1';
+    el.onclick=function(ev){ return handleAgentButton(map[id],ev); };
+    el.addEventListener('pointerdown',function(ev){
+      if(id==='agentScanMachineBtn') return handleAgentButton('machine',ev);
+    },true);
+  });
 }
 
 
@@ -2646,12 +2684,10 @@ window.generateSetupScriptSafe=function(e){
   return false;
 };
 document.addEventListener('click',function(e){
-  var btn=e.target && e.target.closest ? e.target.closest('#agentScanMachineBtn,#agentRunFullBtn,#agentExportCsvBtn,#agentSetupScriptBtn') : null;
+  var btn=e.target && e.target.closest ? e.target.closest('[data-agent-action],#agentScanMachineBtn,#agentRunFullBtn,#agentExportCsvBtn,#agentSetupScriptBtn') : null;
   if(!btn) return;
-  if(btn.id==='agentScanMachineBtn') return window.agentScanRoomSafe(e);
-  if(btn.id==='agentRunFullBtn') return window.runAgentScanSafe(e);
-  if(btn.id==='agentExportCsvBtn') return window.exportInventoryCSVSafe(e);
-  if(btn.id==='agentSetupScriptBtn') return window.generateSetupScriptSafe(e);
+  var action=btn.dataset.agentAction || (btn.id==='agentScanMachineBtn'?'machine':btn.id==='agentRunFullBtn'?'full':btn.id==='agentExportCsvBtn'?'csv':btn.id==='agentSetupScriptBtn'?'script':'');
+  return handleAgentButton(action,e);
 },true);
 
 // Render login on page load — called last after all defs
