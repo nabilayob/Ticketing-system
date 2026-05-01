@@ -2506,27 +2506,71 @@ function agentAssetPayload(name, cat, serial, brand, room, condition){
 }
 
 window.agentScanRoom=function(){
-  var ua=navigator.userAgent||'';
-  var platform=navigator.platform||'Unknown platform';
-  var lang=navigator.language||currentLang||'ar';
-  var cores=navigator.hardwareConcurrency||'';
-  var mem=navigator.deviceMemory||'';
-  var screenInfo=(window.screen?screen.width+'x'+screen.height:'');
-  var serial='LOCAL-'+btoa((platform+'|'+ua).slice(0,80)).replace(/[^A-Z0-9]/gi,'').slice(0,12).toUpperCase();
-  var name='Local Device - '+platform;
-  var brand=[platform, cores?cores+' cores':'', mem?mem+'GB RAM':'', lang, screenInfo].filter(Boolean).join(' / ');
-  agentLog('$ scan --local-device','cmd');
-  agentLog('✓ تم التعرف على بيانات الجهاز الحالي: '+name,'info');
-  agentLog('✓ Serial: '+serial,'info');
-  var payload=agentAssetPayload(name,'computer',serial,brand,'جهاز محلي','working');
-  push(ref(db,'assets'),payload).then(function(){
-    agentLog('✓ تمت إضافة الجهاز إلى مخزون الأصول','info');
-    if(typeof assets==='object') renderAgent();
-  }).catch(function(err){
-    agentLog('⚠ تعذر الحفظ في Firebase: '+(err&&err.message?err.message:err),'warn');
-  });
-};
+  var logOk=false;
+  try{
+    agentLog('$ scan --this-machine','cmd');
+    logOk=true;
+  }catch(e){ console.error('Agent log error',e); }
+  try{
+    var ua = navigator.userAgent || 'Unknown browser';
+    var platform = navigator.platform || 'Unknown platform';
+    var lang = navigator.language || currentLang || 'ar';
+    var cores = navigator.hardwareConcurrency || '';
+    var mem = navigator.deviceMemory || '';
+    var screenInfo = (window.screen ? (window.screen.width+'x'+window.screen.height) : '');
+    var tz = '';
+    try{ tz = Intl.DateTimeFormat().resolvedOptions().timeZone || ''; }catch(_e){}
 
+    var fpSource = [platform, ua, lang, screenInfo, tz].join('|');
+    var hash = 0;
+    for(var i=0;i<fpSource.length;i++){
+      hash = ((hash<<5)-hash) + fpSource.charCodeAt(i);
+      hash |= 0;
+    }
+    var serial = localStorage.getItem('dsba_local_machine_id');
+    if(!serial){
+      serial = 'LOCAL-' + Math.abs(hash).toString(36).toUpperCase() + '-' + Date.now().toString().slice(-4);
+      localStorage.setItem('dsba_local_machine_id', serial);
+    }
+
+    var name = 'This Machine - ' + platform;
+    var brand = [navigator.vendor || '', cores ? cores+' cores' : '', mem ? mem+'GB RAM' : '', lang, screenInfo, tz].filter(Boolean).join(' / ');
+
+    if(logOk){
+      agentLog('✓ تم قراءة بيانات الجهاز الحالي بنجاح','info');
+      agentLog('✓ الجهاز: '+name,'info');
+      agentLog('✓ Machine ID: '+serial,'info');
+    }
+
+    var payload = agentAssetPayload(name,'computer',serial,brand,'جهاز محلي','working');
+    payload.location = 'AI Agent - This Machine';
+    payload.room = 'This Machine';
+    payload.userAgent = ua;
+    payload.platform = platform;
+    payload.language = lang;
+    payload.screen = screenInfo;
+    payload.timezone = tz;
+    payload.scannedAt = now();
+    payload.scannedByName = (CU && CU.name) ? CU.name : '';
+
+    if(typeof db==='undefined' || !db || typeof push!=='function' || typeof ref!=='function'){
+      throw new Error('Firebase connection is not ready');
+    }
+
+    push(ref(db,'assets'),payload).then(function(){
+      agentLog('✓ تمت إضافة هذا الجهاز إلى مخزون الأصول','info');
+      agentLog('✓ افتح صفحة مخزون الأصول لمراجعة الجهاز','info');
+      try{ refreshPage(); }catch(_e){}
+    }).catch(function(err){
+      agentLog('⚠ تعذر الحفظ في Firebase: '+(err&&err.message?err.message:err),'warn');
+      alert('تعذر حفظ بيانات الجهاز: '+(err&&err.message?err.message:err));
+    });
+  }catch(err){
+    console.error(err);
+    try{ agentLog('⚠ خطأ في مسح هذا الجهاز: '+(err&&err.message?err.message:err),'warn'); }catch(_e){}
+    alert('Scan This Machine Error: '+(err&&err.message?err.message:err));
+  }
+};
 window.runAgentScan=function(){
   agentLog('$ inventory-agent --full-scan','cmd');
   var samples=[
