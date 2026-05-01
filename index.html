@@ -2618,14 +2618,41 @@ window.generateSetupScript=function(){
   agentLog('✓ تم توليد ملف setup script','info');
 };
 
+// SIMPLE LOCAL MACHINE SCAN v15
+window.simpleLocalMachineScan=function(){
+  try{
+    var log=document.getElementById('agentLog');
+    function add(msg,cls){ if(log){ var p=document.createElement('p'); p.className=cls||'info'; p.textContent=msg; log.appendChild(p); log.scrollTop=log.scrollHeight; } }
+    add('$ scan-this-machine --direct-v15','cmd');
+    add('✅ تم الضغط على زر مسح هذا الجهاز','info');
+    var platform=navigator.platform||'Unknown platform';
+    var serial=localStorage.getItem('dsba_local_machine_id');
+    if(!serial){ serial='LOCAL-'+Date.now().toString(36).toUpperCase(); localStorage.setItem('dsba_local_machine_id',serial); }
+    var screenInfo=(window.screen?(window.screen.width+'x'+window.screen.height):'');
+    var tz=''; try{ tz=Intl.DateTimeFormat().resolvedOptions().timeZone||''; }catch(e){}
+    var payload={name:'This Machine - '+platform,cat:'computer',serial:serial,brand:[navigator.vendor||'',navigator.hardwareConcurrency?navigator.hardwareConcurrency+' cores':'',navigator.deviceMemory?navigator.deviceMemory+'GB RAM':'',navigator.language||'',screenInfo,tz].filter(Boolean).join(' / '),building:'AI Agent',location:'AI Agent - This Machine',room:'This Machine',purchaseDate:'',price:0,warranty:0,condition:'working',barcode:'DSBA-'+Date.now().toString().slice(-8),addedAt:Date.now(),addedBy:CID||'',source:'ai-agent-local-v15',userAgent:navigator.userAgent||'',platform:platform,language:navigator.language||'',screen:screenInfo,timezone:tz,scannedAt:Date.now(),scannedByName:(CU&&CU.name)?CU.name:''};
+    add('✓ Machine ID: '+serial,'info');
+    add('✓ '+payload.name,'info');
+    window.assets=window.assets||{}; window.assets['local_'+serial.replace(/[^A-Za-z0-9_-]/g,'_')]=payload;
+    var saved=[]; try{ saved=JSON.parse(localStorage.getItem('dsba_local_scanned_assets')||'[]'); }catch(e){ saved=[]; }
+    saved.push(payload); localStorage.setItem('dsba_local_scanned_assets',JSON.stringify(saved));
+    add('✓ تم حفظ نسخة محلية من بيانات الجهاز','info');
+    if(typeof db!=='undefined'&&db&&typeof push==='function'&&typeof ref==='function'){
+      try{ push(ref(db,'assets'),payload).then(function(){ add('✓ تم حفظ الجهاز في Firebase / مخزون الأصول','info'); try{ if(typeof refreshPage==='function') refreshPage(); }catch(e){} }).catch(function(err){ add('⚠ Firebase رفض الحفظ، لكن تم الحفظ محلياً: '+(err&&err.message?err.message:err),'warn'); }); }catch(e){ add('⚠ Firebase غير متاح، لكن تم الحفظ محلياً','warn'); }
+    } else { add('⚠ Firebase غير جاهز، لكن تم الحفظ محلياً','warn'); }
+    add('✅ انتهى مسح هذا الجهاز','info');
+  }catch(err){ alert('Scan error: '+(err&&err.message?err.message:err)); }
+  return false;
+};
+
 // ─── RENDER AGENT ───
 function renderAgent(){
   $('mainContent').innerHTML=
     '<div class="card"><div class="card-title"><span class="icon">🤖</span> AI Inventory Agent</div>'+
-    '<div class="agent-log" id="agentLog"><p class="info">▶ DSBA Inventory Agent v3.0</p><p class="cmd">$ Ready. Click Run Scan to start...</p></div>'+
+    '<div class="agent-log" id="agentLog"><p class="info">▶ DSBA Inventory Agent v15.0</p><p class="cmd">$ Ready. Click Run Scan to start...</p></div>'+
     '<div style="margin-top:14px;display:flex;gap:10px;flex-wrap:wrap;">'+
     '<button type="button" id="agentRunFullBtn" data-agent-action="full" class="btn btn-primary">'+ t('btn_run_scan')+'</button>'+
-    '<button type="button" id="agentScanMachineBtn" data-agent-action="machine" onclick="return agentScanRoomSafe(event)" onmousedown="return agentScanRoomSafe(event)" ontouchstart="return agentScanRoomSafe(event)" class="btn btn-outline">'+ t('btn_local_scan')+'</button>'+
+    '<button type="button" id="agentScanMachineBtn" data-agent-action="machine" onclick="return simpleLocalMachineScan()" class="btn btn-outline">'+ t('btn_local_scan')+'</button>'+
     '<button type="button" id="agentExportCsvBtn" data-agent-action="csv" class="btn btn-outline">'+ t('btn_export_csv')+'</button>'+
     '<button type="button" id="agentSetupScriptBtn" data-agent-action="script" class="btn btn-accent">'+ t('btn_gen_script')+'</button>'+
     '</div></div>';
@@ -2703,6 +2730,7 @@ document.addEventListener('click',function(e){
     var txt=(target.textContent||'').trim();
     if(target.id==='agentScanMachineBtn' || txt.indexOf('مسح هذا الجهاز')>-1 || txt.indexOf('Scan This Machine')>-1 || txt.indexOf('Diesen Rechner')>-1){
       try{ ev.preventDefault(); ev.stopPropagation(); }catch(_e){}
+      if(window.simpleLocalMachineScan) return window.simpleLocalMachineScan();
       if(window.agentScanRoomSafe) return window.agentScanRoomSafe(ev);
       if(window.agentScanRoom) { window.agentScanRoom(); return false; }
       alert('Scan function not loaded');
