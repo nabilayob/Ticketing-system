@@ -1182,10 +1182,10 @@ function buildAllModals(){
       <button class="modal-close" onclick="closeModal('settingsModal')">✕</button>
       <div class="modal-title">${t('settings_modal_h')}</div>
       <div class="tabs" id="settingsTabs">
-        <div class="tab active" onclick="switchSettingsTab('buildings')">${t('tab_buildings')}</div>
-        <div class="tab" onclick="switchSettingsTab('depts')">${t('tab_depts')}</div>
-        <div class="tab" onclick="switchSettingsTab('store_items')">${t('tab_store')}</div>
-        <div class="tab" onclick="switchSettingsTab('email')">${t('tab_email')}</div>
+        <div class="tab active" data-tab="buildings" onclick="switchSettingsTab('buildings', this)">${t('tab_buildings')}</div>
+        <div class="tab" data-tab="depts" onclick="switchSettingsTab('depts', this)">${t('tab_depts')}</div>
+        <div class="tab" data-tab="store_items" onclick="switchSettingsTab('store_items', this)">${t('tab_store')}</div>
+        <div class="tab" data-tab="email" onclick="switchSettingsTab('email', this)">${t('tab_email')}</div>
       </div>
       <div id="settingsContent"></div>
     </div>
@@ -1923,9 +1923,22 @@ window.showTicketDetail=function(id){
 };
 
 // ─── SETTINGS ───
-window.switchSettingsTab=function(tab){
-  document.querySelectorAll('#settingsTabs .tab').forEach(t=>t.classList.remove('active'));
-  event.target.classList.add('active');
+window.switchSettingsTab=function(tab, el){
+  // Robust tab switching: do not rely on global `event`, because some browsers
+  // do not expose it and programmatic calls like openModal('settingsModal')
+  // have no event at all.
+  document.querySelectorAll('#settingsTabs .tab').forEach(function(t){
+    t.classList.remove('active');
+  });
+
+  if(!el){
+    el = document.querySelector('#settingsTabs .tab[data-tab="'+tab+'"]') ||
+         Array.from(document.querySelectorAll('#settingsTabs .tab')).find(function(t){
+           return (t.getAttribute('onclick')||'').indexOf("'"+tab+"'") !== -1;
+         });
+  }
+  if(el) el.classList.add('active');
+
   renderSettingsTab(tab);
 };
 
