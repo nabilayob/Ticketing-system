@@ -2742,27 +2742,219 @@ window.generateSetupScript=function(){
 // SIMPLE LOCAL MACHINE SCAN v15
 window.simpleLocalMachineScan=function(){
   try{
-    var log=document.getElementById('agentLog');
-    function add(msg,cls){ if(log){ var p=document.createElement('p'); p.className=cls||'info'; p.textContent=msg; log.appendChild(p); log.scrollTop=log.scrollHeight; } }
-    add('$ scan-this-machine --direct-v15','cmd');
-    add('✅ تم الضغط على زر مسح هذا الجهاز','info');
-    var platform=navigator.platform||'Unknown platform';
+    // ── Collect all info ──────────────────────────────────────
+    var ua         = navigator.userAgent||'';
+    var platform   = navigator.platform||'Unknown';
+    var cores      = navigator.hardwareConcurrency||'Unknown';
+    var ram        = navigator.deviceMemory ? navigator.deviceMemory+'GB' : 'Unknown';
+    var lang       = navigator.language||'ar';
+    var vendor     = navigator.vendor||'';
+    var screenInfo = screen.width+'x'+screen.height;
+    var tz=''; try{ tz=Intl.DateTimeFormat().resolvedOptions().timeZone||''; }catch(_e){}
+
+    // OS detection
+    var osName='Unknown OS';
+    if(ua.indexOf('Windows NT 10')!==-1) osName='Windows 10/11';
+    else if(ua.indexOf('Windows NT 6.3')!==-1) osName='Windows 8.1';
+    else if(ua.indexOf('Windows NT 6.1')!==-1) osName='Windows 7';
+    else if(ua.indexOf('Windows')!==-1) osName='Windows';
+    else if(ua.indexOf('Mac OS')!==-1) osName='macOS';
+    else if(ua.indexOf('Linux')!==-1) osName='Linux';
+    else if(ua.indexOf('Android')!==-1) osName='Android';
+
+    // Browser detection
+    var browserName='Unknown';
+    if(ua.indexOf('Edg/')!==-1) browserName='Edge '+((ua.match(/Edg\/([\d.]+)/)||[])[1]||'');
+    else if(ua.indexOf('Chrome/')!==-1) browserName='Chrome '+((ua.match(/Chrome\/([\d.]+)/)||[])[1]||'');
+    else if(ua.indexOf('Firefox/')!==-1) browserName='Firefox '+((ua.match(/Firefox\/([\d.]+)/)||[])[1]||'');
+    else if(ua.indexOf('Safari/')!==-1) browserName='Safari';
+
+    // Machine ID
     var serial=localStorage.getItem('dsba_local_machine_id');
-    if(!serial){ serial='LOCAL-'+Date.now().toString(36).toUpperCase(); localStorage.setItem('dsba_local_machine_id',serial); }
-    var screenInfo=(window.screen?(window.screen.width+'x'+window.screen.height):'');
-    var tz=''; try{ tz=Intl.DateTimeFormat().resolvedOptions().timeZone||''; }catch(e){}
-    var payload={name:'This Machine - '+platform,cat:'computer',serial:serial,brand:[navigator.vendor||'',navigator.hardwareConcurrency?navigator.hardwareConcurrency+' cores':'',navigator.deviceMemory?navigator.deviceMemory+'GB RAM':'',navigator.language||'',screenInfo,tz].filter(Boolean).join(' / '),building:'AI Agent',location:'AI Agent - This Machine',room:'This Machine',purchaseDate:'',price:0,warranty:0,condition:'working',barcode:'DSBA-'+Date.now().toString().slice(-8),addedAt:Date.now(),addedBy:CID||'',source:'ai-agent-local-v15',userAgent:navigator.userAgent||'',platform:platform,language:navigator.language||'',screen:screenInfo,timezone:tz,scannedAt:Date.now(),scannedByName:(CU&&CU.name)?CU.name:''};
-    add('✓ Machine ID: '+serial,'info');
-    add('✓ '+payload.name,'info');
-    window.assets=window.assets||{}; window.assets['local_'+serial.replace(/[^A-Za-z0-9_-]/g,'_')]=payload;
-    var saved=[]; try{ saved=JSON.parse(localStorage.getItem('dsba_local_scanned_assets')||'[]'); }catch(e){ saved=[]; }
-    saved.push(payload); localStorage.setItem('dsba_local_scanned_assets',JSON.stringify(saved));
-    add('✓ تم حفظ نسخة محلية من بيانات الجهاز','info');
-    if(typeof db!=='undefined'&&db&&typeof push==='function'&&typeof ref==='function'){
-      try{ push(ref(db,'assets'),payload).then(function(){ add('✓ تم حفظ الجهاز في Firebase / مخزون الأصول','info'); try{ if(typeof refreshPage==='function') refreshPage(); }catch(e){} }).catch(function(err){ add('⚠ Firebase رفض الحفظ، لكن تم الحفظ محلياً: '+(err&&err.message?err.message:err),'warn'); }); }catch(e){ add('⚠ Firebase غير متاح، لكن تم الحفظ محلياً','warn'); }
-    } else { add('⚠ Firebase غير جاهز، لكن تم الحفظ محلياً','warn'); }
-    add('✅ انتهى مسح هذا الجهاز','info');
-  }catch(err){ alert('Scan error: '+(err&&err.message?err.message:err)); }
+    if(!serial){
+      serial='LOCAL-'+Date.now().toString(36).toUpperCase()+'-'+(Math.random().toString(36).substr(2,4).toUpperCase());
+      localStorage.setItem('dsba_local_machine_id',serial);
+    }
+
+    // DSBA user
+    var dsbaUser=(CU&&CU.name?CU.name:'—')+(CU&&CU.email?' <'+CU.email+'>':'');
+
+    // ── Build popup modal (works from ANY page) ───────────────
+    var existing=document.getElementById('_scanPopup');
+    if(existing) existing.remove();
+
+    var overlay=document.createElement('div');
+    overlay.id='_scanPopup';
+    overlay.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:99999;display:flex;align-items:center;justify-content:center;';
+    overlay.onclick=function(ev){ if(ev.target===overlay) overlay.remove(); };
+
+    var box=document.createElement('div');
+    box.style.cssText='background:#fff;border-radius:16px;padding:0;width:560px;max-width:95vw;max-height:90vh;overflow:hidden;box-shadow:0 20px 60px rgba(0,0,0,.3);font-family:Cairo,sans-serif;direction:rtl;';
+
+    // Header
+    var hdr=document.createElement('div');
+    hdr.style.cssText='background:#0f2d5c;color:#fff;padding:16px 20px;display:flex;justify-content:space-between;align-items:center;';
+    hdr.innerHTML='<div><div style="font-size:15px;font-weight:700;">🏫 مسح الجهاز الحالي</div><div style="font-size:11px;opacity:.7;margin-top:2px;">DSBA AI Agent — نتائج فورية</div></div>';
+    var closeBtn=document.createElement('button');
+    closeBtn.textContent='✕';
+    closeBtn.style.cssText='background:rgba(255,255,255,.2);border:none;color:#fff;width:28px;height:28px;border-radius:50%;cursor:pointer;font-size:14px;';
+    closeBtn.onclick=function(){ overlay.remove(); };
+    hdr.appendChild(closeBtn);
+    box.appendChild(hdr);
+
+    // Terminal log area
+    var terminal=document.createElement('div');
+    terminal.style.cssText='background:#1a1a2e;padding:14px 16px;font-family:monospace;font-size:12px;min-height:100px;max-height:200px;overflow-y:auto;';
+    box.appendChild(terminal);
+
+    function addLog(msg,color){
+      var p=document.createElement('p');
+      p.style.cssText='margin:2px 0;color:'+(color||'#e5e7eb')+';';
+      p.textContent=msg;
+      terminal.appendChild(p);
+      terminal.scrollTop=terminal.scrollHeight;
+    }
+
+    // Info grid
+    var grid=document.createElement('div');
+    grid.style.cssText='padding:16px;display:grid;grid-template-columns:1fr 1fr;gap:10px;max-height:320px;overflow-y:auto;';
+
+    function infoCard(icon,label,value,fullRow){
+      var d=document.createElement('div');
+      d.style.cssText='background:#f8fafc;border-radius:8px;padding:10px;border:1px solid #e2e8f0;'+(fullRow?'grid-column:1/-1;':'');
+      d.innerHTML='<div style="font-size:10px;color:#6b7280;margin-bottom:4px;">'+icon+' '+label+'</div>'+
+                  '<div style="font-size:13px;font-weight:700;color:#0f2d5c;word-break:break-all;">'+value+'</div>';
+      return d;
+    }
+
+    // Footer
+    var ftr=document.createElement('div');
+    ftr.style.cssText='padding:14px 16px;border-top:1px solid #e5e7eb;display:flex;gap:10px;justify-content:flex-end;background:#f9fafb;';
+    var saveBtn=document.createElement('button');
+    saveBtn.textContent='💾 حفظ في مخزون الأصول';
+    saveBtn.style.cssText='padding:8px 16px;background:#0f2d5c;color:#fff;border:none;border-radius:8px;cursor:pointer;font-family:Cairo,sans-serif;font-size:13px;font-weight:600;';
+    var closeBtn2=document.createElement('button');
+    closeBtn2.textContent='إغلاق';
+    closeBtn2.style.cssText='padding:8px 16px;background:#fff;color:#374151;border:1px solid #d1d5db;border-radius:8px;cursor:pointer;font-family:Cairo,sans-serif;font-size:13px;';
+    closeBtn2.onclick=function(){ overlay.remove(); };
+    ftr.appendChild(closeBtn2);
+    ftr.appendChild(saveBtn);
+    box.appendChild(grid);
+    box.appendChild(ftr);
+    overlay.appendChild(box);
+    document.body.appendChild(overlay);
+
+    // ── Fill terminal log ─────────────────────────────────────
+    addLog('$ dsba-agent --scan-this-machine','#00cfff');
+    addLog('▶ جاري جمع بيانات الجهاز...','#e5e7eb');
+    setTimeout(function(){
+      addLog('✅ OS: '+osName,'#00ff88');
+      addLog('✅ Browser: '+browserName,'#00ff88');
+      addLog('✅ CPU: '+cores+' cores','#00ff88');
+      addLog('✅ RAM: '+ram,'#00ff88');
+      addLog('✅ Screen: '+screenInfo,'#00ff88');
+      addLog('✅ Machine ID: '+serial,'#00ff88');
+      addLog('🌐 جاري كشف IP العام...','#fbbf24');
+
+      // ── Fill info cards ───────────────────────────────────
+      grid.appendChild(infoCard('🖥','نظام التشغيل',osName));
+      grid.appendChild(infoCard('🌍','المتصفح',browserName));
+      grid.appendChild(infoCard('🧠','المعالج (CPU)',cores+' cores'));
+      grid.appendChild(infoCard('💾','الذاكرة (RAM)',ram));
+      grid.appendChild(infoCard('🖥','دقة الشاشة',screenInfo));
+      grid.appendChild(infoCard('📱','المنصة',platform));
+      grid.appendChild(infoCard('🌐','IP العام','جاري الكشف...',false));
+      grid.appendChild(infoCard('👤','مستخدم DSBA',dsbaUser,true));
+      grid.appendChild(infoCard('🔑','Machine ID',serial,true));
+      grid.appendChild(infoCard('🗺','Timezone',tz||'Unknown',false));
+      grid.appendChild(infoCard('🗣','اللغة',lang,false));
+
+      // Fetch real IP
+      var ipCard=grid.querySelectorAll('div')[12];
+      fetch('https://api.ipify.org?format=json')
+        .then(function(r){return r.json();})
+        .then(function(d){
+          window._dsbaClientIP=d.ip;
+          if(ipCard) ipCard.querySelector('div:last-child').textContent=d.ip;
+          addLog('✅ IP العام: '+d.ip,'#00ff88');
+          addLog('━━━━━━━━━━━━━━━━━━━━━━━━','#374151');
+          addLog('✅ اكتمل المسح بنجاح','#00ff88');
+        }).catch(function(){
+          if(ipCard) ipCard.querySelector('div:last-child').textContent='تعذر الكشف (شبكة محلية)';
+          addLog('⚠ لم يتم كشف IP (شبكة داخلية)','#fbbf24');
+        });
+
+      // ── Save button handler ─────────────────────────────────
+      saveBtn.onclick=function(){
+        saveBtn.textContent='⏳ جاري الحفظ...';
+        saveBtn.disabled=true;
+        var payload={
+          name:'This Machine - '+osName,
+          cat:'computer',
+          serial:serial,
+          brand:[vendor,cores+' cores',ram,browserName,screenInfo].filter(Boolean).join(' / '),
+          location:'AI Agent - This Machine',
+          room:'AI Agent',
+          building:'AI Agent',
+          purchaseDate:null,
+          price:0,
+          warranty:0,
+          status:'working',
+          barcode:'DSBA-'+Date.now().toString().slice(-8),
+          addedAt:Date.now(),
+          addedBy:CID||'',
+          addedByName:(CU&&CU.name)||'',
+          source:'ai-agent-scan',
+          pcOS:osName,
+          pcBrowser:browserName,
+          pcPlatform:platform,
+          pcCores:cores,
+          pcRAM:ram,
+          pcScreen:screenInfo,
+          pcLanguage:lang,
+          pcTimezone:tz,
+          pcIP:window._dsbaClientIP||'Unknown',
+          windowsUser:dsbaUser,
+          userAgent:ua,
+          scannedAt:Date.now(),
+          scannedByName:(CU&&CU.name)||''
+        };
+        if(typeof db!=='undefined'&&db&&typeof push==='function'&&typeof ref==='function'){
+          push(ref(db,'assets'),payload)
+            .then(function(){
+              saveBtn.textContent='✅ تم الحفظ في المخزون!';
+              saveBtn.style.background='#1d9e75';
+              addLog('✅ تم حفظ الجهاز في مخزون الأصول','#00ff88');
+            })
+            .catch(function(err){
+              saveBtn.textContent='⚠ خطأ في الحفظ';
+              saveBtn.style.background='#d85a30';
+              saveBtn.disabled=false;
+              addLog('⚠ '+((err&&err.message)||String(err)),'#f87171');
+            });
+        } else {
+          // Fallback: save locally
+          var saved=[]; try{ saved=JSON.parse(localStorage.getItem('dsba_scanned_assets')||'[]'); }catch(_e){ saved=[]; }
+          saved.push(payload); localStorage.setItem('dsba_scanned_assets',JSON.stringify(saved));
+          saveBtn.textContent='✅ تم الحفظ محلياً';
+          saveBtn.style.background='#e8a020';
+          addLog('✅ تم الحفظ محلياً (Firebase غير متصل)','#fbbf24');
+        }
+      };
+
+    }, 200);
+
+    // Also write to agentLog if on Agent page
+    var agentLogEl=document.getElementById('agentLog');
+    if(agentLogEl){
+      var ap=document.createElement('p'); ap.className='cmd';
+      ap.textContent='$ scan --this-machine → نافذة مسح مفتوحة';
+      agentLogEl.appendChild(ap); agentLogEl.scrollTop=agentLogEl.scrollHeight;
+    }
+
+  }catch(err){
+    alert('خطأ في المسح: '+(err&&err.message?err.message:String(err)));
+  }
   return false;
 };
 
