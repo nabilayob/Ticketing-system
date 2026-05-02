@@ -1367,7 +1367,7 @@ function renderStore(){
           <div class="card-title"><span class="icon">📋</span> سجل الصرف (${trans.length}) — إجمالي: <span class="cost-tag">${totalIssued.toLocaleString('ar-EG')} ج</span></div>
           <div class="tbl-wrap">
             ${trans.length?`<table>
-              <thead><tr><th>المخزن</th><th>القطعة</th><th>الكمية</th><th>سعر الوحدة</th><th>الإجمالي</th><th>الموقع</th><th>البلاغ</th><th>الفني</th><th>التاريخ</th></tr></thead>
+              <thead><tr><th>المخزن</th><th>القطعة</th><th>الكمية</th><th>سعر الوحدة</th><th>الإجمالي</th><th>الموقع</th><th>البلاغ</th><th>الفني</th><th>التاريخ</th><th>إجراءات</th></tr></thead>
               <tbody>
                 ${trans.slice(0,50).map(t=>`<tr>
                   <td><span class="badge badge-it">${t.storeName||t.storeId||'—'}</span></td>
@@ -1379,6 +1379,9 @@ function renderStore(){
                   <td style="font-size:11px;"><code>${t.ticketId?t.ticketId.substr(0,8):'—'}</code></td>
                   <td style="font-size:12px;">${t.byName||'—'}</td>
                   <td style="font-size:12px;">${fmt_date(t.time)}</td>
+                  <td style="white-space:nowrap;">
+                    ${['admin','storekeeper'].includes(CU.role)?`<button class="btn btn-sm btn-accent" title="تعديل" onclick="editStoreTransaction('${t.id}')">✏️</button>`:''}
+                  </td>
                 </tr>`).join('')}
               </tbody>
             </table>`:'<div class="empty"><div class="empty-icon">📋</div><div class="empty-text">لا توجد عمليات صرف</div></div>'}
@@ -2863,6 +2866,7 @@ function buildAssetsTable(arr){
         '<button class="btn btn-sm btn-primary" style="margin-left:4px;" onclick="showAssetDetailPopup(\''+a.id+'\')">عرض</button>'+
         (a.invoice?'<span title="فاتورة مرفقة" style="margin-right:4px;cursor:pointer;" onclick="viewInvoice(\''+a.id+'\')">📎</span>':'')+
         ' <button class="btn btn-sm btn-outline" onclick="printBarcode(\''+a.id+'\')">'+t('btn_barcode')+'</button>'+
+        (['admin','storekeeper'].includes(CU.role)?' <button class="btn btn-sm btn-accent" title="تعديل" onclick="openEditAssetModal(\''+a.id+'\')">✏️</button>':'')+
         (['admin','storekeeper'].includes(CU.role)?' <button class="btn btn-sm btn-danger" onclick="deleteAsset(\''+a.id+'\')">🗑</button>':'')+
         '</td></tr>';
     }).join('')+'</tbody></table>';
@@ -3359,7 +3363,10 @@ function renderUsers(){
         '<td>'+(u.dept?dept_badge(u.dept):'—')+'</td>'+
         '<td style="font-size:12px;">'+(u.phone||'—')+'</td>'+
         '<td>'+onlineBadge(u,true)+'</td>'+
-        '<td>'+(u.id!==CID?'<button class="btn btn-sm btn-danger" onclick="deleteUser(\''+ u.id+'\')">🗑</button>':'<span class="badge badge-done">'+ t('you_label')+'</span>')+'</td></tr>';
+        '<td style="white-space:nowrap;">'+
+        (isSuperAdmin()?'<button class="btn btn-sm btn-accent" title="تعديل" onclick="openEditUserModal(\''+u.id+'\')">✏️</button> ':'')+
+        (u.id!==CID&&isSuperAdmin()?'<button class="btn btn-sm btn-danger" onclick="deleteUser(\''+ u.id+'\')">🗑</button>':(u.id===CID?'<span class="badge badge-done">'+ t('you_label')+'</span>':''))+
+        '</td></tr>';
     }).join('')+'</tbody></table></div></div>';
 }
 
@@ -3405,6 +3412,125 @@ window.submitUser=function(){
     }).catch(function(e){ alert('Error: '+e.message); });
 };
 window.deleteUser=function(id){ if(confirm(t('del_user_c'))) remove(ref(db,'users/'+id)); };
+
+// ─── EDIT USER MODAL ────────────────────────────────────────
+window.openEditUserModal=function(id){
+  if(!isSuperAdmin()){ alert('غير مصرح'); return; }
+  var u=users[id]; if(!u) return;
+  var old=document.getElementById('_editUserModal'); if(old) old.remove();
+  var deptOpts=(settings.depts||[]).map(function(d){return '<option value="'+d.id+'" '+(u.dept===d.id?'selected':'')+'>'+d.icon+' '+d.name+'</option>';}).join('');
+  var roleOpts=[['teacher',t('role_teacher')],['technician',t('role_technician')],['storekeeper',t('role_storekeeper')],['dept_admin','مدير قسم'],['admin',t('role_admin')]]
+    .map(function(r){return '<option value="'+r[0]+'" '+(u.role===r[0]?'selected':'')+'>'+r[1]+'</option>';}).join('');
+  var checks=(settings.depts||[]).map(function(d){
+    var checked=(u.depts||[]).indexOf(d.id)!==-1?'checked':'';
+    return '<label style="display:flex;align-items:center;gap:6px;background:#f0f2f7;padding:6px 10px;border-radius:8px;cursor:pointer;">'+
+      '<input type="checkbox" value="'+d.id+'" '+checked+'> '+d.icon+' '+d.name+'</label>';
+  }).join('');
+  var ov=document.createElement('div');
+  ov.id='_editUserModal';
+  ov.className='modal-overlay open';
+  ov.style.zIndex='9998';
+  ov.onclick=function(e){ if(e.target===ov) ov.remove(); };
+  ov.innerHTML='<div class="modal" style="width:560px;">'+
+    '<button class="modal-close" onclick="document.getElementById(\'_editUserModal\').remove()">✕</button>'+
+    '<div class="modal-title">✏️ تعديل المستخدم</div>'+
+    '<div class="form-grid">'+
+      '<div class="form-group"><label>الاسم الكامل</label><input id="eu_name" value="'+htmlEsc(u.name||'')+'"></div>'+
+      '<div class="form-group"><label>البريد الإلكتروني</label><input id="eu_email" type="email" value="'+htmlEsc(u.email||'')+'"></div>'+
+      '<div class="form-group"><label>الصلاحية</label><select id="eu_role" onchange="toggleEditUserDepts()">'+roleOpts+'</select></div>'+
+      '<div class="form-group"><label>القسم</label><select id="eu_dept"><option value="">-- اختر --</option>'+deptOpts+'</select></div>'+
+      '<div class="form-group"><label>الهاتف</label><input id="eu_phone" value="'+htmlEsc(u.phone||'')+'"></div>'+
+      '<div class="form-group form-full" id="eu_depts_wrap" style="display:'+(u.role==='dept_admin'?'flex':'none')+';flex-direction:column;"><label>الأقسام المُدارة</label><div id="eu_depts_checks" style="display:flex;flex-wrap:wrap;gap:8px;">'+checks+'</div></div>'+
+    '</div>'+
+    '<div class="modal-footer"><button class="btn btn-outline" onclick="document.getElementById(\'_editUserModal\').remove()">إلغاء</button><button class="btn btn-primary" onclick="saveEditUser(\''+id+'\')">💾 حفظ</button></div>'+
+    '<div style="font-size:11px;color:var(--text-muted);margin-top:10px;">ملاحظة: تعديل البريد هنا يغير بيانات النظام فقط، وليس حساب Firebase Auth.</div>'+
+    '</div>';
+  document.body.appendChild(ov);
+};
+window.toggleEditUserDepts=function(){
+  var role=(document.getElementById('eu_role')||{value:''}).value;
+  var wrap=document.getElementById('eu_depts_wrap');
+  if(wrap) wrap.style.display=(role==='dept_admin')?'flex':'none';
+};
+window.saveEditUser=function(id){
+  var role=(document.getElementById('eu_role')||{value:'teacher'}).value;
+  var updates={
+    name:(document.getElementById('eu_name')||{value:''}).value.trim(),
+    email:(document.getElementById('eu_email')||{value:''}).value.trim(),
+    role:role,
+    dept:(document.getElementById('eu_dept')||{value:''}).value,
+    phone:(document.getElementById('eu_phone')||{value:''}).value.trim(),
+    updatedAt:Date.now(), updatedBy:CID
+  };
+  if(!updates.name||!updates.email){ alert('أدخل الاسم والبريد الإلكتروني'); return; }
+  if(role==='dept_admin'){
+    var checked=[];
+    document.querySelectorAll('#eu_depts_checks input[type=checkbox]:checked').forEach(function(cb){checked.push(cb.value);});
+    if(!checked.length){ alert('اختر قسماً واحداً على الأقل'); return; }
+    updates.depts=checked;
+  } else {
+    updates.depts=null;
+  }
+  update(ref(db,'users/'+id),updates).then(function(){
+    var m=document.getElementById('_editUserModal'); if(m) m.remove();
+  }).catch(function(err){ alert('خطأ في الحفظ: '+(err&&err.message?err.message:err)); });
+};
+
+// ─── EDIT STORE TRANSACTION ─────────────────────────────────
+window.editStoreTransaction=function(id){
+  if(!['admin','storekeeper'].includes(CU.role)){ alert('غير مصرح'); return; }
+  get(ref(db,'store_transactions/'+id)).then(function(snap){
+    var tr=snap.val(); if(!tr) return;
+    var old=document.getElementById('_editStoreTransModal'); if(old) old.remove();
+    var ov=document.createElement('div');
+    ov.id='_editStoreTransModal';
+    ov.className='modal-overlay open';
+    ov.style.zIndex='9998';
+    ov.onclick=function(e){ if(e.target===ov) ov.remove(); };
+    var d=tr.time?new Date(tr.time).toISOString().split('T')[0]:'';
+    ov.innerHTML='<div class="modal" style="width:560px;">'+
+      '<button class="modal-close" onclick="document.getElementById(\'_editStoreTransModal\').remove()">✕</button>'+
+      '<div class="modal-title">✏️ تعديل سجل الصرف</div>'+
+      '<div class="form-grid">'+
+        '<div class="form-group"><label>المخزن</label><input id="et_store" value="'+htmlEsc(tr.storeName||tr.storeId||'')+'"></div>'+
+        '<div class="form-group"><label>القطعة</label><input id="et_item" value="'+htmlEsc(tr.itemName||tr.item||'')+'"></div>'+
+        '<div class="form-group"><label>الكمية</label><input id="et_qty" type="number" value="'+(tr.qty||1)+'" oninput="calcEditStoreTotal()"></div>'+
+        '<div class="form-group"><label>سعر الوحدة</label><input id="et_unit" type="number" value="'+(tr.unitCost||0)+'" oninput="calcEditStoreTotal()"></div>'+
+        '<div class="form-group"><label>الإجمالي</label><input id="et_total" type="number" value="'+(tr.totalCost||tr.cost||0)+'"></div>'+
+        '<div class="form-group"><label>التاريخ</label><input id="et_date" type="date" value="'+d+'"></div>'+
+        '<div class="form-group form-full"><label>الموقع</label><input id="et_location" value="'+htmlEsc(tr.location||'')+'"></div>'+
+        '<div class="form-group form-full"><label>ملاحظات</label><input id="et_note" value="'+htmlEsc(tr.note||'')+'"></div>'+
+      '</div>'+
+      '<div class="modal-footer"><button class="btn btn-outline" onclick="document.getElementById(\'_editStoreTransModal\').remove()">إلغاء</button><button class="btn btn-primary" onclick="saveEditStoreTransaction(\''+id+'\')">💾 حفظ</button></div>'+
+      '<div style="font-size:11px;color:var(--text-muted);margin-top:10px;">ملاحظة: تعديل سجل الصرف لا يغير رصيد المخزن السابق تلقائياً.</div>'+
+      '</div>';
+    document.body.appendChild(ov);
+  });
+};
+window.calcEditStoreTotal=function(){
+  var q=parseFloat((document.getElementById('et_qty')||{value:0}).value)||0;
+  var u=parseFloat((document.getElementById('et_unit')||{value:0}).value)||0;
+  var total=document.getElementById('et_total'); if(total) total.value=(q*u).toFixed(2);
+};
+window.saveEditStoreTransaction=function(id){
+  var date=(document.getElementById('et_date')||{value:''}).value;
+  var updates={
+    storeName:(document.getElementById('et_store')||{value:''}).value.trim(),
+    itemName:(document.getElementById('et_item')||{value:''}).value.trim(),
+    qty:parseFloat((document.getElementById('et_qty')||{value:1}).value)||1,
+    unitCost:parseFloat((document.getElementById('et_unit')||{value:0}).value)||0,
+    totalCost:parseFloat((document.getElementById('et_total')||{value:0}).value)||0,
+    location:(document.getElementById('et_location')||{value:''}).value.trim(),
+    note:(document.getElementById('et_note')||{value:''}).value.trim(),
+    updatedAt:Date.now(), updatedBy:CID, updatedByName:CU.name||''
+  };
+  if(date){ updates.time=new Date(date).getTime(); }
+  update(ref(db,'store_transactions/'+id),updates).then(function(){
+    var m=document.getElementById('_editStoreTransModal'); if(m) m.remove();
+    renderStore();
+  }).catch(function(err){ alert('خطأ في الحفظ: '+(err&&err.message?err.message:err)); });
+};
+
 
 // ─── RENDER REPORTS ───
 function renderReports(){
