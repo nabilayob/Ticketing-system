@@ -426,7 +426,247 @@ tbody tr:hover { background:#f8f9ff; }
   cursor:pointer;letter-spacing:.04em;transition:all .15s;font-family:'Cairo',sans-serif;}
 .lang-btn:hover{background:rgba(255,255,255,0.1);color:#fff;}
 .lang-btn.active-lang{background:var(--accent);border-color:var(--accent);color:#fff;}
+
+/* ══════════════════════════════════════════════
+   HELP SYSTEM STYLES
+══════════════════════════════════════════════ */
+
+/* Help Button (❓) in topbar */
+.help-btn {
+  width:36px; height:36px;
+  background: var(--accent);
+  border:none; border-radius:8px;
+  display:flex; align-items:center; justify-content:center;
+  cursor:pointer; font-size:16px; font-weight:700;
+  color:#fff; transition: all 0.2s;
+  position:relative;
+  font-family:'Cairo',sans-serif;
+}
+.help-btn:hover { background: var(--accent-light); transform:scale(1.05); box-shadow:0 4px 12px rgba(232,160,32,0.4); }
+.help-btn::after {
+  content:'مساعدة';
+  position:absolute; bottom:-26px; right:50%; transform:translateX(50%);
+  background:#1a1a2e; color:#fff; font-size:10px;
+  padding:2px 8px; border-radius:4px; white-space:nowrap;
+  opacity:0; transition:opacity 0.2s; pointer-events:none;
+  font-family:'Cairo',sans-serif;
+}
+.help-btn:hover::after { opacity:1; }
+
+/* ── Context Help Modal ── */
+.help-modal-overlay {
+  position:fixed; inset:0;
+  background:rgba(0,0,0,0.5); backdrop-filter:blur(4px);
+  z-index:9990; display:none; align-items:center; justify-content:center;
+  padding:20px;
+}
+.help-modal-overlay.open { display:flex; animation: fadeIn 0.2s ease; }
+@keyframes fadeIn { from{opacity:0} to{opacity:1} }
+
+.help-modal {
+  background:#fff; border-radius:20px;
+  width:680px; max-width:95vw; max-height:88vh;
+  display:flex; flex-direction:column;
+  box-shadow:0 24px 80px rgba(0,0,0,0.2);
+  overflow:hidden; animation: slideUp 0.25s ease;
+}
+@keyframes slideUp { from{transform:translateY(20px);opacity:0} to{transform:translateY(0);opacity:1} }
+
+.help-modal-header {
+  background: linear-gradient(135deg, var(--primary) 0%, var(--primary-light) 100%);
+  padding:20px 24px; display:flex; align-items:center; gap:14px; flex-shrink:0;
+}
+.help-modal-icon {
+  width:46px; height:46px; background:var(--accent); border-radius:12px;
+  display:flex; align-items:center; justify-content:center;
+  font-size:22px; flex-shrink:0;
+}
+.help-modal-title { color:#fff; font-size:17px; font-weight:700; flex:1; }
+.help-modal-subtitle { color:rgba(255,255,255,0.6); font-size:12px; margin-top:2px; }
+.help-modal-close {
+  width:32px; height:32px; background:rgba(255,255,255,0.15); border:none;
+  border-radius:8px; color:#fff; font-size:16px; cursor:pointer;
+  display:flex; align-items:center; justify-content:center; transition:background 0.15s;
+}
+.help-modal-close:hover { background:rgba(255,255,255,0.25); }
+
+.help-modal-tabs {
+  display:flex; border-bottom:1px solid #e5e7eb;
+  background:#f9fafb; flex-shrink:0; overflow-x:auto;
+}
+.help-tab-btn {
+  padding:12px 20px; border:none; background:transparent;
+  font-family:'Cairo',sans-serif; font-size:13px; font-weight:600;
+  color:var(--text-muted); cursor:pointer; white-space:nowrap;
+  border-bottom:2px solid transparent; margin-bottom:-1px;
+  transition:all 0.15s; display:flex; align-items:center; gap:6px;
+}
+.help-tab-btn:hover { color:var(--primary); background:#f0f4ff; }
+.help-tab-btn.active { color:var(--primary); border-bottom-color:var(--primary); background:#fff; }
+
+.help-modal-body { flex:1; overflow-y:auto; padding:24px; }
+
+/* Help content styles */
+.help-section { margin-bottom:24px; }
+.help-section:last-child { margin-bottom:0; }
+.help-step {
+  display:flex; gap:14px; align-items:flex-start;
+  padding:14px; border-radius:12px; margin-bottom:10px;
+  background:#f8f9ff; border:1px solid #e8edf8;
+  transition:background 0.15s;
+}
+.help-step:hover { background:#f0f4ff; }
+.help-step-num {
+  width:30px; height:30px; background:var(--primary); color:#fff;
+  border-radius:50%; display:flex; align-items:center; justify-content:center;
+  font-size:13px; font-weight:700; flex-shrink:0;
+}
+.help-step-content { flex:1; }
+.help-step-title { font-size:14px; font-weight:700; color:var(--primary); margin-bottom:4px; }
+.help-step-title-en { font-size:11px; color:var(--text-muted); font-weight:400; }
+.help-step-desc { font-size:13px; color:#4b5563; line-height:1.6; }
+
+.help-tip {
+  background:linear-gradient(135deg,#fff8e1,#fffde7);
+  border:1px solid #f5c256; border-radius:10px;
+  padding:12px 16px; margin-bottom:10px;
+  display:flex; gap:10px; align-items:flex-start;
+}
+.help-tip-icon { font-size:18px; flex-shrink:0; }
+.help-tip-text { font-size:13px; color:#5a3e00; line-height:1.6; }
+
+.help-warning {
+  background:#fff0f0; border:1px solid #fca5a5; border-radius:10px;
+  padding:12px 16px; margin-bottom:10px;
+  display:flex; gap:10px; align-items:flex-start;
+}
+.help-warning-text { font-size:13px; color:#7f1d1d; line-height:1.6; }
+
+.help-roles-grid {
+  display:grid; grid-template-columns:repeat(auto-fit,minmax(140px,1fr)); gap:10px;
+  margin-bottom:16px;
+}
+.help-role-card {
+  background:#f8f9ff; border:1px solid #e8edf8; border-radius:12px;
+  padding:14px; text-align:center;
+}
+.help-role-icon { font-size:28px; margin-bottom:6px; }
+.help-role-name { font-size:13px; font-weight:700; color:var(--primary); }
+.help-role-name-en { font-size:10px; color:var(--text-muted); }
+.help-role-desc { font-size:11px; color:#6b7280; margin-top:4px; line-height:1.4; }
+
+.help-badge-demo {
+  display:inline-flex; align-items:center; gap:6px;
+  padding:4px 12px; border-radius:20px; font-size:12px; font-weight:600;
+  margin:2px;
+}
+
+/* ── FAQ Page ── */
+.faq-page { }
+.faq-search-wrap { position:relative; margin-bottom:24px; }
+.faq-search {
+  width:100%; padding:12px 16px 12px 44px;
+  border:2px solid #e5e7eb; border-radius:12px;
+  font-family:'Cairo',sans-serif; font-size:14px;
+  outline:none; transition:border-color 0.2s; background:#fff;
+}
+.faq-search:focus { border-color:var(--primary); }
+.faq-search-icon { position:absolute; right:14px; top:50%; transform:translateY(-50%); font-size:18px; }
+
+.faq-category { margin-bottom:28px; }
+.faq-cat-title {
+  font-size:15px; font-weight:700; color:var(--primary);
+  margin-bottom:12px; display:flex; align-items:center; gap:8px;
+  padding-bottom:8px; border-bottom:2px solid var(--accent);
+}
+.faq-item {
+  border:1px solid #e5e7eb; border-radius:10px; margin-bottom:8px;
+  overflow:hidden; transition:box-shadow 0.15s;
+}
+.faq-item:hover { box-shadow:0 2px 8px rgba(0,0,0,0.08); }
+.faq-question {
+  padding:14px 16px; font-size:13px; font-weight:600;
+  cursor:pointer; display:flex; align-items:flex-start; gap:10px;
+  background:#fff; transition:background 0.15s; color:var(--text);
+  border:none; width:100%; text-align:right; font-family:'Cairo',sans-serif;
+}
+.faq-question:hover { background:#f8f9ff; }
+.faq-question.open { background:#f0f4ff; color:var(--primary); }
+.faq-q-icon { font-size:16px; flex-shrink:0; margin-top:1px; }
+.faq-q-text { flex:1; text-align:right; }
+.faq-q-en { font-size:11px; color:var(--text-muted); font-weight:400; display:block; margin-top:2px; }
+.faq-arrow { margin-right:auto; transition:transform 0.2s; flex-shrink:0; color:var(--text-muted); }
+.faq-question.open .faq-arrow { transform:rotate(180deg); }
+.faq-answer {
+  max-height:0; overflow:hidden;
+  transition:max-height 0.3s ease, padding 0.2s;
+  background:#fafbff;
+}
+.faq-answer.open { max-height:600px; }
+.faq-answer-inner { padding:14px 16px 16px; font-size:13px; color:#374151; line-height:1.7; border-top:1px solid #e8edf8; }
+.faq-answer-inner ul { margin:8px 0 8px 0; padding-right:20px; }
+.faq-answer-inner li { margin-bottom:4px; }
+
+/* ── AI Help Chat ── */
+.ai-help-wrap { display:flex; flex-direction:column; height:380px; }
+.ai-chat-messages {
+  flex:1; overflow-y:auto; padding:16px;
+  background:#f8f9ff; border-radius:12px; margin-bottom:12px;
+  display:flex; flex-direction:column; gap:10px;
+}
+.ai-chat-msg { display:flex; gap:10px; align-items:flex-start; max-width:90%; }
+.ai-chat-msg.user { flex-direction:row-reverse; align-self:flex-end; }
+.ai-chat-msg.bot { align-self:flex-start; }
+.ai-chat-avatar {
+  width:32px; height:32px; border-radius:50%;
+  display:flex; align-items:center; justify-content:center;
+  font-size:14px; flex-shrink:0;
+}
+.ai-chat-msg.bot .ai-chat-avatar { background:var(--primary); color:#fff; }
+.ai-chat-msg.user .ai-chat-avatar { background:var(--accent); color:#fff; }
+.ai-chat-bubble {
+  padding:10px 14px; border-radius:14px; font-size:13px;
+  line-height:1.6; max-width:100%;
+}
+.ai-chat-msg.bot .ai-chat-bubble { background:#fff; border:1px solid #e5e7eb; color:var(--text); border-radius:14px 14px 14px 0; }
+.ai-chat-msg.user .ai-chat-bubble { background:var(--primary); color:#fff; border-radius:14px 14px 0 14px; }
+.ai-chat-typing { display:flex; gap:4px; align-items:center; padding:4px 0; }
+.ai-chat-typing span {
+  width:7px; height:7px; background:#94a3b8; border-radius:50%;
+  animation:typingDot 1.2s infinite;
+}
+.ai-chat-typing span:nth-child(2) { animation-delay:0.2s; }
+.ai-chat-typing span:nth-child(3) { animation-delay:0.4s; }
+@keyframes typingDot { 0%,60%,100%{opacity:0.3;transform:scale(0.8)} 30%{opacity:1;transform:scale(1)} }
+
+.ai-chat-input-row { display:flex; gap:8px; }
+.ai-chat-input {
+  flex:1; padding:10px 14px;
+  border:1.5px solid #e5e7eb; border-radius:10px;
+  font-family:'Cairo',sans-serif; font-size:13px;
+  outline:none; transition:border-color 0.15s; background:#fff;
+}
+.ai-chat-input:focus { border-color:var(--primary); }
+.ai-chat-send {
+  width:40px; height:40px; background:var(--primary); border:none;
+  border-radius:10px; color:#fff; cursor:pointer; font-size:18px;
+  display:flex; align-items:center; justify-content:center;
+  transition:background 0.15s;
+}
+.ai-chat-send:hover { background:var(--primary-light); }
+.ai-quick-btns { display:flex; gap:6px; flex-wrap:wrap; margin-bottom:10px; }
+.ai-quick-btn {
+  padding:5px 12px; border:1px solid var(--primary);
+  border-radius:20px; background:transparent; color:var(--primary);
+  font-family:'Cairo',sans-serif; font-size:12px; cursor:pointer;
+  transition:all 0.15s; white-space:nowrap;
+}
+.ai-quick-btn:hover { background:var(--primary); color:#fff; }
+
+/* ── FAQ NAV page in sidebar ── */
+#nav-help.active { background:rgba(232,160,32,0.15); color:var(--accent); border-right-color: var(--accent); }
 </style>
+
 </head>
 <body>
 
@@ -461,6 +701,7 @@ tbody tr:hover { background:#f8f9ff; }
       <div class="topbar-title" id="pageTitle"></div>
       <div class="topbar-actions">
         <div class="lang-switcher" id="langSwitcher"></div>
+        <button class="help-btn" onclick="openContextHelp()" title="مساعدة / Help">❓</button>
         <div class="notif-btn" onclick="toggleNotif()" id="notifBtn">
           🔔 <span class="notif-badge" id="notifBadge" style="display:none;">0</span>
         </div>
@@ -476,6 +717,29 @@ tbody tr:hover { background:#f8f9ff; }
 
 <!-- MODALS — rendered by JS -->
 <div id="modalsContainer"></div>
+
+<!-- ════════════════════════════════════════
+     HELP SYSTEM MODAL
+════════════════════════════════════════ -->
+<div class="help-modal-overlay" id="helpModalOverlay" onclick="if(event.target===this)closeHelpModal()">
+  <div class="help-modal" id="helpModal">
+    <div class="help-modal-header">
+      <div class="help-modal-icon">❓</div>
+      <div style="flex:1">
+        <div class="help-modal-title" id="helpModalTitle">مركز المساعدة — Help Center</div>
+        <div class="help-modal-subtitle" id="helpModalSub">اختر القسم للاطلاع على الشرح</div>
+      </div>
+      <button class="help-modal-close" onclick="closeHelpModal()">✕</button>
+    </div>
+    <div class="help-modal-tabs" id="helpModalTabs">
+      <button class="help-tab-btn active" data-tab="guide" onclick="switchHelpTab('guide')">📖 دليل الصفحة</button>
+      <button class="help-tab-btn" data-tab="faq" onclick="switchHelpTab('faq')">❓ الأسئلة الشائعة</button>
+      <button class="help-tab-btn" data-tab="roles" onclick="switchHelpTab('roles')">👥 الصلاحيات</button>
+      <button class="help-tab-btn" data-tab="ai" onclick="switchHelpTab('ai')">🤖 مساعد ذكي</button>
+    </div>
+    <div class="help-modal-body" id="helpModalBody"></div>
+  </div>
+</div>
 
 <!-- BARCODE PRINT -->
 <div id="printArea" style="display:none;padding:20px;"><div id="printContent"></div></div>
@@ -4811,6 +5075,682 @@ document.addEventListener('click', function(e){
     window.switchSettingsTab(tabName, tabEl);
   }
 }, true);
+
+
+// ══════════════════════════════════════════════════════════════
+// ─── HELP SYSTEM ──────────────────────────────────────────────
+// ══════════════════════════════════════════════════════════════
+
+var helpAiHistory = [];
+var helpCurrentTab = 'guide';
+
+// ─── Page context data ───────────────────────────────────────
+var HELP_PAGES = {
+  dashboard: {
+    ar: 'لوحة التحكم', en: 'Dashboard',
+    icon: '📊',
+    steps: [
+      { ar: 'عرض الإحصائيات الرئيسية', en: 'View Main Statistics',
+        desc_ar: 'تعرض البطاقات العلوية ملخص شامل: إجمالي البلاغات، المعلقة، الجارية، والمنتهية.',
+        desc_en: 'Top cards show a summary: total tickets, pending, in-progress, and done.' },
+      { ar: 'أحدث البلاغات', en: 'Recent Tickets',
+        desc_ar: 'يعرض الجدول آخر 5 بلاغات مع الموقع، القسم، الفني المعين وحالة إشغاله.',
+        desc_en: 'Table shows last 5 tickets with location, dept, assigned tech and availability.' },
+      { ar: 'رفع بلاغ صيانة', en: 'Submit a Ticket',
+        desc_ar: 'اضغط "➕ بلاغ صيانة جديد" لفتح نموذج الإبلاغ عن مشكلة.',
+        desc_en: 'Press "➕ New Ticket" to open the maintenance request form.' }
+    ],
+    tips: [
+      { ar: 'النقطة الخضراء ● بجانب اسم الفني تعني أنه متصل الآن.', en: 'Green dot ● next to a tech name means they are currently online.' },
+      { ar: 'مدير النظام يرى إجمالي التكاليف، بينما الفني يرى بلاغات قسمه فقط.', en: 'Admin sees total costs; technicians only see their dept tickets.' }
+    ]
+  },
+  tickets: {
+    ar: 'بلاغات الصيانة', en: 'Maintenance Tickets',
+    icon: '🛠️',
+    steps: [
+      { ar: 'رفع بلاغ جديد', en: 'Submit New Ticket',
+        desc_ar: 'اضغط "➕ بلاغ جديد" ثم أدخل الموقع (مبنى/دور/غرفة)، القسم، نوع المشكلة، والأولوية.',
+        desc_en: 'Press "➕ New Ticket", enter location (building/floor/room), dept, issue type, and priority.' },
+      { ar: 'تصفية البلاغات', en: 'Filter Tickets',
+        desc_ar: 'استخدم القوائم المنسدلة لتصفية البلاغات حسب الحالة (معلق/جارٍ/منتهٍ) أو القسم.',
+        desc_en: 'Use dropdowns to filter by status (pending/in-progress/done) or by department.' },
+      { ar: 'تعيين فني', en: 'Assign Technician',
+        desc_ar: 'المدير: اضغط زر 👷 على البلاغ المعلق لتعيين فني مناسب. يظهر حالة الفني (مشغول/متاح).',
+        desc_en: 'Admin: Press 👷 on a pending ticket to assign a tech. System shows busy/available status.' },
+      { ar: 'عرض التفاصيل وإغلاق البلاغ', en: 'View Details & Close Ticket',
+        desc_ar: 'اضغط "تفاصيل" لعرض كامل بيانات البلاغ، وإضافة ملاحظات، وتغيير الحالة، أو حل البلاغ مع إدخال التكلفة.',
+        desc_en: 'Press "Details" to see full ticket info, add notes, change status, or resolve with cost entry.' }
+    ],
+    tips: [
+      { ar: 'الأولوية عالية 🔴 تعني تدخل فوري مطلوب. استخدم منخفضة 🟢 للمشاكل البسيطة.', en: 'High priority 🔴 = immediate action. Low 🟢 = minor issues.' },
+      { ar: 'الفني لا يستطيع فتح بلاغ جديد، فقط يتلقى المهام المعينة له.', en: 'Technicians cannot create tickets; they only receive assigned tasks.' }
+    ],
+    warnings: [
+      { ar: 'حذف البلاغ نهائي ولا يمكن التراجع عنه. تأكد قبل الحذف.', en: 'Ticket deletion is permanent and cannot be undone.' }
+    ]
+  },
+  assets: {
+    ar: 'مخزون الأصول', en: 'Asset Inventory',
+    icon: '📦',
+    steps: [
+      { ar: 'إضافة أصل جديد', en: 'Add New Asset',
+        desc_ar: 'اضغط "➕ أصل جديد" وأدخل الاسم، الفئة، الرقم التسلسلي، الموقع، تاريخ الشراء، والقيمة.',
+        desc_en: 'Press "➕ New Asset", enter name, category, serial number, location, purchase date, and value.' },
+      { ar: 'طباعة الباركود', en: 'Print Barcode',
+        desc_ar: 'كل أصل له باركود فريد. اضغط زر الطباعة 🖨️ لطباعة ملصق الباركود ولصقه على الجهاز.',
+        desc_en: 'Each asset has a unique barcode. Press 🖨️ to print a barcode label and attach it to the device.' },
+      { ar: 'تتبع الضمان', en: 'Warranty Tracking',
+        desc_ar: 'النظام يُنبه تلقائياً عند انتهاء ضمان أي أصل خلال 30 يوماً القادمة.',
+        desc_en: 'System auto-alerts when an asset warranty expires within the next 30 days.' },
+      { ar: 'تعديل أو حذف أصل', en: 'Edit or Delete Asset',
+        desc_ar: 'اضغط ✏️ لتعديل بيانات الأصل أو 🗑 لحذفه. الحذف متاح للمدير فقط.',
+        desc_en: 'Press ✏️ to edit asset data or 🗑 to delete. Only admins can delete.' }
+    ],
+    tips: [
+      { ar: 'استخدم الباركود لمسح الجهاز والوصول السريع لبياناته.', en: 'Use the barcode to quickly scan devices and access their data.' },
+      { ar: 'فئات الأصول: كمبيوتر، لابتوب، طابعة، بروجيكتور، تكييف، مروحة، إضاءة، كاميرا، أثاث، مركبة.', en: 'Asset categories: computer, laptop, printer, projector, A/C, fan, light, camera, furniture, vehicle.' }
+    ]
+  },
+  store: {
+    ar: 'قطع الغيار', en: 'Spare Parts Store',
+    icon: '🏪',
+    steps: [
+      { ar: 'عرض رصيد المخازن', en: 'View Store Inventory',
+        desc_ar: 'تعرض الصفحة قائمة المخازن (IT، كهرباء) مع الكميات المتاحة لكل قطعة.',
+        desc_en: 'Page shows store list (IT, electrical) with available quantities per item.' },
+      { ar: 'صرف قطعة غيار', en: 'Issue a Spare Part',
+        desc_ar: 'اضغط "إدارة المخزن" ثم اختر الصنف، أدخل الكمية والسعر، وربطه ببلاغ إن أردت.',
+        desc_en: 'Press "Manage Store", select item, enter quantity and price, optionally link to a ticket.' },
+      { ar: 'إضافة صنف جديد', en: 'Add New Item',
+        desc_ar: 'من الإعدادات يمكن إضافة أصناف جديدة لقوائم قطع الغيار.',
+        desc_en: 'From Settings you can add new items to spare parts lists.' },
+      { ar: 'عرض سجل الصرف', en: 'View Transaction History',
+        desc_ar: 'يعرض الجدول كل عمليات الصرف مع التاريخ، الكمية، السعر، والفني المعني.',
+        desc_en: 'Table shows all transactions with date, quantity, price, and responsible technician.' }
+    ],
+    tips: [
+      { ar: 'أمين المخزن والمدير فقط يستطيعان الصرف وتعديل السجلات.', en: 'Only storekeeper and admin can issue parts and edit records.' }
+    ]
+  },
+  users: {
+    ar: 'إدارة المستخدمين', en: 'User Management',
+    icon: '👥',
+    steps: [
+      { ar: 'إضافة مستخدم جديد', en: 'Add New User',
+        desc_ar: 'اضغط "➕ إضافة مستخدم"، أدخل الاسم، البريد، كلمة المرور، الصلاحية، والقسم للفنيين.',
+        desc_en: 'Press "➕ Add User", enter name, email, password, role, and dept for technicians.' },
+      { ar: 'تعديل بيانات مستخدم', en: 'Edit User',
+        desc_ar: 'اضغط ✏️ على أي مستخدم لتعديل اسمه، صلاحيته، أو قسمه.',
+        desc_en: 'Press ✏️ on any user to edit their name, role, or department.' },
+      { ar: 'مراقبة الحضور الأونلاين', en: 'Monitor Online Status',
+        desc_ar: 'النقطة الخضراء تعني المستخدم متصل الآن. يمكن رؤية آخر وقت تسجيل دخول.',
+        desc_en: 'Green dot = user is online now. You can see the last login time.' }
+    ],
+    tips: [
+      { ar: 'مدير القسم يرى ويدير فنيي أقسامه فقط. السوبر أدمن يرى الجميع.', en: 'Dept admin manages only their dept techs. Super admin sees all.' },
+      { ar: 'تعديل البريد في النظام لا يغير بيانات Firebase Auth. تواصل مع المدير الفني للتغيير الكامل.', en: 'Editing email here only changes system data, not Firebase Auth credentials.' }
+    ],
+    warnings: [
+      { ar: 'حذف المستخدم نهائي. تأكد من نقل مهامه قبل الحذف.', en: 'User deletion is permanent. Reassign their tasks before deleting.' }
+    ]
+  },
+  reports: {
+    ar: 'التقارير', en: 'Reports',
+    icon: '📈',
+    steps: [
+      { ar: 'معدل الإنجاز', en: 'Completion Rate',
+        desc_ar: 'نسبة البلاغات المغلقة من إجمالي البلاغات. كلما ارتفعت النسبة كلما كان الأداء أفضل.',
+        desc_en: 'Percentage of closed tickets vs total. Higher rate = better performance.' },
+      { ar: 'إجمالي التكاليف', en: 'Total Costs',
+        desc_ar: 'مجموع تكاليف كل أعمال الصيانة المغلقة.',
+        desc_en: 'Sum of all costs from resolved maintenance work.' },
+      { ar: 'أعلى المواقع تكلفةً', en: 'Highest Cost Locations',
+        desc_ar: 'رسم بياني يوضح أكثر الغرف / الفصول استهلاكاً لميزانية الصيانة.',
+        desc_en: 'Bar chart showing rooms / classrooms with the highest maintenance spend.' },
+      { ar: 'أداء الفنيين', en: 'Technician Performance',
+        desc_ar: 'يوضح عدد البلاغات المغلقة لكل فني. مفيد لتقييم الكفاءة.',
+        desc_en: 'Shows closed tickets count per technician. Useful for performance evaluation.' }
+    ],
+    tips: [
+      { ar: 'التقارير متاحة للمدير ومديري الأقسام فقط.', en: 'Reports are available to admin and dept admins only.' }
+    ]
+  },
+  settings: {
+    ar: 'الإعدادات', en: 'Settings',
+    icon: '⚙️',
+    steps: [
+      { ar: 'إدارة المباني والأدوار', en: 'Manage Buildings & Floors',
+        desc_ar: 'أضف أو احذف مباني وأدوار وغرف/فصول تظهر في نماذج البلاغات والأصول.',
+        desc_en: 'Add/delete buildings, floors, and rooms that appear in ticket and asset forms.' },
+      { ar: 'إدارة الأقسام والأنواع', en: 'Manage Departments & Types',
+        desc_ar: 'أضف أقساماً جديدة (IT، كهرباء، مدني...) وأنواع المشاكل لكل قسم.',
+        desc_en: 'Add new departments (IT, electrical, civil...) and issue types for each.' },
+      { ar: 'قطع الغيار', en: 'Spare Parts Lists',
+        desc_ar: 'إدارة قوائم الأصناف في مخازن IT والكهرباء.',
+        desc_en: 'Manage item lists in IT and electrical stores.' },
+      { ar: 'إعدادات البريد الإلكتروني', en: 'Email Settings',
+        desc_ar: 'ضبط إشعارات البريد عند رفع بلاغ جديد أو حله.',
+        desc_en: 'Configure email notifications for new tickets and resolutions.' }
+    ],
+    tips: [
+      { ar: 'الإعدادات متاحة للسوبر أدمن فقط.', en: 'Settings are accessible to super admin only.' }
+    ]
+  },
+  timesheet: {
+    ar: 'كشف الحضور والأعمال', en: 'Timesheet',
+    icon: '📅',
+    steps: [
+      { ar: 'عرض سجل الأعمال', en: 'View Work Records',
+        desc_ar: 'يعرض الكشف جميع مهام الفنيين مع وقت البدء والانتهاء لكل بلاغ.',
+        desc_en: 'Timesheet shows all tech tasks with start/end time for each ticket.' },
+      { ar: 'تصفية حسب الفترة', en: 'Filter by Period',
+        desc_ar: 'اختر تاريخ من وإلى لعرض سجل فترة معينة.',
+        desc_en: 'Choose from/to date to view records for a specific period.' },
+      { ar: 'طباعة الكشف', en: 'Print Timesheet',
+        desc_ar: 'اضغط زر الطباعة لطباعة كشف رسمي منسق يصلح للأرشفة.',
+        desc_en: 'Press print to get a formatted official timesheet suitable for archiving.' }
+    ],
+    tips: [
+      { ar: 'يُسجَّل وقت البدء تلقائياً عند تعيين الفني، ووقت الانتهاء عند إغلاق البلاغ.', en: 'Start time is logged automatically when tech is assigned; end time when ticket is closed.' }
+    ]
+  },
+  agent: {
+    ar: 'AI Agent - المخزون الذكي', en: 'AI Agent - Smart Inventory',
+    icon: '🤖',
+    steps: [
+      { ar: 'مسح هذا الجهاز', en: 'Scan This Machine',
+        desc_ar: 'اضغط "🏫 مسح هذا الجهاز" لقراءة معلومات الجهاز الحالي وإضافته تلقائياً للمخزون.',
+        desc_en: 'Press "🏫 Scan This Machine" to read current device info and auto-add to inventory.' },
+      { ar: 'تشغيل المسح الكامل', en: 'Run Full Scan',
+        desc_ar: 'يمسح الشبكة ويجمع بيانات الأجهزة المتصلة تلقائياً.',
+        desc_en: 'Scans the network and auto-collects connected device data.' },
+      { ar: 'تصدير CSV', en: 'Export CSV',
+        desc_ar: 'تصدير قائمة الأجهزة المرصودة لملف Excel/CSV للأرشفة الخارجية.',
+        desc_en: 'Export scanned device list to Excel/CSV for external archiving.' }
+    ],
+    tips: [
+      { ar: 'هذه الميزة متاحة للسوبر أدمن فقط.', en: 'This feature is available to super admin only.' },
+      { ar: 'المسح يعمل بشكل أفضل على نفس الشبكة المحلية.', en: 'Scanning works best on the same local network.' }
+    ]
+  }
+};
+
+// ─── FAQ DATA ──────────────────────────────────────────────────
+var FAQ_DATA = [
+  {
+    cat_ar: '🔐 تسجيل الدخول والحساب', cat_en: 'Login & Account',
+    items: [
+      { q_ar: 'نسيت كلمة المرور، ماذا أفعل؟', q_en: 'I forgot my password, what should I do?',
+        a_ar: 'تواصل مع مدير النظام لإعادة تعيين كلمة المرور. لا توجد حالياً خاصية "نسيت كلمة المرور" للمستخدم العادي.',
+        a_en: 'Contact your system admin to reset your password. There is no self-service password reset for regular users.' },
+      { q_ar: 'لماذا لا أرى بعض الصفحات في القائمة الجانبية؟', q_en: 'Why do I not see some pages in the sidebar?',
+        a_ar: 'الصفحات الظاهرة تعتمد على صلاحيتك. الفني يرى بلاغاته وأصوله فقط. المدير يرى كل الصفحات.',
+        a_en: 'Visible pages depend on your role. Technician sees only their tickets and assets. Admin sees everything.' },
+      { q_ar: 'كيف أغير لغة الواجهة؟', q_en: 'How do I change the interface language?',
+        a_ar: 'اضغط على أزرار AR / EN في أعلى الشاشة لتبديل اللغة.',
+        a_en: 'Press AR / EN buttons at the top of the screen to switch language.' }
+    ]
+  },
+  {
+    cat_ar: '🛠️ البلاغات والصيانة', cat_en: 'Tickets & Maintenance',
+    items: [
+      { q_ar: 'كيف أرفع بلاغ صيانة جديد؟', q_en: 'How do I submit a new maintenance ticket?',
+        a_ar: 'اذهب لصفحة "البلاغات" أو "لوحة التحكم" واضغط "➕ بلاغ جديد". أدخل الموقع، نوع المشكلة، والأولوية.',
+        a_en: 'Go to "Tickets" or "Dashboard" page and press "➕ New Ticket". Enter location, issue type, and priority.' },
+      { q_ar: 'ما الفرق بين الأولويات (عالية / متوسطة / منخفضة)؟', q_en: 'What is the difference between priorities?',
+        a_ar: 'عالية 🔴: مشكلة تؤثر على سير العمل فوراً. متوسطة 🟡: مشكلة مزعجة لكن غير عاجلة. منخفضة 🟢: مشكلة بسيطة يمكن تأجيلها.',
+        a_en: 'High 🔴: issue affecting operations immediately. Medium 🟡: annoying but not urgent. Low 🟢: minor, can wait.' },
+      { q_ar: 'كيف أعرف أن بلاغي تم تعيينه لفني؟', q_en: 'How do I know my ticket was assigned to a tech?',
+        a_ar: 'ستصلك إشعار 🔔 في الشريط العلوي. كما يمكنك مراجعة عمود "الفني المعين" في جدول البلاغات.',
+        a_en: 'You\'ll receive a 🔔 notification in the top bar. You can also check the "Assigned Tech" column in the tickets table.' },
+      { q_ar: 'هل يمكنني تعديل بلاغ بعد إرساله؟', q_en: 'Can I edit a ticket after submitting?',
+        a_ar: 'المدير ومدير القسم يمكنهم تعديل الحالة وإضافة ملاحظات. المستخدم العادي لا يمكنه تعديل البلاغ بعد الإرسال.',
+        a_en: 'Admin and dept admin can edit status and add notes. Regular users cannot edit after submission.' }
+    ]
+  },
+  {
+    cat_ar: '📦 الأصول والمخزون', cat_en: 'Assets & Inventory',
+    items: [
+      { q_ar: 'كيف أضيف جهاز أو أصل جديد للمخزون؟', q_en: 'How do I add a new device or asset to inventory?',
+        a_ar: 'اذهب لصفحة "مخزون الأصول" واضغط "➕ أصل جديد". أدخل البيانات واضغط حفظ. سيُولَّد باركود تلقائياً.',
+        a_en: 'Go to "Asset Inventory" and press "➕ New Asset". Enter details and save. A barcode will be auto-generated.' },
+      { q_ar: 'ما معنى تنبيه انتهاء الضمان؟', q_en: 'What does the warranty expiry alert mean?',
+        a_ar: 'النظام يُنبهك تلقائياً إذا كان ضمان أصل ينتهي خلال 30 يوماً القادمة. اضغط التنبيه للانتقال لصفحة الأصول.',
+        a_en: 'System alerts you when an asset warranty expires within 30 days. Click the alert to go to the assets page.' },
+      { q_ar: 'كيف أصرف قطعة غيار؟', q_en: 'How do I issue a spare part?',
+        a_ar: 'اذهب لصفحة "قطع الغيار" واضغط "إدارة المخزن" ثم اختر الصنف، الكمية، السعر، ويمكنك ربطه ببلاغ.',
+        a_en: 'Go to "Spare Parts" and press "Manage Store", select item, quantity, price, and optionally link to a ticket.' }
+    ]
+  },
+  {
+    cat_ar: '👥 المستخدمون والصلاحيات', cat_en: 'Users & Roles',
+    items: [
+      { q_ar: 'ما الفرق بين السوبر أدمن ومدير القسم؟', q_en: 'What is the difference between super admin and dept admin?',
+        a_ar: 'السوبر أدمن يتحكم في كل شيء: جميع الأقسام، الإعدادات، والمستخدمين. مدير القسم يدير بلاغات وفنيي أقسامه فقط.',
+        a_en: 'Super admin controls everything: all depts, settings, and users. Dept admin manages only their dept\'s tickets and techs.' },
+      { q_ar: 'كيف أضيف فني جديد؟', q_en: 'How do I add a new technician?',
+        a_ar: 'اذهب لصفحة "المستخدمون" (كمدير) واضغط "➕ إضافة مستخدم". اختر صلاحية "فني" وحدد قسمه.',
+        a_en: 'Go to "Users" page (as admin) and press "➕ Add User". Choose "Technician" role and select their dept.' }
+    ]
+  },
+  {
+    cat_ar: '📅 كشف الحضور والتقارير', cat_en: 'Timesheet & Reports',
+    items: [
+      { q_ar: 'كيف يُسجَّل وقت العمل في الكشف تلقائياً؟', q_en: 'How is work time automatically recorded in the timesheet?',
+        a_ar: 'عند تعيين فني لبلاغ، يُسجَّل وقت البدء تلقائياً. وعند إغلاق البلاغ، يُسجَّل وقت الانتهاء.',
+        a_en: 'When a tech is assigned to a ticket, start time is auto-logged. When the ticket closes, end time is logged.' },
+      { q_ar: 'من يستطيع رؤية التقارير؟', q_en: 'Who can view reports?',
+        a_ar: 'السوبر أدمن ومديرو الأقسام فقط يستطيعون رؤية التقارير.',
+        a_en: 'Only super admin and dept admins can view reports.' }
+    ]
+  }
+];
+
+// ─── Help System Functions ─────────────────────────────────────
+
+window.openContextHelp = function(){
+  var activePage = 'dashboard';
+  var activeNav = document.querySelector('.nav-item.active');
+  if(activeNav) activePage = activeNav.id.replace('nav-','');
+  openHelpModal(activePage);
+};
+
+window.openHelpModal = function(pageId){
+  var overlay = document.getElementById('helpModalOverlay');
+  if(!overlay) return;
+  var pageData = HELP_PAGES[pageId] || HELP_PAGES['dashboard'];
+  var title = document.getElementById('helpModalTitle');
+  if(title) title.textContent = (pageData.icon||'❓') + ' ' + pageData.ar + ' — ' + pageData.en;
+  overlay.classList.add('open');
+  helpCurrentTab = 'guide';
+  document.querySelectorAll('.help-tab-btn').forEach(function(b){ b.classList.toggle('active', b.dataset.tab==='guide'); });
+  renderHelpGuide(pageId);
+};
+
+window.closeHelpModal = function(){
+  var overlay = document.getElementById('helpModalOverlay');
+  if(overlay) overlay.classList.remove('open');
+};
+
+window.switchHelpTab = function(tab){
+  helpCurrentTab = tab;
+  document.querySelectorAll('.help-tab-btn').forEach(function(b){ b.classList.toggle('active', b.dataset.tab===tab); });
+  if(tab==='guide'){
+    var activePage = 'dashboard';
+    var activeNav = document.querySelector('.nav-item.active');
+    if(activeNav) activePage = activeNav.id.replace('nav-','');
+    renderHelpGuide(activePage);
+  } else if(tab==='faq'){
+    renderHelpFAQ();
+  } else if(tab==='roles'){
+    renderHelpRoles();
+  } else if(tab==='ai'){
+    renderHelpAI();
+  }
+};
+
+function renderHelpGuide(pageId){
+  var body = document.getElementById('helpModalBody');
+  if(!body) return;
+  var d = HELP_PAGES[pageId] || HELP_PAGES['dashboard'];
+  var isAr = currentLang === 'ar';
+
+  // Page selector
+  var pagesHtml = Object.entries(HELP_PAGES).map(function(e){
+    var k=e[0], v=e[1];
+    return '<button onclick="renderHelpGuide(\''+k+'\')" style="padding:6px 12px;border:1px solid '+(pageId===k?'var(--primary)':'#e5e7eb')+';border-radius:8px;background:'+(pageId===k?'var(--primary)':'transparent')+';color:'+(pageId===k?'#fff':'var(--text-muted)')+';font-family:Cairo,sans-serif;font-size:12px;cursor:pointer;transition:all 0.15s;white-space:nowrap;">'+v.icon+' '+(isAr?v.ar:v.en)+'</button>';
+  }).join('');
+
+  var stepsHtml = (d.steps||[]).map(function(s,i){
+    return '<div class="help-step">'+
+      '<div class="help-step-num">'+(i+1)+'</div>'+
+      '<div class="help-step-content">'+
+        '<div class="help-step-title">'+(isAr?s.ar:s.en)+' <span class="help-step-title-en">'+(isAr?s.en:s.ar)+'</span></div>'+
+        '<div class="help-step-desc">'+(isAr?(s.desc_ar||''):(s.desc_en||''))+'</div>'+
+      '</div>'+
+    '</div>';
+  }).join('');
+
+  var tipsHtml = (d.tips||[]).map(function(tip){
+    return '<div class="help-tip"><div class="help-tip-icon">💡</div><div class="help-tip-text">'+(isAr?tip.ar:tip.en)+'</div></div>';
+  }).join('');
+
+  var warnsHtml = (d.warnings||[]).map(function(w){
+    return '<div class="help-warning"><div class="help-tip-icon">⚠️</div><div class="help-warning-text">'+(isAr?w.ar:w.en)+'</div></div>';
+  }).join('');
+
+  body.innerHTML =
+    '<div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:20px;padding-bottom:16px;border-bottom:1px solid #e5e7eb;">'+pagesHtml+'</div>'+
+    '<div class="help-section">'+
+      '<div class="card-title" style="font-size:16px;margin-bottom:16px;">'+d.icon+' '+(isAr?d.ar:d.en)+' <span style="font-size:12px;color:var(--text-muted);font-weight:400;">'+(isAr?d.en:d.ar)+'</span></div>'+
+      stepsHtml+
+    '</div>'+
+    (tipsHtml ? '<div class="help-section"><div style="font-size:13px;font-weight:700;color:var(--primary);margin-bottom:10px;">💡 '+(isAr?'نصائح مفيدة':'Useful Tips')+'</div>'+tipsHtml+'</div>' : '')+
+    (warnsHtml ? '<div class="help-section"><div style="font-size:13px;font-weight:700;color:#dc2626;margin-bottom:10px;">⚠️ '+(isAr?'تنبيهات':'Warnings')+'</div>'+warnsHtml+'</div>' : '');
+}
+
+function renderHelpFAQ(){
+  var body = document.getElementById('helpModalBody');
+  if(!body) return;
+  var isAr = currentLang === 'ar';
+
+  var catsHtml = FAQ_DATA.map(function(cat, ci){
+    var itemsHtml = cat.items.map(function(item, ii){
+      var fid = 'faq_'+ci+'_'+ii;
+      return '<div class="faq-item">'+
+        '<button class="faq-question" id="fqb_'+fid+'" onclick="toggleFAQ(\''+fid+'\')">'+
+          '<span class="faq-q-icon">❓</span>'+
+          '<span class="faq-q-text">'+(isAr?item.q_ar:item.q_en)+
+            '<span class="faq-q-en">'+(isAr?item.q_en:item.q_ar)+'</span>'+
+          '</span>'+
+          '<span class="faq-arrow">▾</span>'+
+        '</button>'+
+        '<div class="faq-answer" id="fqa_'+fid+'">'+
+          '<div class="faq-answer-inner">'+(isAr?item.a_ar:item.a_en)+
+            '<div style="margin-top:8px;padding-top:8px;border-top:1px solid #e5e7eb;font-size:11px;color:var(--text-muted);">'+(isAr?item.a_en:item.a_ar)+'</div>'+
+          '</div>'+
+        '</div>'+
+      '</div>';
+    }).join('');
+
+    return '<div class="faq-category">'+
+      '<div class="faq-cat-title">'+(isAr?cat.cat_ar:cat.cat_en)+'</div>'+
+      itemsHtml+
+    '</div>';
+  }).join('');
+
+  body.innerHTML =
+    '<div class="faq-page">'+
+    '<div class="faq-search-wrap">'+
+      '<span class="faq-search-icon">🔍</span>'+
+      '<input class="faq-search" id="faqSearchInput" placeholder="'+(isAr?'ابحث في الأسئلة...':'Search questions...')+'" oninput="faqSearch(this.value)">'+
+    '</div>'+
+    '<div id="faqContent">'+catsHtml+'</div>'+
+    '</div>';
+}
+
+window.toggleFAQ = function(fid){
+  var qBtn = document.getElementById('fqb_'+fid);
+  var ans  = document.getElementById('fqa_'+fid);
+  if(!qBtn||!ans) return;
+  var isOpen = ans.classList.contains('open');
+  // Close all
+  document.querySelectorAll('.faq-answer.open').forEach(function(a){ a.classList.remove('open'); });
+  document.querySelectorAll('.faq-question.open').forEach(function(q){ q.classList.remove('open'); });
+  if(!isOpen){ ans.classList.add('open'); qBtn.classList.add('open'); }
+};
+
+window.faqSearch = function(val){
+  val = val.trim().toLowerCase();
+  var items = document.querySelectorAll('.faq-item');
+  var cats  = document.querySelectorAll('.faq-category');
+  items.forEach(function(item){
+    var text = item.textContent.toLowerCase();
+    item.style.display = (!val||text.includes(val)) ? '' : 'none';
+  });
+  cats.forEach(function(cat){
+    var visibles = cat.querySelectorAll('.faq-item:not([style*="display: none"])');
+    cat.style.display = visibles.length ? '' : 'none';
+  });
+};
+
+function renderHelpRoles(){
+  var body = document.getElementById('helpModalBody');
+  if(!body) return;
+  var isAr = currentLang === 'ar';
+
+  var roles = [
+    { icon:'👑', name_ar:'سوبر أدمن', name_en:'Super Admin', color:'#e8a020',
+      perms_ar:['كل الصلاحيات','إضافة/حذف المستخدمين','الإعدادات الكاملة','التقارير والتكاليف','AI Agent'],
+      perms_en:['All permissions','Add/delete users','Full settings','Reports & costs','AI Agent'] },
+    { icon:'🏢', name_ar:'مدير قسم', name_en:'Dept Admin', color:'#5b21b6',
+      perms_ar:['إدارة بلاغات أقسامه','تعيين الفنيين','عرض تقارير القسم','كشف الحضور'],
+      perms_en:['Manage dept tickets','Assign technicians','View dept reports','Timesheet'] },
+    { icon:'🔧', name_ar:'فني', name_en:'Technician', color:'#1d9e75',
+      perms_ar:['عرض مهامه المعينة','تغيير حالة البلاغ','عرض الأصول'],
+      perms_en:['View assigned tasks','Change ticket status','View assets'] },
+    { icon:'👨‍🏫', name_ar:'معلم / موظف', name_en:'Teacher / Staff', color:'#0f2d5c',
+      perms_ar:['رفع بلاغات صيانة','متابعة بلاغاته فقط'],
+      perms_en:['Submit tickets','Track own tickets only'] },
+    { icon:'📦', name_ar:'أمين مخزن', name_en:'Storekeeper', color:'#d85a30',
+      perms_ar:['إدارة المخزن','صرف قطع الغيار','تعديل سجلات الصرف'],
+      perms_en:['Manage store','Issue spare parts','Edit transaction records'] }
+  ];
+
+  var rolesHtml = roles.map(function(r){
+    var perms = (isAr?r.perms_ar:r.perms_en).map(function(p){ return '<li>'+p+'</li>'; }).join('');
+    return '<div style="background:#f8f9ff;border:2px solid '+r.color+'22;border-top:3px solid '+r.color+';border-radius:14px;padding:16px;transition:box-shadow 0.15s;" onmouseover="this.style.boxShadow=\'0 4px 16px '+r.color+'22\'" onmouseout="this.style.boxShadow=\'none\'">'+
+      '<div style="display:flex;align-items:center;gap:10px;margin-bottom:10px;">'+
+        '<span style="font-size:26px;">'+r.icon+'</span>'+
+        '<div>'+
+          '<div style="font-size:14px;font-weight:700;color:'+r.color+';">'+(isAr?r.name_ar:r.name_en)+'</div>'+
+          '<div style="font-size:11px;color:var(--text-muted);">'+(isAr?r.name_en:r.name_ar)+'</div>'+
+        '</div>'+
+      '</div>'+
+      '<ul style="padding-right:18px;font-size:12px;color:#374151;line-height:1.8;">'+perms+'</ul>'+
+    '</div>';
+  }).join('');
+
+  body.innerHTML =
+    '<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:14px;">'+rolesHtml+'</div>'+
+    '<div class="help-tip" style="margin-top:20px;">'+
+      '<div class="help-tip-icon">ℹ️</div>'+
+      '<div class="help-tip-text">'+(isAr?'الصلاحيات تُضبط عند إنشاء المستخدم ولا يمكن تغييرها إلا من قِبل السوبر أدمن.':'Roles are set when creating a user and can only be changed by the super admin.')+'</div>'+
+    '</div>';
+}
+
+function renderHelpAI(){
+  var body = document.getElementById('helpModalBody');
+  if(!body) return;
+  var isAr = currentLang === 'ar';
+
+  var quickQs = isAr ? [
+    'كيف أرفع بلاغ؟','كيف أضيف أصل؟','ما صلاحيات الفني؟','كيف أصرف قطعة غيار؟','كيف أطبع الباركود؟'
+  ] : [
+    'How to submit a ticket?','How to add an asset?','What can a tech do?','How to issue spare parts?','How to print barcode?'
+  ];
+
+  var quickHtml = quickQs.map(function(q){
+    return '<button class="ai-quick-btn" onclick="sendHelpMessage(\''+q+'\')">'+q+'</button>';
+  }).join('');
+
+  // Welcome message
+  if(!helpAiHistory.length){
+    helpAiHistory = [{role:'assistant', content: isAr
+      ? '👋 أهلاً! أنا مساعد DSBA الذكي.\nاسألني عن أي شيء في النظام وسأساعدك فوراً.'
+      : '👋 Hello! I\'m the DSBA smart assistant.\nAsk me anything about the system and I\'ll help you right away.'
+    }];
+  }
+
+  var msgsHtml = helpAiHistory.map(function(m){
+    var isUser = m.role==='user';
+    return '<div class="ai-chat-msg '+(isUser?'user':'bot')+'">'+
+      '<div class="ai-chat-avatar">'+(isUser?'👤':'🤖')+'</div>'+
+      '<div class="ai-chat-bubble">'+m.content.replace(/\n/g,'<br>')+'</div>'+
+    '</div>';
+  }).join('');
+
+  body.innerHTML =
+    '<div class="ai-help-wrap">'+
+      '<div class="ai-quick-btns">'+quickHtml+'</div>'+
+      '<div class="ai-chat-messages" id="aiHelpMessages">'+msgsHtml+'</div>'+
+      '<div class="ai-chat-input-row">'+
+        '<input class="ai-chat-input" id="aiHelpInput" placeholder="'+(isAr?'اكتب سؤالك هنا...':'Type your question here...')+'" onkeydown="if(event.key===\'Enter\')sendHelpMessage()">'+
+        '<button class="ai-chat-send" onclick="sendHelpMessage()">➤</button>'+
+      '</div>'+
+    '</div>';
+}
+
+window.sendHelpMessage = function(preset){
+  var input = document.getElementById('aiHelpInput');
+  var msg = preset || (input ? input.value.trim() : '');
+  if(!msg) return;
+  if(input) input.value = '';
+
+  helpAiHistory.push({role:'user', content:msg});
+
+  var msgsEl = document.getElementById('aiHelpMessages');
+  if(msgsEl){
+    var userBubble = document.createElement('div');
+    userBubble.className = 'ai-chat-msg user';
+    userBubble.innerHTML = '<div class="ai-chat-avatar">👤</div><div class="ai-chat-bubble">'+msg+'</div>';
+    msgsEl.appendChild(userBubble);
+
+    var typingEl = document.createElement('div');
+    typingEl.className = 'ai-chat-msg bot';
+    typingEl.id = 'aiTyping';
+    typingEl.innerHTML = '<div class="ai-chat-avatar">🤖</div><div class="ai-chat-bubble"><div class="ai-chat-typing"><span></span><span></span><span></span></div></div>';
+    msgsEl.appendChild(typingEl);
+    msgsEl.scrollTop = msgsEl.scrollHeight;
+  }
+
+  var isAr = currentLang === 'ar';
+  var systemPrompt = isAr
+    ? 'أنت مساعد ذكي لنظام DSBA لإدارة الصيانة والمخزون المدرسي. أجب بإيجاز وبشكل مفيد على أسئلة المستخدمين حول:\n- البلاغات: كيف ترفعها، حالاتها، الأولويات\n- الأصول: كيف تضيف جهاز، باركود، ضمان\n- المخزن: كيف تصرف قطعة غيار\n- المستخدمين: الصلاحيات والأدوار\n- التقارير وكشف الحضور\nأجب باللغة العربية بشكل مختصر ومفيد.'
+    : 'You are a smart assistant for DSBA - a school maintenance and inventory management system. Answer briefly and helpfully about:\n- Tickets: how to submit, statuses, priorities\n- Assets: how to add devices, barcodes, warranty\n- Store: how to issue spare parts\n- Users: roles and permissions\n- Reports and timesheets\nAnswer in English concisely.';
+
+  var messages = [{role:'user', content: systemPrompt + '\n\nUser question: ' + msg}];
+
+  fetch('https://api.anthropic.com/v1/messages', {
+    method: 'POST',
+    headers: {'Content-Type':'application/json'},
+    body: JSON.stringify({
+      model: 'claude-sonnet-4-20250514',
+      max_tokens: 400,
+      messages: messages
+    })
+  }).then(function(r){ return r.json(); })
+  .then(function(data){
+    var reply = (data.content && data.content[0] && data.content[0].text) ? data.content[0].text : (isAr?'عذراً، حدث خطأ.':'Sorry, an error occurred.');
+    helpAiHistory.push({role:'assistant', content:reply});
+    var typing = document.getElementById('aiTyping');
+    if(typing) typing.remove();
+    var msgs = document.getElementById('aiHelpMessages');
+    if(msgs){
+      var botBubble = document.createElement('div');
+      botBubble.className = 'ai-chat-msg bot';
+      botBubble.innerHTML = '<div class="ai-chat-avatar">🤖</div><div class="ai-chat-bubble">'+reply.replace(/\n/g,'<br>')+'</div>';
+      msgs.appendChild(botBubble);
+      msgs.scrollTop = msgs.scrollHeight;
+    }
+  }).catch(function(){
+    var typing = document.getElementById('aiTyping');
+    if(typing) typing.remove();
+    var fallback = isAr ? '💡 للمساعدة الفورية: اضغط تبويب "الأسئلة الشائعة" أو "دليل الصفحة" للحصول على شرح تفصيلي.' : '💡 For immediate help: check the "FAQ" or "Page Guide" tabs for detailed instructions.';
+    helpAiHistory.push({role:'assistant', content: fallback});
+    var msgs = document.getElementById('aiHelpMessages');
+    if(msgs){
+      var botBubble = document.createElement('div');
+      botBubble.className = 'ai-chat-msg bot';
+      botBubble.innerHTML = '<div class="ai-chat-avatar">🤖</div><div class="ai-chat-bubble">'+fallback+'</div>';
+      msgs.appendChild(botBubble);
+      msgs.scrollTop = msgs.scrollHeight;
+    }
+  });
+};
+
+// Add Help page to navigation
+var _origBuildNav = buildNav;
+function buildNav(){
+  _origBuildNav();
+  var nav = document.getElementById('sidebarNav');
+  if(!nav) return;
+  var isAr = currentLang === 'ar';
+  var helpNavItem = document.createElement('div');
+  helpNavItem.style.cssText = 'padding:8px 20px 4px;color:rgba(255,255,255,0.3);font-size:10px;font-weight:600;letter-spacing:0.05em;text-transform:uppercase;';
+  helpNavItem.textContent = isAr ? 'دعم' : 'Support';
+  nav.appendChild(helpNavItem);
+
+  var helpItem = document.createElement('div');
+  helpItem.className = 'nav-item';
+  helpItem.id = 'nav-help';
+  helpItem.innerHTML = '<span class="nav-icon">❓</span> '+(isAr?'مركز المساعدة':'Help Center');
+  helpItem.onclick = function(){
+    document.querySelectorAll('.nav-item').forEach(function(n){n.classList.remove('active');});
+    helpItem.classList.add('active');
+    document.getElementById('pageTitle').textContent = isAr ? 'مركز المساعدة' : 'Help Center';
+    renderFAQPage();
+  };
+  nav.appendChild(helpItem);
+}
+
+function renderFAQPage(){
+  var isAr = currentLang === 'ar';
+  var catsHtml = FAQ_DATA.map(function(cat, ci){
+    var itemsHtml = cat.items.map(function(item, ii){
+      var fid = 'pfaq_'+ci+'_'+ii;
+      return '<div class="faq-item">'+
+        '<button class="faq-question" id="pfqb_'+fid+'" onclick="toggleFAQ2(\''+fid+'\')">'+
+          '<span class="faq-q-icon">❓</span>'+
+          '<span class="faq-q-text">'+(isAr?item.q_ar:item.q_en)+
+            '<span class="faq-q-en">'+(isAr?item.q_en:item.q_ar)+'</span>'+
+          '</span>'+
+          '<span class="faq-arrow">▾</span>'+
+        '</button>'+
+        '<div class="faq-answer" id="pfqa_'+fid+'">'+
+          '<div class="faq-answer-inner">'+(isAr?item.a_ar:item.a_en)+
+            '<div style="margin-top:8px;padding-top:8px;border-top:1px solid #e5e7eb;font-size:11px;color:var(--text-muted);">'+(isAr?item.a_en:item.a_ar)+'</div>'+
+          '</div>'+
+        '</div>'+
+      '</div>';
+    }).join('');
+    return '<div class="faq-category">'+
+      '<div class="faq-cat-title">'+(isAr?cat.cat_ar:cat.cat_en)+'</div>'+
+      itemsHtml+
+    '</div>';
+  }).join('');
+
+  var guideBtnsHtml = Object.entries(HELP_PAGES).map(function(e){
+    var k=e[0], v=e[1];
+    return '<button onclick="openHelpModal(\''+k+'\')" style="padding:10px 14px;border:1px solid #e5e7eb;border-radius:10px;background:#fff;cursor:pointer;font-family:Cairo,sans-serif;font-size:13px;text-align:center;display:flex;flex-direction:column;gap:4px;align-items:center;transition:all 0.15s;" onmouseover="this.style.background=\'#f0f4ff\';this.style.borderColor=\'var(--primary)\'" onmouseout="this.style.background=\'#fff\';this.style.borderColor=\'#e5e7eb\'">'+
+      '<span style="font-size:22px;">'+v.icon+'</span>'+
+      '<span style="font-size:12px;font-weight:600;color:var(--primary);">'+(isAr?v.ar:v.en)+'</span>'+
+    '</button>';
+  }).join('');
+
+  document.getElementById('mainContent').innerHTML =
+    '<div class="card" style="margin-bottom:20px;">'+
+      '<div class="card-title"><span class="icon">📖</span> '+(isAr?'أدلة الصفحات — Page Guides':'Page Guides — أدلة الصفحات')+'</div>'+
+      '<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(110px,1fr));gap:10px;">'+guideBtnsHtml+'</div>'+
+    '</div>'+
+    '<div class="card">'+
+      '<div class="card-title"><span class="icon">❓</span> '+(isAr?'الأسئلة الشائعة — FAQ':'FAQ — الأسئلة الشائعة')+'</div>'+
+      '<div class="faq-search-wrap">'+
+        '<span class="faq-search-icon">🔍</span>'+
+        '<input class="faq-search" id="pageFaqSearch" placeholder="'+(isAr?'ابحث في الأسئلة...':'Search questions...')+'" oninput="faqPageSearch(this.value)">'+
+      '</div>'+
+      '<div id="pageFaqContent">'+catsHtml+'</div>'+
+    '</div>';
+}
+
+window.toggleFAQ2 = function(fid){
+  var qBtn = document.getElementById('pfqb_'+fid);
+  var ans  = document.getElementById('pfqa_'+fid);
+  if(!qBtn||!ans) return;
+  var isOpen = ans.classList.contains('open');
+  document.querySelectorAll('#pageFaqContent .faq-answer.open').forEach(function(a){ a.classList.remove('open'); });
+  document.querySelectorAll('#pageFaqContent .faq-question.open').forEach(function(q){ q.classList.remove('open'); });
+  if(!isOpen){ ans.classList.add('open'); qBtn.classList.add('open'); }
+};
+
+window.faqPageSearch = function(val){
+  val = val.trim().toLowerCase();
+  var items = document.querySelectorAll('#pageFaqContent .faq-item');
+  var cats  = document.querySelectorAll('#pageFaqContent .faq-category');
+  items.forEach(function(item){
+    item.style.display = (!val||item.textContent.toLowerCase().includes(val)) ? '' : 'none';
+  });
+  cats.forEach(function(cat){
+    var visibles = cat.querySelectorAll('.faq-item:not([style*="display: none"])');
+    cat.style.display = visibles.length ? '' : 'none';
+  });
+};
+
+// Keyboard shortcut: F1 = open help
+document.addEventListener('keydown', function(e){
+  if(e.key==='F1'){ e.preventDefault(); window.openContextHelp(); }
+});
 </script>
 </body>
 </html>
