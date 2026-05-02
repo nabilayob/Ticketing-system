@@ -478,7 +478,20 @@ tbody tr:hover { background:#f8f9ff; }
 
 <!-- BARCODE PRINT -->
 <div id="printArea" style="display:none;padding:20px;"><div id="printContent"></div></div>
-<style>@media print{body>*:not(#printArea){display:none!important;}#printArea{display:block!important;}}</style>
+<style>@media print{
+  body>*:not(#printArea):not(.app-shell){display:none!important;}
+  #printArea{display:block!important;}
+  /* Timesheet print mode */
+  body.ts-printing .sidebar,
+  body.ts-printing .topbar,
+  body.ts-printing .page-header button,
+  body.ts-printing .ts-no-print,
+  body.ts-printing #tsStats { display:none!important; }
+  body.ts-printing .ts-print-header { display:block!important; }
+  body.ts-printing .card { box-shadow:none!border:1px solid #ddd; }
+  body.ts-printing { direction:rtl; font-family:'Cairo',sans-serif; }
+  @page { margin:15mm; size:A4; }
+}</style>
 
 <!-- FIREBASE CDN -->
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
@@ -2128,12 +2141,14 @@ function buildNav(){
     {id:'users',icon:'👥',label:t('nav_users'),sec:t('nav_sec_admin')},
     {id:'reports',icon:'📈',label:t('nav_reports'),sec:''},
     {id:'settings',icon:'⚙️',label:t('nav_settings'),sec:''},
-    {id:'agent',icon:'🤖',label:t('nav_agent'),sec:t('nav_sec_adv')}
+    {id:'agent',icon:'🤖',label:t('nav_agent'),sec:t('nav_sec_adv')},
+    {id:'timesheet',icon:'📅',label:'كشف الحضور والأعمال',sec:''}
   ];
   var TECH=[
     {id:'dashboard',icon:'📊',label:t('nav_dashboard'),sec:t('nav_sec_main')},
     {id:'tickets',icon:'🛠️',label:t('nav_my_tickets'),sec:''},
-    {id:'store',icon:'🏪',label:t('nav_spare_req'),sec:''}
+    {id:'store',icon:'🏪',label:t('nav_spare_req'),sec:''},
+    {id:'timesheet',icon:'📅',label:'كشف حضور وأعمال',sec:''}
   ];
   var TEACHER=[
     {id:'dashboard',icon:'📊',label:t('nav_dashboard'),sec:t('nav_sec_main')},
@@ -2170,7 +2185,8 @@ window.showPage=function(id){
   $('pageTitle').textContent=t(titleMap[id]||id);
   var pages={dashboard:renderDashboard,tickets:renderTickets,assets:renderAssets,
     store:renderStore,users:renderUsers,reports:renderReports,
-    settings:function(){openModal('settingsModal');},agent:renderAgent};
+    settings:function(){openModal('settingsModal');},agent:renderAgent,
+    timesheet:renderTimesheet};
   if(pages[id]) pages[id]();
 };
 
@@ -3084,6 +3100,464 @@ document.addEventListener('click',function(e){
   document.addEventListener('mousedown', emergencyAgentClick, true);
   document.addEventListener('touchstart', emergencyAgentClick, true);
 })();
+
+// ══════════════════════════════════════════════════════════════
+// ─── TIMESHEET MODULE ─────────────────────────────────────────
+// ══════════════════════════════════════════════════════════════
+
+// Firebase path: /timesheet/{uid}/{entryId}
+// Entry: { date, taskName, startTime, endTime, notes, createdAt, uid, userName }
+
+function renderTimesheet(){
+  var isAdmin = CU.role==='admin';
+
+  $('mainContent').innerHTML=
+    '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:18px;flex-wrap:wrap;gap:10px;">'+
+      '<div>'+
+        '<h2 style="font-size:18px;font-weight:700;color:var(--primary);margin:0;">📅 كشف الحضور والأعمال</h2>'+
+        '<div style="font-size:12px;color:var(--text-muted);margin-top:3px;">'+
+          (isAdmin?'عرض وطباعة كشف جميع الفنيين':'سجّل مهامك اليومية واطبع كشف عملك')+'</div>'+
+      '</div>'+
+      '<div style="display:flex;gap:8px;flex-wrap:wrap;">'+
+        (!isAdmin?'<button class="btn btn-primary" onclick="openAddTaskModal()">➕ إضافة مهمة</button>':'')+
+        '<button class="btn btn-outline" id="tsPrintBtn" onclick="printTimesheet()">🖨 طباعة الكشف</button>'+
+      '</div>'+
+    '</div>'+
+
+    // Filter bar
+    '<div class="card" style="padding:12px 16px;margin-bottom:16px;display:flex;gap:10px;flex-wrap:wrap;align-items:center;">'+
+      '<div style="display:flex;align-items:center;gap:6px;">'+
+        '<label style="font-size:12px;font-weight:600;color:var(--text-muted);">من:</label>'+
+        '<input type="date" id="ts_from" style="padding:6px 10px;border:1px solid #d1d5db;border-radius:7px;font-family:Cairo,sans-serif;font-size:12px;" onchange="loadTimesheetData()">'+
+      '</div>'+
+      '<div style="display:flex;align-items:center;gap:6px;">'+
+        '<label style="font-size:12px;font-weight:600;color:var(--text-muted);">إلى:</label>'+
+        '<input type="date" id="ts_to" style="padding:6px 10px;border:1px solid #d1d5db;border-radius:7px;font-family:Cairo,sans-serif;font-size:12px;" onchange="loadTimesheetData()">'+
+      '</div>'+
+      (isAdmin?
+        '<div style="display:flex;align-items:center;gap:6px;">'+
+          '<label style="font-size:12px;font-weight:600;color:var(--text-muted);">الفني:</label>'+
+          '<select id="ts_tech" style="padding:6px 10px;border:1px solid #d1d5db;border-radius:7px;font-family:Cairo,sans-serif;font-size:12px;" onchange="loadTimesheetData()">'+
+            '<option value="">كل الفنيين</option>'+
+            Object.entries(users).filter(function(e){return e[1].role==='technician';})
+              .map(function(e){return '<option value="'+e[0]+'">'+e[1].name+'</option>';}).join('')+
+          '</select>'+
+        '</div>':'')+
+      '<button class="btn btn-outline btn-sm" onclick="setTsToday()">اليوم</button>'+
+      '<button class="btn btn-outline btn-sm" onclick="setTsThisMonth()">هذا الشهر</button>'+
+    '</div>'+
+
+    // Stats row
+    '<div id="tsStats" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:10px;margin-bottom:16px;"></div>'+
+
+    // Table area
+    '<div id="tsContent"><div class="empty"><div class="empty-icon">📅</div><div class="empty-text">اختر نطاق تاريخ لعرض البيانات</div></div></div>';
+
+  // Set default dates = today
+  var today = new Date().toISOString().split('T')[0];
+  $('ts_from').value = today;
+  $('ts_to').value   = today;
+
+  loadTimesheetData();
+}
+
+// ─── Set date shortcuts ─────────────────────────────────────
+window.setTsToday = function(){
+  var today = new Date().toISOString().split('T')[0];
+  $('ts_from').value = today; $('ts_to').value = today;
+  loadTimesheetData();
+};
+window.setTsThisMonth = function(){
+  var now = new Date();
+  var first = new Date(now.getFullYear(), now.getMonth(), 1).toISOString().split('T')[0];
+  var last  = new Date(now.getFullYear(), now.getMonth()+1, 0).toISOString().split('T')[0];
+  $('ts_from').value = first; $('ts_to').value = last;
+  loadTimesheetData();
+};
+
+// ─── Load data from Firebase ────────────────────────────────
+function loadTimesheetData(){
+  var fromEl=$('ts_from'), toEl=$('ts_to');
+  if(!fromEl||!toEl) return;
+  var fromDate = fromEl.value || new Date().toISOString().split('T')[0];
+  var toDate   = toEl.value   || fromDate;
+  var isAdmin  = CU.role==='admin';
+  var techFilter = isAdmin && $('ts_tech') ? $('ts_tech').value : '';
+
+  var content=$('tsContent');
+  if(content) content.innerHTML='<div class="loading" style="padding:30px;text-align:center;color:var(--text-muted);">⏳ جاري تحميل البيانات...</div>';
+
+  // Which users to load
+  var uidsToLoad = [];
+  if(!isAdmin){
+    uidsToLoad = [CID];
+  } else if(techFilter){
+    uidsToLoad = [techFilter];
+  } else {
+    uidsToLoad = Object.entries(users)
+      .filter(function(e){ return e[1].role==='technician'; })
+      .map(function(e){ return e[0]; });
+    if(!uidsToLoad.length){ renderTimesheetTable({}); return; }
+  }
+
+  var allEntries = {};
+  var pending = uidsToLoad.length;
+
+  uidsToLoad.forEach(function(uid){
+    get(ref(db,'timesheet/'+uid)).then(function(snap){
+      var data = snap.val()||{};
+      // Filter by date range
+      Object.entries(data).forEach(function(e){
+        var entry = e[1];
+        if(entry.date >= fromDate && entry.date <= toDate){
+          if(!allEntries[uid]) allEntries[uid] = [];
+          allEntries[uid].push(Object.assign({id:e[0]}, entry));
+        }
+      });
+      pending--;
+      if(pending===0) renderTimesheetTable(allEntries);
+    }).catch(function(){
+      pending--;
+      if(pending===0) renderTimesheetTable(allEntries);
+    });
+  });
+}
+
+// ─── Render the timesheet table ─────────────────────────────
+function renderTimesheetTable(allEntries){
+  var isAdmin = CU.role==='admin';
+  var statsEl = $('tsStats'), content = $('tsContent');
+  if(!content) return;
+
+  // Calculate totals
+  var grandTotalMs = 0, grandTasks = 0;
+  Object.values(allEntries).forEach(function(arr){
+    arr.forEach(function(e){ grandTotalMs += calcDuration(e.startTime,e.endTime); grandTasks++; });
+  });
+
+  // Stats cards
+  if(statsEl){
+    statsEl.innerHTML=
+      '<div class="stat-card blue"><div class="stat-label">إجمالي المهام</div><div class="stat-value">'+grandTasks+'</div></div>'+
+      '<div class="stat-card green"><div class="stat-label">إجمالي الوقت</div><div class="stat-value" style="font-size:18px;">'+fmtDur(grandTotalMs)+'</div></div>'+
+      '<div class="stat-card gold"><div class="stat-label">عدد الفنيين</div><div class="stat-value">'+Object.keys(allEntries).length+'</div></div>';
+  }
+
+  if(!grandTasks){
+    content.innerHTML='<div class="empty"><div class="empty-icon">📅</div><div class="empty-text">لا توجد مهام في هذه الفترة</div></div>';
+    return;
+  }
+
+  var html='<div id="tsPrintable">';
+
+  // Print header (hidden on screen, shown on print)
+  html+='<div class="ts-print-header" style="display:none;">'+
+    '<div style="text-align:center;margin-bottom:16px;">'+
+      '<div style="font-size:20px;font-weight:700;">مدرسة DSBA — كشف الحضور والأعمال</div>'+
+      '<div style="font-size:13px;color:#666;margin-top:4px;">'+
+        'الفترة: '+($('ts_from')?$('ts_from').value:'')+'  →  '+($('ts_to')?$('ts_to').value:'')+
+      '</div>'+
+      '<div style="font-size:12px;color:#999;margin-top:2px;">تاريخ الطباعة: '+new Date().toLocaleString('ar-EG')+'</div>'+
+    '</div>'+
+    '<div style="display:flex;gap:20px;justify-content:center;margin-bottom:16px;">'+
+      '<div style="background:#f0f4f8;border-radius:6px;padding:8px 16px;font-size:13px;">إجمالي المهام: <strong>'+grandTasks+'</strong></div>'+
+      '<div style="background:#f0f4f8;border-radius:6px;padding:8px 16px;font-size:13px;">إجمالي الوقت: <strong>'+fmtDur(grandTotalMs)+'</strong></div>'+
+    '</div>'+
+  '</div>';
+
+  // Per-technician section
+  Object.entries(allEntries).forEach(function(ue){
+    var uid = ue[0];
+    var entries = ue[1];
+    var uName = (users[uid]&&users[uid].name)||uid;
+    var uDept = (users[uid]&&users[uid].dept)||'';
+
+    // Sort by date then startTime
+    entries.sort(function(a,b){
+      if(a.date!==b.date) return a.date.localeCompare(b.date);
+      return (a.startTime||'').localeCompare(b.startTime||'');
+    });
+
+    // Group by date
+    var byDate={};
+    entries.forEach(function(e){
+      if(!byDate[e.date]) byDate[e.date]=[];
+      byDate[e.date].push(e);
+    });
+
+    var techTotal = entries.reduce(function(s,e){return s+calcDuration(e.startTime,e.endTime);},0);
+
+    html+='<div class="card ts-tech-block" style="margin-bottom:20px;">';
+
+    // Tech header
+    html+='<div style="display:flex;justify-content:space-between;align-items:center;'+
+      'margin-bottom:14px;padding-bottom:12px;border-bottom:2px solid var(--primary);">'+
+      '<div style="display:flex;align-items:center;gap:12px;">'+
+        '<div style="width:42px;height:42px;background:var(--primary);border-radius:50%;'+
+          'display:flex;align-items:center;justify-content:center;color:#fff;font-size:16px;font-weight:700;">'+
+          uName.charAt(0)+
+        '</div>'+
+        '<div>'+
+          '<div style="font-size:15px;font-weight:700;color:var(--primary);">'+uName+'</div>'+
+          '<div style="font-size:11px;color:var(--text-muted);">'+uDept+'</div>'+
+        '</div>'+
+      '</div>'+
+      '<div style="text-align:left;">'+
+        '<div style="font-size:12px;color:var(--text-muted);">'+entries.length+' مهمة</div>'+
+        '<div style="font-size:14px;font-weight:700;color:var(--success);">⏱ '+fmtDur(techTotal)+'</div>'+
+      '</div>'+
+    '</div>';
+
+    // Per-date sections
+    Object.entries(byDate).forEach(function(de){
+      var date = de[0];
+      var dayEntries = de[1];
+      var dayTotal = dayEntries.reduce(function(s,e){return s+calcDuration(e.startTime,e.endTime);},0);
+      var dayLabel = new Date(date+'T12:00:00').toLocaleDateString('ar-EG',{weekday:'long',year:'numeric',month:'long',day:'numeric'});
+
+      html+='<div style="margin-bottom:14px;">'+
+        '<div style="background:#f0f4f8;border-radius:6px;padding:6px 12px;'+
+          'display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;">'+
+          '<div style="font-size:12px;font-weight:700;color:var(--primary);">📆 '+dayLabel+'</div>'+
+          '<div style="font-size:12px;font-weight:600;color:var(--success);">مجموع اليوم: '+fmtDur(dayTotal)+'</div>'+
+        '</div>';
+
+      // Tasks table for this day
+      html+='<div style="overflow-x:auto;"><table style="width:100%;border-collapse:collapse;font-size:12px;">'+
+        '<thead><tr style="background:var(--primary);color:#fff;">'+
+          '<th style="padding:7px 10px;text-align:right;border-radius:4px 0 0 0;">اسم المهمة</th>'+
+          '<th style="padding:7px 10px;text-align:center;">وقت البدء</th>'+
+          '<th style="padding:7px 10px;text-align:center;">وقت الانتهاء</th>'+
+          '<th style="padding:7px 10px;text-align:center;">المدة</th>'+
+          '<th style="padding:7px 10px;text-align:right;">ملاحظات</th>'+
+          (!isAdmin?'<th style="padding:7px 10px;text-align:center;border-radius:0 4px 0 0;">إجراء</th>':'')+
+        '</tr></thead><tbody>';
+
+      dayEntries.forEach(function(e, idx2){
+        var dur = calcDuration(e.startTime, e.endTime);
+        var durStr = dur>0?fmtDur(dur):(e.endTime?'—':'⏳ جارية');
+        var rowBg = idx2%2===0?'#fff':'#f9fafb';
+        html+='<tr style="background:'+rowBg+';">'+
+          '<td style="padding:8px 10px;font-weight:600;">'+htmlEsc(e.taskName||'—')+'</td>'+
+          '<td style="padding:8px 10px;text-align:center;direction:ltr;">'+htmlEsc(e.startTime||'—')+'</td>'+
+          '<td style="padding:8px 10px;text-align:center;direction:ltr;">'+(e.endTime?htmlEsc(e.endTime):'<span style="color:var(--warning);">لم تنته</span>')+'</td>'+
+          '<td style="padding:8px 10px;text-align:center;font-weight:700;color:'+(dur>0?'var(--success)':'var(--text-muted)')+';">'+durStr+'</td>'+
+          '<td style="padding:8px 10px;color:var(--text-muted);font-size:11px;">'+htmlEsc(e.notes||'—')+'</td>'+
+          (!isAdmin?
+            '<td style="padding:8px 10px;text-align:center;white-space:nowrap;">'+
+              (!e.endTime?'<button class="btn btn-sm btn-success" onclick="endTask(\''+uid+'\',\''+e.id+'\')">✅ إنهاء</button> ':'')+
+              '<button class="btn btn-sm btn-danger" onclick="deleteTask(\''+uid+'\',\''+e.id+'\')">🗑</button>'+
+            '</td>':'')+
+        '</tr>';
+      });
+
+      html+='</tbody></table></div></div>';
+    });
+
+    // Tech total footer
+    html+='<div style="background:#f0fdf4;border-radius:6px;padding:8px 14px;'+
+      'display:flex;justify-content:flex-end;gap:20px;font-size:13px;font-weight:700;">'+
+      '<span>إجمالي مهام '+uName+': '+entries.length+' مهمة</span>'+
+      '<span style="color:var(--success);">⏱ إجمالي الوقت: '+fmtDur(techTotal)+'</span>'+
+    '</div>';
+
+    html+='</div>'; // end card
+  });
+
+  html+='</div>'; // end tsPrintable
+  content.innerHTML = html;
+}
+
+// ─── Helpers ────────────────────────────────────────────────
+function calcDuration(startTime, endTime){
+  if(!startTime||!endTime) return 0;
+  try{
+    var s=startTime.split(':'), e=endTime.split(':');
+    var sm=parseInt(s[0])*60+parseInt(s[1]);
+    var em=parseInt(e[0])*60+parseInt(e[1]);
+    var diff=(em-sm)*60000;
+    return diff>0?diff:0;
+  }catch(_e){ return 0; }
+}
+function fmtDur(ms){
+  if(!ms||ms<=0) return '—';
+  var totalMin=Math.round(ms/60000);
+  var h=Math.floor(totalMin/60), m=totalMin%60;
+  if(h>0&&m>0) return h+'س '+m+'د';
+  if(h>0) return h+' ساعة';
+  return m+' دقيقة';
+}
+function htmlEsc(s){
+  return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+
+// ─── Add Task Modal ─────────────────────────────────────────
+window.openAddTaskModal = function(){
+  var existing=document.getElementById('_tsModal');
+  if(existing) existing.remove();
+
+  var today = new Date().toISOString().split('T')[0];
+  var nowTime = new Date().toTimeString().substr(0,5);
+
+  var overlay=document.createElement('div');
+  overlay.id='_tsModal';
+  overlay.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:9999;display:flex;align-items:center;justify-content:center;direction:rtl;';
+  overlay.onclick=function(ev){ if(ev.target===overlay) overlay.remove(); };
+
+  overlay.innerHTML=
+    '<div style="background:#fff;border-radius:14px;padding:0;width:480px;max-width:95vw;'+
+      'box-shadow:0 20px 60px rgba(0,0,0,.25);overflow:hidden;font-family:Cairo,sans-serif;">'+
+      '<div style="background:var(--primary);color:#fff;padding:16px 20px;display:flex;justify-content:space-between;align-items:center;">'+
+        '<div style="font-size:15px;font-weight:700;">➕ إضافة مهمة جديدة</div>'+
+        '<button onclick="document.getElementById(\'_tsModal\').remove()" '+
+          'style="background:rgba(255,255,255,.2);border:none;color:#fff;width:26px;height:26px;border-radius:50%;cursor:pointer;font-size:13px;">✕</button>'+
+      '</div>'+
+      '<div style="padding:20px;">'+
+        // Task name
+        '<div class="form-group" style="margin-bottom:14px;">'+
+          '<label style="font-size:12px;font-weight:700;color:var(--text-muted);display:block;margin-bottom:5px;">📝 اسم المهمة / العمل</label>'+
+          '<input id="ts_task" type="text" placeholder="مثال: إصلاح كمبيوتر فصل A-101" '+
+            'style="width:100%;padding:9px 12px;border:1px solid #d1d5db;border-radius:8px;font-family:Cairo,sans-serif;font-size:13px;box-sizing:border-box;">'+
+        '</div>'+
+        // Date
+        '<div class="form-group" style="margin-bottom:14px;">'+
+          '<label style="font-size:12px;font-weight:700;color:var(--text-muted);display:block;margin-bottom:5px;">📆 التاريخ</label>'+
+          '<input id="ts_date" type="date" value="'+today+'" '+
+            'style="width:100%;padding:9px 12px;border:1px solid #d1d5db;border-radius:8px;font-family:Cairo,sans-serif;font-size:13px;box-sizing:border-box;">'+
+        '</div>'+
+        // Start / End times
+        '<div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:14px;">'+
+          '<div class="form-group">'+
+            '<label style="font-size:12px;font-weight:700;color:var(--text-muted);display:block;margin-bottom:5px;">🕐 وقت البدء</label>'+
+            '<input id="ts_start" type="time" value="'+nowTime+'" '+
+              'style="width:100%;padding:9px 12px;border:1px solid #d1d5db;border-radius:8px;font-family:Cairo,sans-serif;font-size:13px;box-sizing:border-box;">'+
+          '</div>'+
+          '<div class="form-group">'+
+            '<label style="font-size:12px;font-weight:700;color:var(--text-muted);display:block;margin-bottom:5px;">🕐 وقت الانتهاء <span style="font-size:10px;font-weight:400;">(اختياري)</span></label>'+
+            '<input id="ts_end" type="time" '+
+              'style="width:100%;padding:9px 12px;border:1px solid #d1d5db;border-radius:8px;font-family:Cairo,sans-serif;font-size:13px;box-sizing:border-box;">'+
+          '</div>'+
+        '</div>'+
+        // Notes
+        '<div class="form-group" style="margin-bottom:18px;">'+
+          '<label style="font-size:12px;font-weight:700;color:var(--text-muted);display:block;margin-bottom:5px;">📋 ملاحظات</label>'+
+          '<textarea id="ts_notes" placeholder="أي تفاصيل إضافية..." rows="2" '+
+            'style="width:100%;padding:9px 12px;border:1px solid #d1d5db;border-radius:8px;font-family:Cairo,sans-serif;font-size:13px;resize:vertical;box-sizing:border-box;"></textarea>'+
+        '</div>'+
+        '<div style="display:flex;gap:10px;justify-content:flex-end;">'+
+          '<button onclick="document.getElementById(\'_tsModal\').remove()" '+
+            'class="btn btn-outline">إلغاء</button>'+
+          '<button onclick="saveTask()" class="btn btn-primary">💾 حفظ المهمة</button>'+
+        '</div>'+
+      '</div>'+
+    '</div>';
+
+  document.body.appendChild(overlay);
+  setTimeout(function(){ var el=$('ts_task'); if(el) el.focus(); },200);
+};
+
+// ─── Save Task ──────────────────────────────────────────────
+window.saveTask = function(){
+  var taskName = ($('ts_task')||{value:''}).value.trim();
+  var date     = ($('ts_date')||{value:''}).value;
+  var startTime= ($('ts_start')||{value:''}).value;
+  var endTime  = ($('ts_end')||{value:''}).value;
+  var notes    = ($('ts_notes')||{value:''}).value.trim();
+
+  if(!taskName){ alert('من فضلك أدخل اسم المهمة'); return; }
+  if(!date)    { alert('من فضلك اختر التاريخ'); return; }
+  if(!startTime){ alert('من فضلك أدخل وقت البدء'); return; }
+
+  // Validate end > start
+  if(endTime && endTime <= startTime){
+    alert('وقت الانتهاء يجب أن يكون بعد وقت البدء'); return;
+  }
+
+  var entry={
+    taskName:  taskName,
+    date:      date,
+    startTime: startTime,
+    endTime:   endTime||'',
+    notes:     notes,
+    uid:       CID,
+    userName:  CU.name||'',
+    userDept:  CU.dept||'',
+    createdAt: Date.now()
+  };
+
+  var btn=document.querySelector('#_tsModal button.btn-primary');
+  if(btn){ btn.textContent='⏳ جاري الحفظ...'; btn.disabled=true; }
+
+  push(ref(db,'timesheet/'+CID), entry)
+    .then(function(){
+      var modal=document.getElementById('_tsModal');
+      if(modal) modal.remove();
+      // Refresh timesheet
+      loadTimesheetData();
+    })
+    .catch(function(err){
+      alert('خطأ في الحفظ: '+(err&&err.message?err.message:err));
+      if(btn){ btn.textContent='💾 حفظ المهمة'; btn.disabled=false; }
+    });
+};
+
+// ─── End Task (mark endTime = now) ─────────────────────────
+window.endTask = function(uid, entryId){
+  var nowTime = new Date().toTimeString().substr(0,5);
+  update(ref(db,'timesheet/'+uid+'/'+entryId), {endTime: nowTime})
+    .then(function(){ loadTimesheetData(); })
+    .catch(function(err){ alert('خطأ: '+(err&&err.message?err.message:err)); });
+};
+
+// ─── Delete Task ────────────────────────────────────────────
+window.deleteTask = function(uid, entryId){
+  if(!confirm('حذف هذه المهمة؟')) return;
+  remove(ref(db,'timesheet/'+uid+'/'+entryId))
+    .then(function(){ loadTimesheetData(); })
+    .catch(function(err){ alert('خطأ: '+(err&&err.message?err.message:err)); });
+};
+
+// ─── Print Timesheet ────────────────────────────────────────
+window.printTimesheet = function(){
+  var printable = document.getElementById('tsPrintable');
+  if(!printable){ alert('لا توجد بيانات للطباعة. اختر نطاق تاريخ أولاً.'); return; }
+
+  // Build full print page in printArea
+  var statsEl = $('tsStats');
+  var statsHTML = statsEl ? statsEl.innerHTML : '';
+  var fromVal = $('ts_from') ? $('ts_from').value : '';
+  var toVal   = $('ts_to')   ? $('ts_to').value   : '';
+
+  var printHTML =
+    '<div style="direction:rtl;font-family:Cairo,sans-serif;padding:10px;">'+
+    '<div style="text-align:center;margin-bottom:20px;border-bottom:2px solid #0f2d5c;padding-bottom:12px;">'+
+      '<div style="font-size:22px;font-weight:700;color:#0f2d5c;">مدرسة DSBA</div>'+
+      '<div style="font-size:16px;font-weight:600;margin-top:4px;">كشف الحضور والأعمال — فريق الصيانة</div>'+
+      '<div style="font-size:12px;color:#666;margin-top:6px;">'+
+        'الفترة: <strong>'+fromVal+'</strong> إلى <strong>'+toVal+'</strong>'+
+        ' &nbsp;|&nbsp; تاريخ الطباعة: <strong>'+new Date().toLocaleString('ar-EG')+'</strong>'+
+      '</div>'+
+    '</div>'+
+    // Stats
+    '<div style="display:flex;gap:20px;justify-content:center;margin-bottom:16px;">'+
+    (statsEl ? Array.from(statsEl.children).map(function(card){
+      return '<div style="background:#f0f4f8;border-radius:6px;padding:8px 16px;text-align:center;min-width:110px;">'+
+        '<div style="font-size:11px;color:#666;">'+card.querySelector('.stat-label').textContent+'</div>'+
+        '<div style="font-size:18px;font-weight:700;color:#0f2d5c;">'+card.querySelector('.stat-value').textContent+'</div>'+
+        '</div>';
+    }).join('') : '')+
+    '</div>'+
+    // Main content (remove action buttons)
+    printable.innerHTML.replace(/<button[^>]*>.*?<\/button>/gs,'').replace(/onclick="[^"]*"/g,'')+
+    '</div>';
+
+  $('printContent').innerHTML = printHTML;
+  $('printArea').style.display = 'block';
+  window.print();
+  setTimeout(function(){ $('printArea').style.display='none'; }, 1500);
+};
+
+
 // Render login on page load — called last after all defs
 renderLogin();
 
