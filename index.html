@@ -1018,7 +1018,7 @@ function buildAllModals(){
 
   <!-- Asset Modal -->
   <div class="modal-overlay" id="assetModal">
-    <div class="modal" style="width:640px;">
+    <div class="modal" style="width:680px;max-height:90vh;overflow-y:auto;">
       <button class="modal-close" onclick="closeModal('assetModal')">✕</button>
       <div class="modal-title">${t('asset_modal_h')}</div>
       <div class="form-grid">
@@ -1045,9 +1045,8 @@ function buildAllModals(){
         <div class="form-group"><label>${t('lbl_asset_building')}</label>
           <select id="a_building"><option value="">${t('sel_building')}</option></select></div>
         <div class="form-group"><label>${t('lbl_asset_room')}</label><input id="a_room" placeholder="A-101"></div>
-        <div class="form-group"><label>${t('lbl_purchase_date')}</label><input id="a_date" type="date"></div>
+        <div class="form-group"><label>${t('lbl_purchase_date')}</label><input id="a_date" type="date" onchange="autoCalcWarrantyEnd()"></div>
         <div class="form-group"><label>${t('lbl_price')}</label><input id="a_price" type="number" placeholder="0"></div>
-        <div class="form-group"><label>${t('lbl_warranty')}</label><input id="a_warranty" type="number" placeholder="1"></div>
         <div class="form-group"><label>${t('lbl_condition')}</label>
           <select id="a_status">
             <option value="working">${t('a_working')}</option>
@@ -1055,10 +1054,60 @@ function buildAllModals(){
             <option value="broken">${t('a_broken')}</option>
             <option value="retired">${t('a_retired')}</option>
           </select></div>
+
+        <!-- WARRANTY SECTION -->
+        <div class="form-group" style="grid-column:1/-1;">
+          <div style="background:#eef5fb;border-radius:10px;padding:14px;border-right:3px solid var(--primary);">
+            <div style="font-size:13px;font-weight:700;color:var(--primary);margin-bottom:10px;">🛡️ الضمان والتنبيهات</div>
+            <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;">
+              <div class="form-group" style="margin:0;">
+                <label style="font-size:12px;">تاريخ انتهاء الضمان</label>
+                <input id="a_warranty_end" type="date" style="width:100%;padding:8px 10px;border:1px solid #d1d5db;border-radius:8px;font-family:Cairo,sans-serif;font-size:13px;">
+              </div>
+              <div class="form-group" style="margin:0;">
+                <label style="font-size:12px;">سنوات الضمان (اختياري)</label>
+                <input id="a_warranty" type="number" placeholder="1" min="0" max="20"
+                  style="width:100%;padding:8px 10px;border:1px solid #d1d5db;border-radius:8px;font-family:Cairo,sans-serif;font-size:13px;"
+                  oninput="autoCalcWarrantyEnd()">
+              </div>
+              <div class="form-group" style="margin:0;">
+                <label style="font-size:12px;">⏰ تنبيه قبل الانتهاء بـ (يوم)</label>
+                <select id="a_warranty_alert" style="width:100%;padding:8px 10px;border:1px solid #d1d5db;border-radius:8px;font-family:Cairo,sans-serif;font-size:13px;">
+                  <option value="0">بدون تنبيه</option>
+                  <option value="7">أسبوع (7 أيام)</option>
+                  <option value="14">أسبوعان (14 يوم)</option>
+                  <option value="30" selected>شهر (30 يوم)</option>
+                  <option value="60">شهران (60 يوم)</option>
+                  <option value="90">3 أشهر (90 يوم)</option>
+                </select>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- INVOICE ATTACHMENT -->
+        <div class="form-group" style="grid-column:1/-1;">
+          <div style="background:#f9fafb;border-radius:10px;padding:14px;border:2px dashed #d1d5db;" id="invoiceDropZone">
+            <label style="font-size:13px;font-weight:700;color:var(--primary);display:block;margin-bottom:8px;">📎 فاتورة الشراء (PDF أو صورة)</label>
+            <input type="file" id="a_invoice" accept=".pdf,.jpg,.jpeg,.png,.webp"
+              style="display:none;" onchange="onInvoiceSelected(this)">
+            <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
+              <button type="button" class="btn btn-outline btn-sm" onclick="document.getElementById('a_invoice').click()">
+                📂 اختر ملف
+              </button>
+              <span id="invoiceFileName" style="font-size:12px;color:var(--text-muted);">لم يتم اختيار ملف</span>
+            </div>
+            <div id="invoicePreview" style="margin-top:10px;display:none;"></div>
+            <div style="font-size:11px;color:var(--text-muted);margin-top:6px;">
+              الحد الأقصى: 2MB — PDF, JPG, PNG
+            </div>
+          </div>
+        </div>
+
       </div>
       <div class="modal-footer">
         <button class="btn btn-outline" onclick="closeModal('assetModal')">${t('btn_cancel')}</button>
-        <button class="btn btn-accent" onclick="submitAsset()">${t('btn_save_barcode')}</button>
+        <button class="btn btn-accent" id="submitAssetBtn" onclick="submitAsset()">${t('btn_save_barcode')}</button>
       </div>
     </div>
   </div>
@@ -2159,7 +2208,12 @@ function startListeners(){
     .catch(function(){ window._dsbaClientIP = 'N/A'; });
 
   onValue(ref(db,'tickets'),function(snap){ tickets=snap.val()||{}; updateBadges(); refreshPage(); });
-  onValue(ref(db,'assets'),function(snap){ assets=snap.val()||{}; refreshPage(); });
+  onValue(ref(db,'assets'),function(snap){
+    assets=snap.val()||{};
+    refreshPage();
+    // Check warranty alerts when assets load
+    setTimeout(checkWarrantyAlerts, 2000);
+  });
   onValue(ref(db,'users'),function(snap){ users=snap.val()||{}; refreshPage(); });
   onValue(ref(db,'notifications'),function(snap){
     var all=snap.val()||{};
@@ -2806,8 +2860,10 @@ function buildAssetsTable(arr){
         '<td>'+(a.status?'<span class="badge '+(condBadge[a.status]||'')+'">'+( cond[a.status]||a.status)+'</span>':'—')+'</td>'+
         '<td><span class="barcode-badge">'+(a.barcode||a.id.substr(0,10))+'</span></td>'+
         '<td>'+
-        '<button class="btn btn-sm btn-outline" onclick="printBarcode(\''+ a.id+'\')">'+t('btn_barcode')+'</button>'+
-        (['admin','storekeeper'].includes(CU.role)?'<button class="btn btn-sm btn-danger" style="margin-right:4px;" onclick="deleteAsset(\''+ a.id+'\')">🗑</button>':'')+
+        '<button class="btn btn-sm btn-primary" style="margin-left:4px;" onclick="showAssetDetailPopup(\''+a.id+'\')">عرض</button>'+
+        (a.invoice?'<span title="فاتورة مرفقة" style="margin-right:4px;cursor:pointer;" onclick="viewInvoice(\''+a.id+'\')">📎</span>':'')+
+        ' <button class="btn btn-sm btn-outline" onclick="printBarcode(\''+a.id+'\')">'+t('btn_barcode')+'</button>'+
+        (['admin','storekeeper'].includes(CU.role)?' <button class="btn btn-sm btn-danger" onclick="deleteAsset(\''+a.id+'\')">🗑</button>':'')+
         '</td></tr>';
     }).join('')+'</tbody></table>';
 }
@@ -2818,20 +2874,221 @@ window.searchAssets=function(q){
   var tbl=$('assetsTable'); if(tbl) tbl.innerHTML=buildAssetsTable(arr);
 };
 
+// ─── INVOICE ATTACHMENT HELPERS ─────────────────────────────
+var _invoiceData = null; // stores base64 of selected invoice
+
+window.onInvoiceSelected = function(input){
+  var file = input.files[0];
+  if(!file){ _invoiceData=null; return; }
+
+  // Size check (2MB)
+  if(file.size > 2*1024*1024){
+    alert('حجم الملف كبير جداً. الحد الأقصى 2MB');
+    input.value=''; _invoiceData=null;
+    return;
+  }
+
+  var nameEl = $('invoiceFileName');
+  var preview = $('invoicePreview');
+  if(nameEl) nameEl.textContent = file.name + ' (' + (file.size/1024).toFixed(1) + ' KB)';
+
+  var reader = new FileReader();
+  reader.onload = function(e){
+    _invoiceData = {
+      data:     e.target.result, // base64 data URL
+      name:     file.name,
+      type:     file.type,
+      size:     file.size,
+      uploadedAt: Date.now()
+    };
+    // Show preview
+    if(preview){
+      preview.style.display = 'block';
+      if(file.type.startsWith('image/')){
+        preview.innerHTML = '<img src="'+e.target.result+'" style="max-height:120px;max-width:100%;border-radius:6px;border:1px solid #d1d5db;">';
+      } else {
+        preview.innerHTML = '<div style="background:#fee2e2;border-radius:6px;padding:8px 12px;font-size:12px;color:#991b1b;">📄 '+file.name+'</div>';
+      }
+    }
+  };
+  reader.readAsDataURL(file);
+};
+
+// Auto-calculate warranty end date from purchase date + years
+window.autoCalcWarrantyEnd = function(){
+  var dateEl = $('a_date');
+  var yearsEl = $('a_warranty');
+  var endEl   = $('a_warranty_end');
+  if(!dateEl||!yearsEl||!endEl) return;
+  var d = dateEl.value, y = parseInt(yearsEl.value)||0;
+  if(!d || !y) return;
+  var endDate = new Date(d);
+  endDate.setFullYear(endDate.getFullYear() + y);
+  endEl.value = endDate.toISOString().split('T')[0];
+};
+
 window.submitAsset=function(){
-  var name=$('a_name').value,cat=$('a_cat').value,serial=$('a_serial').value;
-  var brand=$('a_brand').value,room=$('a_room').value,date=$('a_date').value;
-  var price=$('a_price').value,warranty=$('a_warranty').value,status=$('a_status').value;
-  var building=$('a_building').value;
-  var bname=(settings.buildings||[]).find(function(b){return b.id===building;}); bname=bname?bname.name:building;
+  var name     = $('a_name').value.trim();
+  var cat      = $('a_cat').value;
+  var serial   = $('a_serial').value.trim();
+  var brand    = $('a_brand').value.trim();
+  var room     = $('a_room').value.trim();
+  var date     = $('a_date').value;
+  var price    = $('a_price').value;
+  var warranty = $('a_warranty').value;
+  var status   = $('a_status').value;
+  var building = $('a_building').value;
+  var warrantyEnd   = ($('a_warranty_end')||{value:''}).value;
+  var warrantyAlert = parseInt(($('a_warranty_alert')||{value:'30'}).value)||30;
+
+  var bname=(settings.buildings||[]).find(function(b){return b.id===building;});
+  bname = bname ? bname.name : building;
+
   if(!name||!cat){ alert(t('asset_req_err')); return; }
-  var barcode='DSBA-'+rand_id()+'-'+rand_id();
-  var newRef=push(ref(db,'assets'),{name:name,cat:cat,serial:serial,brand:brand,
-    location:[bname,room].filter(Boolean).join(' - '),room:room,
-    purchaseDate:date?new Date(date).getTime():null,price:parseFloat(price)||0,
-    warranty:parseInt(warranty)||1,status:status,barcode:barcode,addedAt:now(),addedBy:CID});
-  closeModal('assetModal');
-  setTimeout(function(){printBarcode(newRef.key);},300);
+
+  var barcode = 'DSBA-'+rand_id()+'-'+rand_id();
+
+  // Build payload
+  var payload = {
+    name:         name,
+    cat:          cat,
+    serial:       serial,
+    brand:        brand,
+    location:     [bname,room].filter(Boolean).join(' - '),
+    room:         room,
+    building:     bname,
+    purchaseDate: date ? new Date(date).getTime() : null,
+    price:        parseFloat(price)||0,
+    warranty:     parseInt(warranty)||0,
+    warrantyEnd:  warrantyEnd ? new Date(warrantyEnd).getTime() : null,
+    warrantyEndStr: warrantyEnd || '',
+    warrantyAlertDays: warrantyAlert,
+    status:       status,
+    barcode:      barcode,
+    addedAt:      now(),
+    addedBy:      CID,
+    addedByName:  CU.name||''
+  };
+
+  // Attach invoice if selected (stored as base64 in Firebase)
+  if(_invoiceData){
+    payload.invoice = _invoiceData;
+  }
+
+  // Disable button during save
+  var btn = $('submitAssetBtn');
+  if(btn){ btn.textContent='⏳ جاري الحفظ...'; btn.disabled=true; }
+
+  push(ref(db,'assets'), payload)
+    .then(function(newRef){
+      // Reset invoice data
+      _invoiceData = null;
+      var fi=$('a_invoice'); if(fi) fi.value='';
+      var fn=$('invoiceFileName'); if(fn) fn.textContent='لم يتم اختيار ملف';
+      var fp=$('invoicePreview'); if(fp){ fp.innerHTML=''; fp.style.display='none'; }
+      if(btn){ btn.textContent='🔖 حفظ وطباعة باركود'; btn.disabled=false; }
+      closeModal('assetModal');
+      setTimeout(function(){ printBarcode(newRef.key); }, 300);
+    })
+    .catch(function(err){
+      alert('خطأ في الحفظ: '+(err&&err.message?err.message:err));
+      if(btn){ btn.textContent='🔖 حفظ وطباعة باركود'; btn.disabled=false; }
+    });
+};
+
+
+// ─── ASSET DETAIL POPUP ──────────────────────────────────────
+window.showAssetDetailPopup = function(id){
+  var a = assets[id]; if(!a) return;
+  var cond = {working:'✅ يعمل',maintenance:'🔧 تحت الصيانة',broken:'❌ معطل',retired:'⚫ مسقط'};
+
+  var existing = document.getElementById('_assetDetailPop');
+  if(existing) existing.remove();
+
+  // Warranty info
+  var warrantyHtml = '';
+  if(a.warrantyEnd){
+    var dl = Math.ceil((a.warrantyEnd - Date.now())/(24*3600*1000));
+    var wColor = dl<0?'#fee2e2': dl<=30?'#fffbeb':'#f0fdf4';
+    var wText  = dl<0?'❌ انتهى الضمان منذ '+Math.abs(dl)+' يوم':
+                 dl<=30?'⚠️ ينتهي خلال '+dl+' يوم':
+                 '✅ '+dl+' يوم متبقي';
+    warrantyHtml =
+      '<div style="background:'+wColor+';border-radius:8px;padding:10px 14px;margin-bottom:12px;display:flex;justify-content:space-between;align-items:center;">'+
+        '<div>'+
+          '<div style="font-size:11px;color:var(--text-muted);">🛡️ انتهاء الضمان</div>'+
+          '<div style="font-size:14px;font-weight:700;">'+new Date(a.warrantyEnd).toLocaleDateString('ar-EG')+'</div>'+
+        '</div>'+
+        '<span style="font-size:12px;font-weight:700;">'+wText+'</span>'+
+      '</div>';
+  }
+
+  // Invoice
+  var invoiceHtml = '';
+  if(a.invoice){
+    invoiceHtml =
+      '<div style="background:#f0fdf4;border-radius:8px;padding:10px 14px;margin-bottom:12px;">'+
+        '<div style="font-size:12px;font-weight:700;color:var(--success);margin-bottom:6px;">📎 فاتورة الشراء</div>'+
+        (a.invoice.type&&a.invoice.type.startsWith('image/')
+          ? '<img src="'+a.invoice.data+'" style="max-width:100%;max-height:160px;border-radius:6px;cursor:pointer;" onclick="window.open(this.src)" title="اضغط للتكبير">'
+          : '<a href="'+a.invoice.data+'" download="'+(a.invoice.name||'invoice')+'" class="btn btn-sm btn-outline">📄 تحميل '+a.invoice.name+'</a>')+
+      '</div>';
+  }
+
+  var overlay = document.createElement('div');
+  overlay.id = '_assetDetailPop';
+  overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:9998;display:flex;align-items:center;justify-content:center;direction:rtl;';
+  overlay.onclick = function(ev){ if(ev.target===overlay) overlay.remove(); };
+
+  overlay.innerHTML =
+    '<div style="background:#fff;border-radius:16px;padding:0;width:580px;max-width:95vw;max-height:88vh;overflow-y:auto;box-shadow:0 20px 60px rgba(0,0,0,.3);font-family:Cairo,sans-serif;">'+
+    '<div style="background:var(--primary);color:#fff;padding:16px 20px;border-radius:16px 16px 0 0;display:flex;justify-content:space-between;align-items:center;">'+
+      '<div>'+
+        '<div style="font-size:15px;font-weight:700;">📦 '+asset_icon(a.cat)+' '+(a.name||'أصل')+'</div>'+
+        '<div style="font-size:11px;opacity:.7;margin-top:2px;">'+(a.barcode||id)+'</div>'+
+      '</div>'+
+      '<button onclick="document.getElementById(\'_assetDetailPop\').remove()" style="background:rgba(255,255,255,.2);border:none;color:#fff;width:28px;height:28px;border-radius:50%;cursor:pointer;font-size:14px;">✕</button>'+
+    '</div>'+
+    '<div style="padding:18px;">'+
+      warrantyHtml+
+      '<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:14px;">'+
+        _aRow2('🏷️ الفئة',        a.cat||'—')+
+        _aRow2('🔢 الرقم التسلسلي', a.serial||'—')+
+        _aRow2('🏭 الماركة',       a.brand||'—')+
+        _aRow2('📍 الموقع',        a.location||a.room||'—')+
+        _aRow2('📅 تاريخ الشراء',  a.purchaseDate?new Date(a.purchaseDate).toLocaleDateString('ar-EG'):'—')+
+        _aRow2('💰 القيمة',        a.price?(parseFloat(a.price).toLocaleString()+' ج'):'—')+
+        _aRow2('🛠️ الحالة',       (cond[a.status]||a.status||'—'))+
+        _aRow2('🛡️ سنوات الضمان',  (a.warranty||'—')+' سنة')+
+      '</div>'+
+      invoiceHtml+
+    '</div>'+
+    '<div style="padding:12px 18px;border-top:1px solid #e5e7eb;display:flex;gap:8px;justify-content:flex-end;">'+
+      '<button onclick="document.getElementById(\'_assetDetailPop\').remove()" class="btn btn-outline">إغلاق</button>'+
+      '<button onclick="printBarcode(\''+id+'\');document.getElementById(\'_assetDetailPop\').remove();" class="btn btn-outline">🖨 باركود</button>'+
+    '</div>'+
+    '</div>';
+
+  document.body.appendChild(overlay);
+};
+
+function _aRow2(label, val){
+  return '<div style="background:#f8fafc;border-radius:8px;padding:10px;border:1px solid #e2e8f0;">'+
+    '<div style="font-size:10px;color:var(--text-muted);margin-bottom:3px;">'+label+'</div>'+
+    '<div style="font-size:13px;font-weight:700;color:var(--primary);">'+val+'</div></div>';
+}
+
+window.viewInvoice = function(id){
+  var a = assets[id];
+  if(!a||!a.invoice){ alert('لا يوجد فاتورة مرفقة'); return; }
+  if(a.invoice.type&&a.invoice.type.startsWith('image/')){
+    window.open(a.invoice.data, '_blank');
+  } else {
+    var link = document.createElement('a');
+    link.href = a.invoice.data;
+    link.download = a.invoice.name||'invoice';
+    link.click();
+  }
 };
 
 window.deleteAsset=function(id){ if(confirm(t('del_asset_c'))) remove(ref(db,'assets/'+id)); };
@@ -4030,6 +4287,116 @@ window.printTimesheet = function(){
   }, 150);
 };
 
+
+
+// ════════════════════════════════════════════════════════════
+// ─── WARRANTY ALERT SYSTEM ───────────────────────────────────
+// ════════════════════════════════════════════════════════════
+
+function checkWarrantyAlerts(){
+  var today = Date.now();
+  var alertsSent = [];
+
+  Object.entries(assets).forEach(function(e){
+    var id = e[0], a = e[1];
+    if(!a.warrantyEnd || !a.warrantyAlertDays) return;
+    if(a.status === 'retired') return;
+
+    var endTs       = a.warrantyEnd;
+    var alertDays   = parseInt(a.warrantyAlertDays)||30;
+    var alertTs     = endTs - alertDays*24*3600*1000;
+    var daysLeft    = Math.ceil((endTs - today) / (24*3600*1000));
+
+    // Only alert if: within alert window AND warranty not expired more than 30 days ago
+    if(today >= alertTs && daysLeft > -30){
+      var lastAlertKey = 'dsba_warranty_alerted_'+id;
+      var lastAlert    = parseInt(localStorage.getItem(lastAlertKey)||'0');
+      var oneDayMs     = 24*3600*1000;
+
+      // Don't repeat alert more than once per day
+      if(today - lastAlert < oneDayMs) return;
+
+      var msg = daysLeft > 0
+        ? '⚠️ ضمان '+a.name+' سينتهي خلال '+daysLeft+' يوم ('+new Date(endTs).toLocaleDateString('ar-EG')+')'
+        : '❌ ضمان '+a.name+' انتهى منذ '+Math.abs(daysLeft)+' يوم';
+
+      // Send in-app notification to admin(s)
+      Object.entries(users).forEach(function(ue){
+        if(ue[1].role==='admin' || ue[1].role==='dept_admin'){
+          sendNotification(ue[0], '🛡️ تنبيه ضمان', msg, '');
+        }
+      });
+
+      // Also send to current user if storekeeper
+      if(CU.role==='storekeeper'){
+        sendNotification(CID, '🛡️ تنبيه ضمان', msg, '');
+      }
+
+      localStorage.setItem(lastAlertKey, today.toString());
+      alertsSent.push({name:a.name, daysLeft:daysLeft});
+    }
+  });
+
+  // Show toast if any alerts triggered NOW
+  if(alertsSent.length > 0 && CU){
+    showWarrantyToast(alertsSent);
+  }
+}
+
+function showWarrantyToast(alerts){
+  var existing = document.getElementById('_warrantyToast');
+  if(existing) existing.remove();
+
+  var toast = document.createElement('div');
+  toast.id = '_warrantyToast';
+  toast.style.cssText =
+    'position:fixed;bottom:24px;right:24px;z-index:99999;'+
+    'background:#1a1a2e;color:#fff;border-radius:12px;padding:16px 20px;'+
+    'box-shadow:0 8px 32px rgba(0,0,0,.4);max-width:360px;font-family:Cairo,sans-serif;'+
+    'direction:rtl;animation:slideInRight .3s ease;';
+
+  toast.innerHTML =
+    '<div style="display:flex;align-items:flex-start;gap:12px;">'+
+      '<div style="font-size:28px;flex-shrink:0;">🛡️</div>'+
+      '<div style="flex:1;">'+
+        '<div style="font-size:14px;font-weight:700;margin-bottom:6px;color:#fbbf24;">تنبيهات الضمان</div>'+
+        alerts.slice(0,3).map(function(a){
+          return '<div style="font-size:12px;margin-bottom:3px;color:'+(a.daysLeft<=0?'#f87171':'#e5e7eb')+';">'+
+            (a.daysLeft>0?'⚠ ':'❌ ')+a.name+
+            (a.daysLeft>0?' — '+a.daysLeft+' يوم متبقي':' — انتهى الضمان')+
+          '</div>';
+        }).join('')+
+        (alerts.length>3?'<div style="font-size:11px;color:#9ca3af;">و '+(alerts.length-3)+' أخرى...</div>':'')+
+      '</div>'+
+      '<button onclick="document.getElementById(\'_warrantyToast\').remove()" '+
+        'style="background:rgba(255,255,255,.15);border:none;color:#fff;border-radius:50%;'+
+        'width:22px;height:22px;cursor:pointer;font-size:12px;flex-shrink:0;">✕</button>'+
+    '</div>'+
+    '<button onclick="showPage(\'assets\');document.getElementById(\'_warrantyToast\').remove();" '+
+      'style="width:100%;margin-top:10px;padding:6px;background:#e8a020;border:none;border-radius:8px;'+
+      'color:#fff;font-family:Cairo,sans-serif;font-size:12px;font-weight:600;cursor:pointer;">'+
+      '📦 عرض الأصول'+
+    '</button>';
+
+  document.body.appendChild(toast);
+
+  // Auto-dismiss after 10 seconds
+  setTimeout(function(){
+    var el = document.getElementById('_warrantyToast');
+    if(el) el.style.cssText += 'opacity:0;transition:opacity .5s;';
+    setTimeout(function(){
+      var el2 = document.getElementById('_warrantyToast');
+      if(el2) el2.remove();
+    }, 600);
+  }, 10000);
+}
+
+// Add animation CSS
+(function(){
+  var style = document.createElement('style');
+  style.textContent = '@keyframes slideInRight{from{transform:translateX(100%);opacity:0;}to{transform:translateX(0);opacity:1;}}';
+  document.head.appendChild(style);
+})();
 
 // Render login on page load — called last after all defs
 renderLogin();
