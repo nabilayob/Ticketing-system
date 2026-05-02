@@ -1455,19 +1455,84 @@ window.deleteStore=function(sid){
 
 // ─── ASSIGN TICKET (Admin) ───
 window.openAssignModal=function(ticketId){
-  const t=tickets[ticketId]; if(!t) return;
-  const techs=Object.entries(users).filter(([,u])=>u.role==='technician'&&u.dept===t.dept);
-  $('techList').innerHTML=techs.length
-    ? techs.map(([uid,u])=>`
-      <div style="display:flex;align-items:center;justify-content:space-between;padding:12px;border:1px solid var(--border);border-radius:10px;margin-bottom:8px;">
-        <div style="display:flex;align-items:center;gap:10px;">
-          <div style="width:38px;height:38px;border-radius:50%;background:var(--primary);display:flex;align-items:center;justify-content:center;color:#fff;font-weight:700;">${(u.name||'?').charAt(0)}</div>
-          <div><div style="font-weight:600;font-size:13px;">${u.name} ${onlineBadge(u,false)}</div><div style="font-size:11px;color:var(--text-muted);">${dept_badge(u.dept)} ${!u.online?' · '+t('last_seen')+': '+fmtLastSeen(u.lastSeen):''}</div></div>
-        </div>
-        <button class="btn btn-primary btn-sm" onclick="assignTicket('${ticketId}','${uid}','${u.name}')">تعيين ✓</button>
-      </div>`).join('')
-    : '<div class="empty"><div class="empty-text">لا يوجد فنيون مسجلون لهذا القسم</div></div>';
-  openModal('assignModal');
+  var tk=tickets[ticketId]; if(!tk) return;
+  var techs=Object.entries(users).filter(function(e){
+    return e[1].role==='technician' && e[1].dept===tk.dept;
+  });
+
+  // Build modal inline — don't use openModal() which calls renderModals() and wipes content
+  var existing=document.getElementById('_assignOverlay');
+  if(existing) existing.remove();
+
+  var overlay=document.createElement('div');
+  overlay.id='_assignOverlay';
+  overlay.className='modal-overlay open';
+  overlay.style.zIndex='9998';
+
+  var techRows = techs.length
+    ? techs.map(function(e){
+        var uid=e[0], u=e[1];
+        var online=window._onlineUsers&&window._onlineUsers[uid];
+        var isOnline=online&&online.online&&online.lastSeen>(Date.now()-2*60*1000);
+        return '<div style="display:flex;align-items:center;justify-content:space-between;'+
+          'padding:12px;border:1px solid var(--border);border-radius:10px;margin-bottom:8px;'+
+          'background:'+(isOnline?'#f0fdf4':'#fff')+';">'+
+          '<div style="display:flex;align-items:center;gap:10px;">'+
+            '<div style="position:relative;">'+
+              '<div style="width:40px;height:40px;border-radius:50%;background:var(--primary);'+
+                'display:flex;align-items:center;justify-content:center;color:#fff;font-weight:700;font-size:16px;">'+
+                (u.name||'?').charAt(0)+
+              '</div>'+
+              '<span style="position:absolute;bottom:0;right:0;width:10px;height:10px;border-radius:50%;'+
+                'background:'+(isOnline?'#1d9e75':'#d1d5db')+';border:2px solid #fff;"></span>'+
+            '</div>'+
+            '<div>'+
+              '<div style="font-weight:600;font-size:13px;">'+
+                (u.name||'—')+
+                (isOnline?' <span style="font-size:10px;color:#1d9e75;font-weight:400;">● متصل الآن</span>':'')+
+              '</div>'+
+              '<div style="font-size:11px;color:var(--text-muted);">'+dept_badge(u.dept)+'</div>'+
+            '</div>'+
+          '</div>'+
+          '<button class="btn btn-primary btn-sm" '+
+            'onclick="assignTicketDo(''+ticketId+'',''+uid+'',''+u.name+'')">'+
+            'تعيين ✓</button>'+
+        '</div>';
+      }).join('')
+    : '<div class="empty" style="padding:20px;"><div class="empty-icon">👷</div>'+
+      '<div class="empty-text">لا يوجد فنيون مسجلون لهذا القسم ('+tk.dept+')</div></div>';
+
+  overlay.innerHTML=
+    '<div class="modal" style="width:480px;max-height:80vh;overflow-y:auto;">'+
+    '<button class="modal-close" onclick="document.getElementById('_assignOverlay').remove()">✕</button>'+
+    '<div class="modal-title">👷 تعيين فني للبلاغ</div>'+
+    '<div style="background:#eef5fb;border-radius:8px;padding:10px 14px;margin-bottom:16px;font-size:12px;">'+
+      '<strong>'+(tk.type||'بلاغ صيانة')+'</strong>'+
+      (tk.building?' — '+(tk.building||'')+(tk.room?' / '+tk.room:''):'')+
+    '</div>'+
+    techRows+
+    '<div class="modal-footer">'+
+      '<button class="btn btn-outline" onclick="document.getElementById('_assignOverlay').remove()">إغلاق</button>'+
+    '</div>'+
+    '</div>';
+
+  document.body.appendChild(overlay);
+};
+
+window.assignTicketDo=function(ticketId, techId, techName){
+  update(ref(db,'tickets/'+ticketId),{
+    assignedTo:techId, assignedName:techName,
+    status:'inprogress', assignedAt:Date.now()
+  });
+  var tk=tickets[ticketId]||{};
+  sendNotification(techId,'🔧 تم تعيينك على بلاغ',
+    'تم تعيينك للعمل على بلاغ '+(tk.type||'')+' في '+(tk.room||''),ticketId);
+  if(tk.createdBy) sendNotification(tk.createdBy,'👷 تم تعيين فني لبلاغك',
+    'تم تعيين الفني '+techName+' لحل مشكلتك',ticketId);
+  var ov=document.getElementById('_assignOverlay');
+  if(ov) ov.remove();
+  // Also close ticketDetailModal if open
+  closeModal('ticketDetailModal');
 };
 
 window.assignTicket=function(ticketId, techId, techName){
@@ -1709,7 +1774,7 @@ window.showTicketDetail=function(id){
       const transferBtn=document.createElement('button');
       transferBtn.className='btn btn-accent';
       transferBtn.innerHTML='↔️ تحويل لفني آخر';
-      transferBtn.onclick=()=>{ closeModal('ticketDetailModal'); openTransferModal(id); };
+      transferBtn.onclick=function(){ closeModal('ticketDetailModal'); openTransferModal(id); };
       footer.appendChild(transferBtn);
     }
     // Assign (if pending and no one assigned)
@@ -1717,7 +1782,7 @@ window.showTicketDetail=function(id){
       const assignBtn=document.createElement('button');
       assignBtn.className='btn btn-primary';
       assignBtn.innerHTML='👷 تعيين فني';
-      assignBtn.onclick=()=>{ closeModal('ticketDetailModal'); openAssignModal(id); };
+      assignBtn.onclick=function(){ closeModal('ticketDetailModal'); openAssignModal(id); };
       footer.appendChild(assignBtn);
     }
   }
@@ -2314,26 +2379,38 @@ function renderTickets(){
 function buildTicketsTable(arr){
   if(!arr.length) return '<div class="empty"><div class="empty-icon">📋</div><div class="empty-text">'+t('empty_tickets')+'</div></div>';
   return '<table><thead><tr>'+
-    ['th_num','th_location','th_dept','th_type','th_priority','th_status','th_submitter','th_date','th_cost','th_actions'].map(function(k){return'<th>'+t(k)+'</th>';}).join('')+
+    '<th>#</th><th>'+t('th_location')+'</th><th>'+t('th_dept')+'</th>'+
+    '<th>'+t('th_type')+'</th><th>'+t('th_priority')+'</th><th>'+t('th_status')+'</th>'+
+    '<th>'+t('th_submitter')+'</th><th>'+t('th_date')+'</th><th>'+t('th_cost')+'</th>'+
+    '<th>'+t('th_actions')+'</th>'+
     '</tr></thead><tbody>'+
     arr.map(function(tk){
-      return '<tr><td><code style="font-size:11px;">'+tk.id.substr(0,8)+'</code></td>'+
-        '<td style="font-size:12px;">'+([tk.building,tk.floor,tk.room].filter(Boolean).join(' - ')||'—')+'</td>'+
+      var id=tk.id;
+      var loc=([tk.building,tk.floor,tk.room].filter(Boolean).join(' / '))||'—';
+      var isAdmin=(CU.role==='admin');
+      var isPending=(tk.status==='pending');
+      var actionBtns=
+        '<button class="btn btn-sm btn-outline" onclick="showTicketDetail(''+id+'')">'+t('btn_details')+'</button>'+
+        (isAdmin&&isPending
+          ? ' <button class="btn btn-sm btn-accent" title="تعيين فني" onclick="openAssignModal(''+id+'')">👷</button>'
+          : '')+
+        (isAdmin
+          ? ' <button class="btn btn-sm btn-danger" title="حذف" onclick="deleteTicket(''+id+'')">🗑</button>'
+          : '');
+      return '<tr>'+
+        '<td><code style="font-size:11px;">'+id.substr(0,8)+'</code></td>'+
+        '<td style="font-size:12px;">'+loc+'</td>'+
         '<td>'+dept_badge(tk.dept)+'</td>'+
-        '<td style="font-size:12px;">'+( tk.type||'—')+'</td>'+
+        '<td style="font-size:12px;">'+(tk.type||'—')+'</td>'+
         '<td>'+priority_span(tk.priority)+'</td>'+
         '<td>'+status_badge(tk.status)+'</td>'+
-        '<td style="font-size:12px;">'+( tk.createdByName||'—')+'</td>'+
+        '<td style="font-size:12px;">'+(tk.createdByName||'—')+'</td>'+
         '<td style="font-size:12px;">'+fmt_date(tk.createdAt)+'</td>'+
-        '<td>'+(tk.cost?'<span class="cost-tag">'+ parseFloat(tk.cost).toLocaleString()+' '+t('currency')+'</span>':'—')+'</td>'+
-        '<td style="white-space:nowrap;">'+
-        '<button class="btn btn-sm btn-outline" onclick="showTicketDetail(\''+ tk.id+'\')">'+t('btn_details')+'</button>'+
-        (CU.role==='admin'&&tk.status==='pending'?'<button class="btn btn-sm btn-accent" style="margin-right:4px;" onclick="openAssignModal(\''+ tk.id+'\')">👷</button>':'')+
-        (CU.role==='admin'?'<button class="btn btn-sm btn-danger" style="margin-right:4px;" onclick="deleteTicket(\''+ tk.id+'\')">🗑</button>':'')+
-        '</td></tr>';
+        '<td>'+(tk.cost?'<span class="cost-tag">'+parseFloat(tk.cost).toLocaleString()+' '+t('currency')+'</span>':'—')+'</td>'+
+        '<td style="white-space:nowrap;">'+actionBtns+'</td>'+
+        '</tr>';
     }).join('')+'</tbody></table>';
 }
-
 window.filterTickets=function(val,field){
   var arr=Object.entries(tickets).map(function(e){return Object.assign({id:e[0]},e[1]);});
   if(CU.role==='teacher') arr=arr.filter(function(t){return t.createdBy===CID;});
@@ -3519,8 +3596,12 @@ window.deleteTask = function(uid, entryId){
 
 // ─── Print Timesheet ────────────────────────────────────────
 window.printTimesheet = function(){
+  // Try tsPrintable first, fall back to tsContent
   var printable = document.getElementById('tsPrintable');
-  if(!printable){ alert('لا توجد بيانات للطباعة. اختر نطاق تاريخ أولاً.'); return; }
+  if(!printable) printable = document.getElementById('tsContent');
+  if(!printable || printable.querySelector('.empty')){
+    alert('لا توجد بيانات للطباعة. تأكد من اختيار نطاق تاريخ يحتوي على مهام.'); return;
+  }
 
   // Build full print page in printArea
   var statsEl = $('tsStats');
