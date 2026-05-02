@@ -2391,17 +2391,28 @@ function renderDashboard(){
     '<div class="card"><div class="card-title"><span class="icon">🕐</span> '+t('recent_tickets')+'</div>'+
     (recent.length?
       '<div class="tbl-wrap"><table><thead><tr>'+
-      ['th_num','th_location','th_dept','th_type','th_priority','th_status','th_date','th_actions'].map(function(k){return'<th>'+t(k)+'</th>';}).join('')+
+      ['th_num','th_location','th_dept','th_type','th_priority','th_status'].map(function(k){return'<th>'+t(k)+'</th>';}).join('')+
+      '<th>الفني المعين</th><th>'+t('th_date')+'</th><th>'+t('th_actions')+'</th>'+
       '</tr></thead><tbody>'+
       recent.map(function(tk){
-        return '<tr><td><code style="font-size:11px;">'+tk.id.substr(0,8)+'</code></td>'+
-          '<td style="font-size:12px;">'+ [tk.building,tk.floor,tk.room].filter(Boolean).join(' - ')+'</td>'+
+        var ts2 = tk.assignedTo ? getTechStatus(tk.assignedTo) : null;
+        var techInfo = ts2
+          ? '<div style="font-size:11px;font-weight:600;">'+(ts2.online?'<span style="color:#1d9e75;margin-left:3px;">●</span> ':'')+ts2.name+'</div>'+
+            (ts2.taskCount>1
+              ? '<span style="font-size:10px;background:#fef3c7;color:#92400e;border-radius:8px;padding:1px 6px;">🔴 مشغول</span>'
+              : '<span style="font-size:10px;background:#d1fae5;color:#065f46;border-radius:8px;padding:1px 6px;">🟢 متاح</span>')
+          : '<span style="font-size:11px;color:var(--text-muted);">لم يُعيَّن</span>';
+        return '<tr>'+
+          '<td><code style="font-size:11px;">'+tk.id.substr(0,8)+'</code></td>'+
+          '<td style="font-size:12px;">'+ [tk.building,tk.floor,tk.room].filter(Boolean).join(' / ')+'</td>'+
           '<td>'+dept_badge(tk.dept)+'</td>'+
           '<td style="font-size:12px;">'+( tk.type||'—')+'</td>'+
           '<td>'+priority_span(tk.priority)+'</td>'+
           '<td>'+status_badge(tk.status)+'</td>'+
+          '<td>'+techInfo+'</td>'+
           '<td style="font-size:12px;">'+fmt_date(tk.createdAt)+'</td>'+
-          '<td><button class="btn btn-sm btn-outline" onclick="showTicketDetail(\''+ tk.id+'\')">'+t('btn_view')+'</button></td></tr>';
+          '<td><button class="btn btn-sm btn-outline" onclick="showTicketDetail(\''+tk.id+'\')">'+t('btn_view')+'</button></td>'+
+          '</tr>';
       }).join('')+'</tbody></table></div>'
     :'<div class="empty"><div class="empty-icon">📋</div><div class="empty-text">'+t('no_tickets')+'</div></div>')+
     '</div>';
@@ -2429,27 +2440,88 @@ function renderTickets(){
     '<div class="tbl-wrap" id="ticketsTable">'+buildTicketsTable(arr)+'</div></div>';
 }
 
+
+// ─── TECH AVAILABILITY ──────────────────────────────────────
+// Returns: { name, busy, taskCount }
+// busy = true if tech has open (unresolved) tickets assigned to them
+function getTechStatus(techId){
+  if(!techId) return null;
+  var u = users[techId];
+  if(!u) return null;
+  // Count open tickets assigned to this tech
+  var openTasks = Object.values(tickets).filter(function(tk){
+    return tk.assignedTo === techId && tk.status !== 'done';
+  });
+  return {
+    name:      u.name || '—',
+    dept:      u.dept || '',
+    busy:      openTasks.length > 0,
+    taskCount: openTasks.length,
+    online:    userIsOnline(u)
+  };
+}
+
 function buildTicketsTable(arr){
   if(!arr.length) return '<div class="empty"><div class="empty-icon">📋</div><div class="empty-text">'+t('empty_tickets')+'</div></div>';
+  var isAdmin=(CU.role==='admin');
   return '<table><thead><tr>'+
     '<th>#</th><th>'+t('th_location')+'</th><th>'+t('th_dept')+'</th>'+
     '<th>'+t('th_type')+'</th><th>'+t('th_priority')+'</th><th>'+t('th_status')+'</th>'+
+    '<th>الفني المعين</th>'+
     '<th>'+t('th_submitter')+'</th><th>'+t('th_date')+'</th><th>'+t('th_cost')+'</th>'+
     '<th>'+t('th_actions')+'</th>'+
     '</tr></thead><tbody>'+
     arr.map(function(tk){
       var id=tk.id;
       var loc=([tk.building,tk.floor,tk.room].filter(Boolean).join(' / '))||'—';
-      var isAdmin=(CU.role==='admin');
       var isPending=(tk.status==='pending');
+
+      // ── Tech cell ─────────────────────────────────────────
+      var techCell;
+      if(!tk.assignedTo){
+        // Not assigned yet
+        techCell = '<span style="font-size:11px;color:var(--text-muted);">—</span>';
+      } else {
+        var ts = getTechStatus(tk.assignedTo);
+        if(ts){
+          var busyCount = ts.taskCount;
+          // Availability badge: if this ticket is the ONLY open one it's fine,
+          // if tech has MORE open tasks they are "مشغول"
+          var otherOpen = busyCount > 1; // more than this ticket
+          var availBadge = otherOpen
+            ? '<span style="display:inline-block;background:#fef3c7;color:#92400e;border-radius:10px;'+
+              'padding:1px 7px;font-size:10px;font-weight:700;margin-top:3px;">'+
+              '🔴 مشغول ('+busyCount+' مهام)</span>'
+            : '<span style="display:inline-block;background:#d1fae5;color:#065f46;border-radius:10px;'+
+              'padding:1px 7px;font-size:10px;font-weight:700;margin-top:3px;">'+
+              '🟢 متاح</span>';
+          var onlineDot = ts.online
+            ? '<span style="width:7px;height:7px;border-radius:50%;background:#1d9e75;display:inline-block;margin-left:4px;" title="متصل الآن"></span>'
+            : '<span style="width:7px;height:7px;border-radius:50%;background:#d1d5db;display:inline-block;margin-left:4px;" title="غير متصل"></span>';
+          techCell =
+            '<div style="min-width:110px;">'+
+              '<div style="font-size:12px;font-weight:600;display:flex;align-items:center;gap:4px;">'+
+                onlineDot + ts.name +
+              '</div>'+
+              availBadge+
+            '</div>';
+        } else {
+          techCell = '<span style="font-size:11px;color:var(--text-muted);">'+(tk.assignedName||'—')+'</span>';
+        }
+      }
+
       var actionBtns=
         '<button class="btn btn-sm btn-outline" onclick="showTicketDetail(\''+id+'\')">'+t('btn_details')+'</button>'+
         (isAdmin&&isPending
           ? ' <button class="btn btn-sm btn-accent" title="تعيين فني" onclick="openAssignModal(\''+id+'\')">👷</button>'
           : '')+
+        (isAdmin&&tk.assignedTo&&tk.status!=='done'
+          ? ' <button class="btn btn-sm btn-outline" title="تحويل لفني آخر" onclick="openTransferModal(\''+id+'\')">↔️</button>'
+          : '')+
         (isAdmin
           ? ' <button class="btn btn-sm btn-danger" title="حذف" onclick="deleteTicket(\''+id+'\')">🗑</button>'
           : '');
+
       return '<tr>'+
         '<td><code style="font-size:11px;">'+id.substr(0,8)+'</code></td>'+
         '<td style="font-size:12px;">'+loc+'</td>'+
@@ -2457,6 +2529,7 @@ function buildTicketsTable(arr){
         '<td style="font-size:12px;">'+(tk.type||'—')+'</td>'+
         '<td>'+priority_span(tk.priority)+'</td>'+
         '<td>'+status_badge(tk.status)+'</td>'+
+        '<td>'+techCell+'</td>'+
         '<td style="font-size:12px;">'+(tk.createdByName||'—')+'</td>'+
         '<td style="font-size:12px;">'+fmt_date(tk.createdAt)+'</td>'+
         '<td>'+(tk.cost?'<span class="cost-tag">'+parseFloat(tk.cost).toLocaleString()+' '+t('currency')+'</span>':'—')+'</td>'+
