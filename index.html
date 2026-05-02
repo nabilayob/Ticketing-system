@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>مستشفى مارمرقس - Maintenance & Inventory</title>
+<title>DSBA - Maintenance & Inventory</title>
 <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@300;400;500;600;700&display=swap" rel="stylesheet">
 <style>
 
@@ -1519,6 +1519,46 @@ window.openAssignModal=function(ticketId){
   document.body.appendChild(overlay);
 };
 
+
+// ════════════════════════════════════════════════════════════
+// AUTO-TIMESHEET: Create entry when ticket assigned to tech
+// ════════════════════════════════════════════════════════════
+function autoAddToTimesheet(techId, techName, techDept, ticketId, tk){
+  var now    = new Date();
+  var date   = now.toISOString().split('T')[0];
+  var startT = now.toTimeString().substr(0,5);
+  var loc    = [tk.building, tk.floor, tk.room].filter(Boolean).join(' / ');
+  var entry  = {
+    taskName:    (tk.type||'صيانة') + (loc?' — '+loc:''),
+    date:        date,
+    startTime:   startT,
+    endTime:     '',
+    notes:       tk.desc ? tk.desc.substr(0,80) : '',
+    uid:         techId,
+    userName:    techName,
+    userDept:    techDept||'',
+    ticketId:    ticketId,
+    autoAdded:   true,
+    createdAt:   Date.now()
+  };
+  return push(ref(db,'timesheet/'+techId), entry);
+}
+
+// Auto-set endTime when ticket resolved
+function autoEndTimesheetEntry(techId, ticketId){
+  var nowTime = new Date().toTimeString().substr(0,5);
+  // Find the entry linked to this ticketId
+  get(ref(db,'timesheet/'+techId)).then(function(snap){
+    var data = snap.val()||{};
+    Object.entries(data).forEach(function(e){
+      var entryId = e[0], entry = e[1];
+      if(entry.ticketId===ticketId && !entry.endTime){
+        update(ref(db,'timesheet/'+techId+'/'+entryId), {endTime: nowTime});
+      }
+    });
+  }).catch(function(){});
+}
+
 window.assignTicketDo=function(evtOrNull, ticketId, techId, techName){
   try{ techName=decodeURIComponent(techName); }catch(_e){}
   update(ref(db,'tickets/'+ticketId),{
@@ -1526,13 +1566,21 @@ window.assignTicketDo=function(evtOrNull, ticketId, techId, techName){
     status:'inprogress', assignedAt:Date.now()
   });
   var tk=tickets[ticketId]||{};
+  // ── Auto-add to technician's timesheet ──────────────────
+  var techUser=users[techId]||{};
+  autoAddToTimesheet(techId, techName, techUser.dept||tk.dept||'', ticketId, tk)
+    .then(function(ref2){
+      console.log('Timesheet entry created: '+ref2.key);
+    }).catch(function(err){
+      console.warn('Timesheet auto-add failed:', err);
+    });
+  // ── Notifications ────────────────────────────────────────
   sendNotification(techId,'🔧 تم تعيينك على بلاغ',
     'تم تعيينك للعمل على بلاغ '+(tk.type||'')+' في '+(tk.room||''),ticketId);
   if(tk.createdBy) sendNotification(tk.createdBy,'👷 تم تعيين فني لبلاغك',
     'تم تعيين الفني '+techName+' لحل مشكلتك',ticketId);
   var ov=document.getElementById('_assignOverlay');
   if(ov) ov.remove();
-  // Also close ticketDetailModal if open
   closeModal('ticketDetailModal');
 };
 
@@ -1562,6 +1610,10 @@ function resolveTicket(id){
     status:'done', resolution:note, cost,
     resolvedAt:Date.now(), resolvedBy:CID, resolvedByName:CU.name||''
   });
+
+  // ── Auto-close timesheet entry for the assigned tech ──
+  var resolverUid = t.assignedTo || CID;
+  autoEndTimesheetEntry(resolverUid, id);
 
   // ── in-app notification ──
   sendNotification(t.createdBy,'✅ تم حل بلاغك',
@@ -3423,9 +3475,15 @@ function renderTimesheetTable(allEntries){
           '<td style="padding:8px 10px;color:var(--text-muted);font-size:11px;">'+htmlEsc(e.notes||'—')+'</td>'+
           (!isAdmin?
             '<td style="padding:8px 10px;text-align:center;white-space:nowrap;">'+
-              (!e.endTime?'<button class="btn btn-sm btn-success" onclick="endTask(\''+uid+'\',\''+e.id+'\')">✅ إنهاء</button> ':'')+
-              '<button class="btn btn-sm btn-danger" onclick="deleteTask(\''+uid+'\',\''+e.id+'\')">🗑</button>'+
-            '</td>':'')+
+              // Show ticket badge for auto-added entries
+              (e.autoAdded?'<div style="font-size:10px;background:#eef5fb;color:var(--primary);border-radius:4px;padding:2px 6px;margin-bottom:3px;display:inline-block;">🎫 بلاغ تلقائي</div><br>':'')+
+              // Show end button or done status
+              (!e.endTime
+                ?'<button class="btn btn-sm btn-success" onclick="endTask(\''+uid+'\',\''+e.id+'\')">⏱ تسجيل الانتهاء</button> '
+                :'<span style="font-size:11px;color:var(--success);font-weight:600;">✅ '+e.endTime+'</span> ')+
+              // Only allow delete for manually-added entries
+              (!e.autoAdded?'<button class="btn btn-sm btn-danger" onclick="deleteTask(\''+uid+'\',\''+e.id+'\')">🗑</button>':'')+
+            '</td>':'')')+
         '</tr>';
       });
 
@@ -3581,10 +3639,73 @@ window.saveTask = function(){
 
 // ─── End Task (mark endTime = now) ─────────────────────────
 window.endTask = function(uid, entryId){
+  // Show a small popup to let tech pick their end time
+  var existing = document.getElementById('_endTaskPopup');
+  if(existing) existing.remove();
+
   var nowTime = new Date().toTimeString().substr(0,5);
-  update(ref(db,'timesheet/'+uid+'/'+entryId), {endTime: nowTime})
-    .then(function(){ loadTimesheetData(); })
-    .catch(function(err){ alert('خطأ: '+(err&&err.message?err.message:err)); });
+
+  var overlay = document.createElement('div');
+  overlay.id = '_endTaskPopup';
+  overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:99999;'+
+    'display:flex;align-items:center;justify-content:center;direction:rtl;';
+  overlay.onclick = function(ev){ if(ev.target===overlay) overlay.remove(); };
+
+  overlay.innerHTML =
+    '<div style="background:#fff;border-radius:14px;padding:24px;width:320px;'+
+      'box-shadow:0 20px 50px rgba(0,0,0,.25);font-family:Cairo,sans-serif;text-align:center;">'+
+      '<div style="font-size:32px;margin-bottom:8px;">⏱</div>'+
+      '<div style="font-size:15px;font-weight:700;color:var(--primary);margin-bottom:6px;">'+
+        'تسجيل وقت انتهاء المهمة</div>'+
+      '<div style="font-size:12px;color:var(--text-muted);margin-bottom:16px;">'+
+        'اختر الوقت الفعلي لانتهاء العمل</div>'+
+      '<input type="time" id="_endTimeInput" value="'+nowTime+'" '+
+        'style="width:100%;padding:12px;border:2px solid var(--primary);border-radius:10px;'+
+        'font-size:20px;text-align:center;font-family:Cairo,sans-serif;direction:ltr;'+
+        'margin-bottom:16px;box-sizing:border-box;">'+
+      '<div style="display:flex;gap:10px;justify-content:center;">'+
+        '<button onclick="document.getElementById(\'_endTaskPopup\').remove()" '+
+          'class="btn btn-outline" style="flex:1;">إلغاء</button>'+
+        '<button onclick="confirmEndTask(\''+uid+'\',\''+entryId+'\')" '+
+          'class="btn btn-success" style="flex:1;">✅ تأكيد</button>'+
+      '</div>'+
+    '</div>';
+
+  document.body.appendChild(overlay);
+  // Focus the time input
+  setTimeout(function(){
+    var inp = document.getElementById('_endTimeInput');
+    if(inp) inp.focus();
+  }, 100);
+};
+
+window.confirmEndTask = function(uid, entryId){
+  var inp = document.getElementById('_endTimeInput');
+  var endTime = inp ? inp.value : new Date().toTimeString().substr(0,5);
+
+  // Validate: get start time to compare
+  get(ref(db,'timesheet/'+uid+'/'+entryId)).then(function(snap){
+    var entry = snap.val()||{};
+    if(entry.startTime && endTime <= entry.startTime){
+      alert('وقت الانتهاء يجب أن يكون بعد وقت البدء ('+entry.startTime+')');
+      return;
+    }
+    update(ref(db,'timesheet/'+uid+'/'+entryId), {endTime: endTime})
+      .then(function(){
+        var pop = document.getElementById('_endTaskPopup');
+        if(pop) pop.remove();
+        loadTimesheetData();
+      })
+      .catch(function(err){ alert('خطأ: '+(err&&err.message?err.message:err)); });
+  }).catch(function(){
+    // Fallback: save without validation
+    update(ref(db,'timesheet/'+uid+'/'+entryId), {endTime: endTime})
+      .then(function(){
+        var pop = document.getElementById('_endTaskPopup');
+        if(pop) pop.remove();
+        loadTimesheetData();
+      });
+  });
 };
 
 // ─── Delete Task ────────────────────────────────────────────
