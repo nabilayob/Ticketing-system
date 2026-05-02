@@ -5650,18 +5650,15 @@ window.sendHelpMessage = function(preset){
   });
 };
 
-// Add Help page to navigation
-var _origBuildNav = buildNav;
-function buildNav(){
-  _origBuildNav();
+// Add Help page to navigation — safe injection after buildNav runs
+function addHelpNavItem(){
   var nav = document.getElementById('sidebarNav');
-  if(!nav) return;
+  if(!nav || document.getElementById('nav-help')) return;
   var isAr = currentLang === 'ar';
-  var helpNavItem = document.createElement('div');
-  helpNavItem.style.cssText = 'padding:8px 20px 4px;color:rgba(255,255,255,0.3);font-size:10px;font-weight:600;letter-spacing:0.05em;text-transform:uppercase;';
-  helpNavItem.textContent = isAr ? 'دعم' : 'Support';
-  nav.appendChild(helpNavItem);
-
+  var sep = document.createElement('div');
+  sep.className = 'nav-section';
+  sep.textContent = isAr ? 'دعم' : 'Support';
+  nav.appendChild(sep);
   var helpItem = document.createElement('div');
   helpItem.className = 'nav-item';
   helpItem.id = 'nav-help';
@@ -5669,11 +5666,18 @@ function buildNav(){
   helpItem.onclick = function(){
     document.querySelectorAll('.nav-item').forEach(function(n){n.classList.remove('active');});
     helpItem.classList.add('active');
-    document.getElementById('pageTitle').textContent = isAr ? 'مركز المساعدة' : 'Help Center';
+    var pt = document.getElementById('pageTitle');
+    if(pt) pt.textContent = isAr ? 'مركز المساعدة' : 'Help Center';
     renderFAQPage();
   };
   nav.appendChild(helpItem);
 }
+// Inject after login completes — poll until sidebarNav is populated
+(function waitForNav(){
+  var nav = document.getElementById('sidebarNav');
+  if(nav && nav.children.length > 0){ addHelpNavItem(); return; }
+  setTimeout(waitForNav, 500);
+})();
 
 function renderFAQPage(){
   var isAr = currentLang === 'ar';
