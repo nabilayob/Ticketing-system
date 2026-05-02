@@ -3091,6 +3091,230 @@ window.viewInvoice = function(id){
   }
 };
 
+
+// ════════════════════════════════════════════════════════════
+// ─── EDIT ASSET ──────────────────────────────────────────────
+// ════════════════════════════════════════════════════════════
+var _editAssetId = null;
+var _editInvoiceData = null; // new invoice if user replaces it
+
+window.openEditAssetModal = function(id){
+  var a = assets[id]; if(!a) return;
+  _editAssetId = id;
+  _editInvoiceData = null;
+
+  var existing = document.getElementById('_editAssetModal');
+  if(existing) existing.remove();
+
+  // Build warranty end date string
+  var warrantyEndStr = a.warrantyEndStr || (a.warrantyEnd ? new Date(a.warrantyEnd).toISOString().split('T')[0] : '');
+  var purchaseDateStr = a.purchaseDate ? new Date(a.purchaseDate).toISOString().split('T')[0] : '';
+
+  // Build building options
+  var bldgOpts = (settings.buildings||[]).map(function(b){
+    return '<option value="'+b.id+'"'+(a.building===b.name||a.building===b.id?' selected':'')+'>'+b.name+'</option>';
+  }).join('');
+
+  var overlay = document.createElement('div');
+  overlay.id = '_editAssetModal';
+  overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:9998;display:flex;align-items:center;justify-content:center;direction:rtl;';
+  overlay.onclick = function(ev){ if(ev.target===overlay) overlay.remove(); };
+
+  overlay.innerHTML =
+    '<div style="background:#fff;border-radius:16px;width:680px;max-width:95vw;max-height:90vh;overflow-y:auto;box-shadow:0 20px 60px rgba(0,0,0,.3);font-family:Cairo,sans-serif;">'+
+
+    // Header
+    '<div style="background:var(--primary);color:#fff;padding:16px 20px;border-radius:16px 16px 0 0;display:flex;justify-content:space-between;align-items:center;">'+
+      '<div style="font-size:15px;font-weight:700;">✏️ تعديل الأصل — '+htmlEsc(a.name||'')+'</div>'+
+      '<button onclick="document.getElementById(\'_editAssetModal\').remove()" style="background:rgba(255,255,255,.2);border:none;color:#fff;width:28px;height:28px;border-radius:50%;cursor:pointer;font-size:14px;">✕</button>'+
+    '</div>'+
+
+    '<div style="padding:20px;">'+
+    '<div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">'+
+
+      _eField('الاسم',              'e_name',     'text',   a.name||'', 'true')+
+      _eSelect('الفئة',             'e_cat',      [
+        ['computer','Computer / كمبيوتر'],['laptop','Laptop / لابتوب'],
+        ['projector','Projector / بروجيكتور'],['printer','Printer / طابعة'],
+        ['ac','A/C / تكييف'],['fan','Fan / مروحة'],['light','Light / إنارة'],
+        ['screen','Screen / شاشة'],['camera','Camera / كاميرا'],
+        ['accesspoint','Access Point'],['vehicle','Vehicle / سيارة'],
+        ['furniture','Furniture / أثاث'],['other','Other / أخرى']
+      ], a.cat)+
+      _eField('الرقم التسلسلي',    'e_serial',   'text',   a.serial||'')+
+      _eField('الماركة / الموديل', 'e_brand',    'text',   a.brand||'')+
+      _eField('الغرفة / الموقع',   'e_room',     'text',   a.room||'')+
+      _eField('تاريخ الشراء',       'e_date',     'date',   purchaseDateStr)+
+      _eField('القيمة (جنيه)',      'e_price',    'number', a.price||0)+
+      _eField('سنوات الضمان',       'e_warranty', 'number', a.warranty||0, false, 'oninput="editCalcWarranty()"')+
+      _eSelect('الحالة',            'e_status',   [
+        ['working','✅ يعمل'],['maintenance','🔧 تحت الصيانة'],
+        ['broken','❌ معطل'],['retired','⚫ مسقط']
+      ], a.status)+
+
+      // Warranty end date (full width)
+      '<div style="grid-column:1/-1;background:#eef5fb;border-radius:10px;padding:12px;border-right:3px solid var(--primary);">'+
+        '<div style="font-size:12px;font-weight:700;color:var(--primary);margin-bottom:8px;">🛡️ الضمان والتنبيه</div>'+
+        '<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">'+
+          _eField('تاريخ انتهاء الضمان', 'e_warranty_end',   'date', warrantyEndStr)+
+          _eSelect('تنبيه قبل الانتهاء بـ', 'e_warranty_alert',
+            [['0','بدون تنبيه'],['7','أسبوع (7 أيام)'],['14','أسبوعان'],['30','شهر (30 يوم)'],['60','شهران'],['90','3 أشهر']],
+            String(a.warrantyAlertDays||30))+
+        '</div>'+
+      '</div>'+
+
+      // Invoice (full width)
+      '<div style="grid-column:1/-1;">'+
+        '<div style="background:'+(a.invoice?'#f0fdf4':'#f9fafb')+';border-radius:10px;padding:12px;border:2px dashed '+(a.invoice?'#86efac':'#d1d5db')+';">'+
+          '<div style="font-size:12px;font-weight:700;color:'+(a.invoice?'var(--success)':'var(--text-muted)')+';margin-bottom:8px;">'+
+            '📎 فاتورة الشراء '+(a.invoice?'(مرفقة ✅)':'(لا يوجد)')+
+          '</div>'+
+          (a.invoice
+            ? (a.invoice.type&&a.invoice.type.startsWith('image/')
+                ? '<img src="'+a.invoice.data+'" style="max-height:80px;border-radius:6px;margin-bottom:8px;cursor:pointer;" onclick="window.open(this.src)"><br>'
+                : '<div style="font-size:12px;color:var(--success);margin-bottom:6px;">📄 '+htmlEsc(a.invoice.name||'فاتورة')+'</div>')+
+              '<a href="'+a.invoice.data+'" download="'+(a.invoice.name||'invoice')+'" class="btn btn-sm btn-outline">⬇️ تحميل</a> '
+            : '')+
+          '<div style="display:flex;align-items:center;gap:8px;margin-top:6px;">'+
+            '<button type="button" class="btn btn-sm btn-outline" onclick="document.getElementById(\'e_invoice\').click()">'+
+              (a.invoice?'🔄 استبدال الفاتورة':'📂 رفع فاتورة')+
+            '</button>'+
+            '<span id="eInvoiceFileName" style="font-size:11px;color:var(--text-muted);">'+
+              (a.invoice?'سيتم الاستبدال عند الاختيار':'لم يتم الاختيار')+
+            '</span>'+
+          '</div>'+
+          '<input type="file" id="e_invoice" accept=".pdf,.jpg,.jpeg,.png,.webp" style="display:none;" onchange="onEditInvoiceSelected(this)">'+
+          '<div id="eInvoicePreview" style="margin-top:8px;"></div>'+
+        '</div>'+
+      '</div>'+
+
+    '</div>'+// end grid
+    '</div>'+// end padding
+
+    // Footer
+    '<div style="padding:14px 20px;border-top:1px solid #e5e7eb;display:flex;gap:10px;justify-content:flex-end;background:#f9fafb;border-radius:0 0 16px 16px;">'+
+      '<button onclick="document.getElementById(\'_editAssetModal\').remove()" class="btn btn-outline">إلغاء</button>'+
+      '<button onclick="saveEditAsset()" class="btn btn-primary" id="saveEditBtn">💾 حفظ التعديلات</button>'+
+    '</div>'+
+    '</div>';
+
+  document.body.appendChild(overlay);
+};
+
+// Helper: render input field
+function _eField(label, id, type, val, required, extra){
+  return '<div style="display:flex;flex-direction:column;gap:4px;">'+
+    '<label style="font-size:11px;font-weight:700;color:var(--text-muted);">'+label+(required?' *':'')+'</label>'+
+    '<input id="'+id+'" type="'+type+'" value="'+htmlEsc(String(val||''))+'" '+(extra||'')+
+    ' style="padding:8px 10px;border:1px solid #d1d5db;border-radius:8px;font-family:Cairo,sans-serif;font-size:13px;width:100%;box-sizing:border-box;">'+
+  '</div>';
+}
+// Helper: render select field
+function _eSelect(label, id, opts, selected){
+  return '<div style="display:flex;flex-direction:column;gap:4px;">'+
+    '<label style="font-size:11px;font-weight:700;color:var(--text-muted);">'+label+'</label>'+
+    '<select id="'+id+'" style="padding:8px 10px;border:1px solid #d1d5db;border-radius:8px;font-family:Cairo,sans-serif;font-size:13px;width:100%;box-sizing:border-box;">'+
+    opts.map(function(o){ return '<option value="'+o[0]+'"'+(o[0]===selected?' selected':'')+'>'+o[1]+'</option>'; }).join('')+
+    '</select>'+
+  '</div>';
+}
+
+// Auto-calc warranty end in edit modal
+window.editCalcWarranty = function(){
+  var dateEl = document.getElementById('e_date');
+  var yearsEl= document.getElementById('e_warranty');
+  var endEl  = document.getElementById('e_warranty_end');
+  if(!dateEl||!yearsEl||!endEl) return;
+  var d=dateEl.value, y=parseInt(yearsEl.value)||0;
+  if(!d||!y) return;
+  var ed=new Date(d); ed.setFullYear(ed.getFullYear()+y);
+  endEl.value = ed.toISOString().split('T')[0];
+};
+
+// Handle invoice file selection in edit modal
+window.onEditInvoiceSelected = function(input){
+  var file = input.files[0]; if(!file) return;
+  if(file.size > 2*1024*1024){ alert('الحد الأقصى 2MB'); input.value=''; return; }
+  var nameEl = document.getElementById('eInvoiceFileName');
+  var prev   = document.getElementById('eInvoicePreview');
+  if(nameEl) nameEl.textContent = file.name+' ('+(file.size/1024).toFixed(1)+' KB)';
+  var reader = new FileReader();
+  reader.onload = function(e){
+    _editInvoiceData = { data:e.target.result, name:file.name, type:file.type, size:file.size, uploadedAt:Date.now() };
+    if(prev){
+      prev.style.display='block';
+      if(file.type.startsWith('image/')){
+        prev.innerHTML='<img src="'+e.target.result+'" style="max-height:80px;border-radius:6px;">';
+      } else {
+        prev.innerHTML='<div style="font-size:11px;color:var(--success);">✅ '+file.name+'</div>';
+      }
+    }
+  };
+  reader.readAsDataURL(file);
+};
+
+// Save edited asset to Firebase
+window.saveEditAsset = function(){
+  var id = _editAssetId; if(!id) return;
+
+  var name  = (document.getElementById('e_name')||{value:''}).value.trim();
+  var cat   = (document.getElementById('e_cat')||{value:''}).value;
+  var serial= (document.getElementById('e_serial')||{value:''}).value.trim();
+  var brand = (document.getElementById('e_brand')||{value:''}).value.trim();
+  var room  = (document.getElementById('e_room')||{value:''}).value.trim();
+  var date  = (document.getElementById('e_date')||{value:''}).value;
+  var price = (document.getElementById('e_price')||{value:0}).value;
+  var warr  = (document.getElementById('e_warranty')||{value:0}).value;
+  var status= (document.getElementById('e_status')||{value:'working'}).value;
+  var wEnd  = (document.getElementById('e_warranty_end')||{value:''}).value;
+  var wAlert= parseInt((document.getElementById('e_warranty_alert')||{value:'30'}).value)||30;
+
+  if(!name){ alert('أدخل اسم الأصل'); return; }
+
+  var updates = {
+    name:            name,
+    cat:             cat,
+    serial:          serial,
+    brand:           brand,
+    room:            room,
+    purchaseDate:    date ? new Date(date).getTime() : null,
+    price:           parseFloat(price)||0,
+    warranty:        parseInt(warr)||0,
+    status:          status,
+    warrantyEnd:     wEnd ? new Date(wEnd).getTime() : null,
+    warrantyEndStr:  wEnd||'',
+    warrantyAlertDays: wAlert,
+    updatedAt:       Date.now(),
+    updatedBy:       CID,
+    updatedByName:   CU.name||''
+  };
+
+  // Attach new invoice if user selected one
+  if(_editInvoiceData){
+    updates.invoice = _editInvoiceData;
+  }
+
+  var btn = document.getElementById('saveEditBtn');
+  if(btn){ btn.textContent='⏳ جاري الحفظ...'; btn.disabled=true; }
+
+  update(ref(db,'assets/'+id), updates)
+    .then(function(){
+      _editAssetId = null; _editInvoiceData = null;
+      var modal = document.getElementById('_editAssetModal');
+      if(modal) modal.remove();
+      // Show success toast
+      var toast = document.createElement('div');
+      toast.style.cssText='position:fixed;top:24px;left:50%;transform:translateX(-50%);background:#1d9e75;color:#fff;padding:10px 24px;border-radius:10px;font-family:Cairo,sans-serif;font-size:14px;font-weight:600;z-index:99999;box-shadow:0 4px 20px rgba(0,0,0,.2);';
+      toast.textContent='✅ تم حفظ التعديلات بنجاح';
+      document.body.appendChild(toast);
+      setTimeout(function(){ toast.remove(); }, 3000);
+    })
+    .catch(function(err){
+      alert('خطأ في الحفظ: '+(err&&err.message?err.message:err));
+      if(btn){ btn.textContent='💾 حفظ التعديلات'; btn.disabled=false; }
+    });
+};
+
 window.deleteAsset=function(id){ if(confirm(t('del_asset_c'))) remove(ref(db,'assets/'+id)); };
 
 window.printBarcode=function(id){
