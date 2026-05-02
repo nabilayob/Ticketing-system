@@ -665,6 +665,35 @@ tbody tr:hover { background:#f8f9ff; }
 
 /* ── FAQ NAV page in sidebar ── */
 #nav-help.active { background:rgba(232,160,32,0.15); color:var(--accent); border-right-color: var(--accent); }
+
+
+/* ══════════════════════════════════════════════
+   FIX: Language buttons in white topbar
+   يظهر English / Deutsch داخل الشريط الأبيض
+══════════════════════════════════════════════ */
+.topbar .lang-switcher {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+}
+
+.topbar .lang-btn {
+  color: var(--primary);
+  border: 1px solid #d1d5db;
+  background: #fff;
+  min-width: 58px;
+}
+
+.topbar .lang-btn:hover {
+  background: var(--bg);
+  color: var(--primary);
+}
+
+.topbar .lang-btn.active-lang {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: #fff;
+}
 </style>
 
 </head>
