@@ -1613,6 +1613,51 @@ window.showTicketDetail=function(id){
     </div>`:''}
   `;
 
+  // ── Add PC info section to ticket detail body ──
+  var pcSection = '';
+  if(t.pcOS || t.pcIP || t.pcBrowser || t.windowsUser || t.pcMachineId) {
+    pcSection =
+      '<div style="background:#eef5fb;border-radius:10px;padding:14px;margin-bottom:14px;border-right:4px solid var(--primary);">' +
+      '<div style="font-size:12px;font-weight:700;color:var(--primary);margin-bottom:10px;">💻 معلومات الجهاز المُرسِل</div>' +
+      '<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;font-size:12px;">' +
+        '<div style="background:#fff;border-radius:6px;padding:8px;">' +
+          '<div style="font-size:10px;color:var(--text-muted);margin-bottom:3px;">🌐 IP العام</div>' +
+          '<code style="font-weight:700;color:var(--primary);">'+(t.pcIP||'—')+'</code>' +
+        '</div>' +
+        '<div style="background:#fff;border-radius:6px;padding:8px;">' +
+          '<div style="font-size:10px;color:var(--text-muted);margin-bottom:3px;">🖥 نظام التشغيل</div>' +
+          '<strong>'+(t.pcOS||'—')+'</strong>' +
+        '</div>' +
+        '<div style="background:#fff;border-radius:6px;padding:8px;">' +
+          '<div style="font-size:10px;color:var(--text-muted);margin-bottom:3px;">🌍 المتصفح</div>' +
+          '<span>'+(t.pcBrowser||'—')+'</span>' +
+        '</div>' +
+        '<div style="background:#fff;border-radius:6px;padding:8px;">' +
+          '<div style="font-size:10px;color:var(--text-muted);margin-bottom:3px;">🧠 المعالج</div>' +
+          '<span>'+(t.pcCores||'—')+'</span>' +
+        '</div>' +
+        '<div style="background:#fff;border-radius:6px;padding:8px;">' +
+          '<div style="font-size:10px;color:var(--text-muted);margin-bottom:3px;">💾 الذاكرة RAM</div>' +
+          '<span>'+(t.pcRAM||'—')+'</span>' +
+        '</div>' +
+        '<div style="background:#fff;border-radius:6px;padding:8px;">' +
+          '<div style="font-size:10px;color:var(--text-muted);margin-bottom:3px;">🖥 الشاشة</div>' +
+          '<span>'+(t.pcScreen||'—')+'</span>' +
+        '</div>' +
+        '<div style="background:#fff;border-radius:6px;padding:8px;grid-column:1/-1;">' +
+          '<div style="font-size:10px;color:var(--text-muted);margin-bottom:3px;">👤 حساب Windows / المستخدم</div>' +
+          '<strong style="color:var(--primary);">'+(t.windowsUser||'—')+'</strong>' +
+        '</div>' +
+        (t.pcMachineId?'<div style="background:#fff;border-radius:6px;padding:8px;grid-column:1/-1;">' +
+          '<div style="font-size:10px;color:var(--text-muted);margin-bottom:3px;">🔑 Machine ID</div>' +
+          '<code style="font-size:11px;">'+(t.pcMachineId)+'</code>' +
+        '</div>':'') +
+      '</div>' +
+      '</div>';
+    $('tdBody').innerHTML += pcSection;
+  }
+
+
   const footer=$('tdFooter'); footer.innerHTML='';
 
   // ── Close button (always) ──
@@ -1949,6 +1994,12 @@ function loadCurrentUser(uid){
 }
 
 function startListeners(){
+  // Fetch public IP once at login so it's ready for tickets
+  fetch('https://api.ipify.org?format=json')
+    .then(function(r){return r.json();})
+    .then(function(d){ window._dsbaClientIP = d.ip; })
+    .catch(function(){ window._dsbaClientIP = 'N/A'; });
+
   onValue(ref(db,'tickets'),function(snap){ tickets=snap.val()||{}; updateBadges(); refreshPage(); });
   onValue(ref(db,'assets'),function(snap){ assets=snap.val()||{}; refreshPage(); });
   onValue(ref(db,'users'),function(snap){ users=snap.val()||{}; refreshPage(); });
@@ -2303,10 +2354,80 @@ window.submitTicket=function(){
   var desc=$('t_desc').value, cost=$('t_cost').value;
   if(!dept||!type||!desc){ alert(t('err_ticket_req')); return; }
   var bname=(settings.buildings||[]).find(function(b){return b.id===building;}); bname=bname?bname.name:building;
-  var payload={dept:dept,type:type,priority:priority,building:bname,floor:floor,room:room,desc:desc,
-    cost:parseFloat(cost)||0,status:'pending',createdAt:now(),
-    createdBy:CID,createdByName:CU.name||'',createdByEmail:auth.currentUser?auth.currentUser.email:''};
+
+  // ── Auto-collect PC info ──────────────────────────────────
+  var ua = navigator.userAgent || '';
+  var pcOS = 'Unknown OS';
+  if(ua.indexOf('Windows NT 10')!==-1) pcOS='Windows 10/11';
+  else if(ua.indexOf('Windows NT 6.3')!==-1) pcOS='Windows 8.1';
+  else if(ua.indexOf('Windows NT 6.1')!==-1) pcOS='Windows 7';
+  else if(ua.indexOf('Windows')!==-1) pcOS='Windows';
+  else if(ua.indexOf('Mac')!==-1) pcOS='macOS';
+  else if(ua.indexOf('Linux')!==-1) pcOS='Linux';
+  else if(ua.indexOf('Android')!==-1) pcOS='Android';
+  else if(ua.indexOf('iPhone')+ua.indexOf('iPad')!==-2) pcOS='iOS';
+
+  var pcBrowser = 'Unknown';
+  if(ua.indexOf('Edg/')!==-1) pcBrowser='Microsoft Edge '+((ua.match(/Edg\/([\d.]+)/)||[])[1]||'');
+  else if(ua.indexOf('Chrome/')!==-1) pcBrowser='Chrome '+((ua.match(/Chrome\/([\d.]+)/)||[])[1]||'');
+  else if(ua.indexOf('Firefox/')!==-1) pcBrowser='Firefox '+((ua.match(/Firefox\/([\d.]+)/)||[])[1]||'');
+  else if(ua.indexOf('Safari/')!==-1) pcBrowser='Safari';
+
+  var pcPlatform = navigator.platform || 'Unknown';
+  var pcCores    = navigator.hardwareConcurrency ? navigator.hardwareConcurrency+' cores' : 'Unknown';
+  var pcRAM      = navigator.deviceMemory ? navigator.deviceMemory+' GB' : 'Unknown';
+  var pcScreen   = (window.screen ? window.screen.width+'x'+window.screen.height : 'Unknown');
+  var pcLang     = navigator.language || currentLang || 'ar';
+  var pcTZ       = '';
+  try{ pcTZ = Intl.DateTimeFormat().resolvedOptions().timeZone||''; }catch(_e){}
+
+  // Windows account = DSBA login name + email
+  var winUser = (CU && CU.name ? CU.name : '—') +
+                (auth.currentUser && auth.currentUser.email ? ' <'+auth.currentUser.email+'>' : '');
+
+  // Machine ID (fingerprint stored in localStorage)
+  var machineId = localStorage.getItem('dsba_local_machine_id') || 'Unknown';
+
+  // Public IP (fetched on login and stored in window._dsbaClientIP)
+  var pcIP = window._dsbaClientIP || 'Collecting...';
+  // ─────────────────────────────────────────────────────────
+
+  var payload={
+    dept:dept, type:type, priority:priority,
+    building:bname, floor:floor, room:room, desc:desc,
+    cost:parseFloat(cost)||0, status:'pending', createdAt:now(),
+    createdBy:CID, createdByName:CU.name||'', createdByEmail:auth.currentUser?auth.currentUser.email:'',
+    // ── PC Info ──
+    pcIP:       pcIP,
+    pcOS:       pcOS,
+    pcBrowser:  pcBrowser,
+    pcPlatform: pcPlatform,
+    pcCores:    pcCores,
+    pcRAM:      pcRAM,
+    pcScreen:   pcScreen,
+    pcLanguage: pcLang,
+    pcTimezone: pcTZ,
+    pcMachineId:machineId,
+    windowsUser:winUser
+  };
+
+  // If IP not yet loaded, fetch it then update the ticket
+  if(pcIP==='Collecting...'){
+    fetch('https://api.ipify.org?format=json')
+      .then(function(r){return r.json();})
+      .then(function(d){
+        window._dsbaClientIP = d.ip;
+        // Update the just-created ticket with the real IP
+        if(window._lastTicketRef){
+          try{ update(ref(db,'tickets/'+window._lastTicketRef),{pcIP:d.ip}); }catch(_e){}
+        }
+      }).catch(function(){});
+  }
+
   var newRef=push(ref(db,'tickets'),payload);
+  window._lastTicketRef = newRef.key;
+
+  // Notify technicians
   Object.entries(users).filter(function(e){return e[1].role==='technician'&&e[1].dept===dept;}).forEach(function(e){
     sendNotification(e[0],'🔔 '+type,(room?room+' - ':'')+ desc.substring(0,60),newRef.key);
   });
@@ -2664,7 +2785,7 @@ function renderAgent(){
 function handleAgentButton(action,e){
   if(e){ try{ e.preventDefault(); e.stopPropagation(); }catch(_e){} }
   try{
-    if(action==='machine') return window.agentScanRoomSafe(e);
+    if(action==='machine') return window.simpleLocalMachineScan();
     if(action==='full') return window.runAgentScanSafe(e);
     if(action==='csv') return window.exportInventoryCSVSafe(e);
     if(action==='script') return window.generateSetupScriptSafe(e);
@@ -2692,12 +2813,12 @@ function bindAgentButtons(){
 // Extra safe button wrappers: ensure Agent buttons work even if inline handlers are blocked
 window.agentScanRoomSafe=function(e){
   if(e){ try{ e.preventDefault(); e.stopPropagation(); }catch(_e){} }
-  try{
-    var log=document.getElementById('agentLog');
-    if(log){ var p=document.createElement('p'); p.className='cmd'; p.textContent=' --this-machine clicked'; log.appendChild(p); log.scrollTop=log.scrollHeight; }
-  }catch(_e){}
-  if(typeof window.agentScanRoom==='function'){ window.agentScanRoom(); }
-  else { alert('agentScanRoom function is missing'); }
+  // Always call simpleLocalMachineScan — it's the working v15 implementation
+  if(typeof window.simpleLocalMachineScan==='function'){
+    window.simpleLocalMachineScan();
+  } else {
+    alert('simpleLocalMachineScan function is missing');
+  }
   return false;
 };
 window.runAgentScanSafe=function(e){
