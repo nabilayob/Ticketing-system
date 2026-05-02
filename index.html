@@ -941,6 +941,19 @@ function buildAllModals(){
           <select id="t_room"><option value="">${t('sel_room')}</option></select></div>
         <div class="form-group form-full"><label>${t('lbl_desc')}</label>
           <textarea id="t_desc" placeholder="${t('ph_desc')}"></textarea></div>
+        <div class="form-group form-full" style="background:#eef5fb;border-radius:8px;padding:10px;border-right:3px solid var(--primary);">
+          <label style="display:flex;align-items:center;gap:6px;">
+            <span>💻</span>
+            <span>اسم حساب Windows (Windows Login Name)</span>
+            <span style="font-size:10px;color:var(--text-muted);font-weight:400;">— اختياري لكن مفيد للفني</span>
+          </label>
+          <input id="t_winuser" placeholder="مثال: john.smith أو DOMAIN\\username"
+            style="margin-top:6px;direction:ltr;text-align:left;font-family:monospace;font-size:13px;"
+            value="">
+          <div style="font-size:10px;color:var(--text-muted);margin-top:4px;">
+            💡 يمكنك معرفة اسمك بفتح CMD وكتابة: <code style="background:#f0f2f7;padding:1px 5px;border-radius:3px;">echo %USERNAME%</code>
+          </div>
+        </div>
         <div class="form-group"><label>${t('lbl_est_cost')}</label>
           <input id="t_cost" type="number" placeholder="0"></div>
       </div>
@@ -1644,9 +1657,10 @@ window.showTicketDetail=function(id){
           '<div style="font-size:10px;color:var(--text-muted);margin-bottom:3px;">🖥 الشاشة</div>' +
           '<span>'+(t.pcScreen||'—')+'</span>' +
         '</div>' +
-        '<div style="background:#fff;border-radius:6px;padding:8px;grid-column:1/-1;">' +
-          '<div style="font-size:10px;color:var(--text-muted);margin-bottom:3px;">👤 حساب Windows / المستخدم</div>' +
-          '<strong style="color:var(--primary);">'+(t.windowsUser||'—')+'</strong>' +
+        // Windows login - most prominent
+        '<div style="background:var(--primary);border-radius:8px;padding:10px;grid-column:1/-1;margin-bottom:4px;">' +
+          '<div style="font-size:10px;color:rgba(255,255,255,.7);margin-bottom:4px;">👤 اسم حساب Windows / Windows Login Name</div>' +
+          '<div style="font-size:15px;font-weight:700;color:#fff;letter-spacing:.02em;">'+(t.windowsUser||'غير محدد')+'</div>' +
         '</div>' +
         (t.pcMachineId?'<div style="background:#fff;border-radius:6px;padding:8px;grid-column:1/-1;">' +
           '<div style="font-size:10px;color:var(--text-muted);margin-bottom:3px;">🔑 Machine ID</div>' +
@@ -2319,6 +2333,16 @@ window.deleteTicket=function(id){
 
 window.openTicketModal=function(){
   openModal('ticketModal');
+  // Pre-fill Windows username from last entered value
+  setTimeout(function(){
+    var tw=$('t_winuser');
+    if(tw){
+      var saved=localStorage.getItem('dsba_winuser')||'';
+      tw.value=saved;
+      // Save whenever user types
+      tw.oninput=function(){ localStorage.setItem('dsba_winuser',tw.value.trim()); };
+    }
+  },100);
   var dsel=$('t_dept'); if(!dsel) return;
   dsel.innerHTML='<option value="">'+t('sel_dept')+'</option>';
   (settings.depts||[]).forEach(function(d){ dsel.innerHTML+='<option value="'+d.id+'">'+d.icon+' '+d.name+'</option>'; });
@@ -2381,9 +2405,14 @@ window.submitTicket=function(){
   var pcTZ       = '';
   try{ pcTZ = Intl.DateTimeFormat().resolvedOptions().timeZone||''; }catch(_e){}
 
-  // Windows account = DSBA login name + email
-  var winUser = (CU && CU.name ? CU.name : '—') +
-                (auth.currentUser && auth.currentUser.email ? ' <'+auth.currentUser.email+'>' : '');
+  // Windows account:
+  // 1. From the manual input field in the form (most accurate)
+  // 2. Fallback: DSBA login name + email
+  var winUserInput = $('t_winuser') ? ($('t_winuser').value||'').trim() : '';
+  var winUser = winUserInput
+    ? winUserInput + ' (DSBA: ' + (CU&&CU.name?CU.name:'—') + ')'
+    : (CU && CU.name ? CU.name : '—') +
+      (auth.currentUser && auth.currentUser.email ? ' <'+auth.currentUser.email+'>' : '');
 
   // Machine ID (fingerprint stored in localStorage)
   var machineId = localStorage.getItem('dsba_local_machine_id') || 'Unknown';
@@ -2434,6 +2463,7 @@ window.submitTicket=function(){
   emailNewTicket(newRef.key,payload);
   closeModal('ticketModal');
   $('t_desc').value=''; $('t_cost').value='';
+  var tw=$('t_winuser'); if(tw) tw.value='';
 };
 
 // ─── RENDER ASSETS ───
