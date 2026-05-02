@@ -258,6 +258,7 @@ tbody tr:hover { background:#f8f9ff; }
 .badge-pending { background:#fff3cd; color:#856404; }
 .badge-inprogress { background:#cce5ff; color:#004085; }
 .badge-done { background:#d4edda; color:#155724; }
+.badge-deptadmin { background:#ede9fe; color:#5b21b6; }
 .badge-it { background:#e8eaf6; color:#3949ab; }
 .badge-elec { background:#fff8e1; color:#f57f17; }
 .badge-civil { background:#fce4ec; color:#c2185b; }
@@ -987,12 +988,17 @@ function buildAllModals(){
         <div class="form-group"><label>${t('lbl_email')}</label><input id="u_email" type="email" placeholder="user@dsba.edu.eg"></div>
         <div class="form-group"><label>${t('lbl_password')}</label><input id="u_pass" type="password" placeholder="••••••••"></div>
         <div class="form-group"><label>${t('lbl_role')}</label>
-          <select id="u_role">
+          <select id="u_role" onchange="onRoleChange()">
             <option value="teacher">${t('role_teacher')}</option>
             <option value="technician">${t('role_technician')}</option>
-            <option value="admin">${t('role_admin')}</option>
             <option value="storekeeper">${t('role_storekeeper')}</option>
+            ${isSuperAdmin()?'<option value="dept_admin">مدير قسم</option><option value="admin">'+t('role_admin')+'</option>':''}
           </select></div>
+        <!-- Dept admin: multi-dept selector (shown dynamically) -->
+        <div class="form-group form-full" id="u_depts_wrap" style="display:none;">
+          <label>الأقسام المُدارة (لمدير القسم)</label>
+          <div id="u_depts_checks" style="display:flex;flex-wrap:wrap;gap:8px;margin-top:6px;"></div>
+        </div>
         <div class="form-group"><label>${t('lbl_dept_tech')}</label>
           <select id="u_dept">
             <option value="">${t('sel_dept_opt')}</option>
@@ -1457,7 +1463,9 @@ window.deleteStore=function(sid){
 window.openAssignModal=function(ticketId){
   var tk=tickets[ticketId]; if(!tk) return;
   var techs=Object.entries(users).filter(function(e){
-    return e[1].role==='technician' && e[1].dept===tk.dept;
+    return e[1].role==='technician' &&
+           e[1].dept===tk.dept &&
+           canManageDept(e[1].dept); // dept_admin can only assign their depts
   });
 
   // Build modal inline — don't use openModal() which calls renderModals() and wipes content
@@ -2262,6 +2270,15 @@ function buildNav(){
     {id:'agent',icon:'🤖',label:t('nav_agent'),sec:t('nav_sec_adv')},
     {id:'timesheet',icon:'📅',label:'كشف الحضور والأعمال',sec:''}
   ];
+  var DEPT_ADMIN=[
+    {id:'dashboard',icon:'📊',label:t('nav_dashboard'),sec:t('nav_sec_main')},
+    {id:'tickets',icon:'🛠️',label:'بلاغات أقسامي',sec:''},
+    {id:'assets',icon:'📦',label:t('nav_assets'),sec:t('nav_sec_inv')},
+    {id:'store',icon:'🏪',label:t('nav_store'),sec:''},
+    {id:'users',icon:'👥',label:'فنيو أقسامي',sec:t('nav_sec_admin')},
+    {id:'reports',icon:'📈',label:t('nav_reports'),sec:''},
+    {id:'timesheet',icon:'📅',label:'كشف الحضور والأعمال',sec:''}
+  ];
   var TECH=[
     {id:'dashboard',icon:'📊',label:t('nav_dashboard'),sec:t('nav_sec_main')},
     {id:'tickets',icon:'🛠️',label:t('nav_my_tickets'),sec:''},
@@ -2277,7 +2294,7 @@ function buildNav(){
     {id:'store',icon:'🏪',label:t('nav_store'),sec:t('nav_sec_inv')},
     {id:'assets',icon:'📦',label:t('nav_assets'),sec:''}
   ];
-  var maps={admin:ADMIN,technician:TECH,teacher:TEACHER,storekeeper:STORE};
+  var maps={admin:ADMIN,dept_admin:DEPT_ADMIN,technician:TECH,teacher:TEACHER,storekeeper:STORE};
   var items=maps[CU.role]||TEACHER;
   var html=''; var lastSec='';
   items.forEach(function(item){
@@ -2303,7 +2320,8 @@ window.showPage=function(id){
   $('pageTitle').textContent=t(titleMap[id]||id);
   var pages={dashboard:renderDashboard,tickets:renderTickets,assets:renderAssets,
     store:renderStore,users:renderUsers,reports:renderReports,
-    settings:function(){openModal('settingsModal');},agent:renderAgent,
+    settings:isSuperAdmin()?function(){openModal('settingsModal');}:function(){},
+    agent:isSuperAdmin()?renderAgent:function(){},
     timesheet:renderTimesheet};
   if(pages[id]) pages[id]();
 };
@@ -2323,8 +2341,57 @@ var fmt_time=function(ts){return ts?new Date(ts).toLocaleString():'—';};
 var now=function(){return Date.now();};
 var rand_id=function(){return Math.random().toString(36).substr(2,6).toUpperCase();};
 
-function role_label(r){
+
+// ─── ROLE HELPERS ────────────────────────────────────────────
+function isSuperAdmin(){ return CU && CU.role==='admin'; }
+function isDeptAdmin(){  return CU && CU.role==='dept_admin'; }
+function isAnyAdmin(){   return isSuperAdmin() || isDeptAdmin(); }
+
+// Get departments this user can manage
+function myManagedDepts(){
+  if(isSuperAdmin()) return null; // null = all depts
+  if(isDeptAdmin())  return CU.depts || (CU.dept ? [CU.dept] : []);
+  return [];
+}
+
+// Can this user manage a specific dept?
+function canManageDept(deptId){
+  if(isSuperAdmin()) return true;
+  if(isDeptAdmin()){
+    var myD = myManagedDepts();
+    return myD && myD.indexOf(deptId) !== -1;
+  }
+  return false;
+}
+
+// Can this user see a ticket?
+function canSeeTicket(tk){
+  if(isSuperAdmin()) return true;
+  if(isDeptAdmin())  return canManageDept(tk.dept);
+  if(CU.role==='technician') return tk.dept === CU.dept;
+  if(CU.role==='teacher')    return tk.createdBy === CID;
+  return false;
+}
+
+// Get techs this admin can assign
+function myTechs(){
+  var myD = myManagedDepts();
+  return Object.entries(users).filter(function(e){
+    if(e[1].role !== 'technician') return false;
+    if(!myD) return true; // superadmin sees all
+    return myD.indexOf(e[1].dept) !== -1;
+  });
+}
+
+function role_label(r, depts){
   var m={admin:'role_admin',teacher:'role_teacher',technician:'role_technician',storekeeper:'role_storekeeper'};
+  if(r==='dept_admin'){
+    var dnames=(depts||[]).map(function(d){
+      var dobj=(settings.depts||[]).find(function(x){return x.id===d;});
+      return dobj ? dobj.icon+' '+dobj.name : d;
+    }).join(', ');
+    return 'مدير قسم' + (dnames ? ' ('+dnames+')' : '');
+  }
   return m[r]?t(m[r]):r;
 }
 function dept_badge(dept){
@@ -2376,7 +2443,17 @@ function renderDashboard(){
   var done=arr.filter(function(t){return t.status==='done';}).length;
   var totalCost=arr.reduce(function(s,t){return s+(parseFloat(t.cost)||0);},0);
   var myTickets=CU.role==='teacher'?arr.filter(function(t){return t.createdBy===CID;}):
-    CU.role==='technician'?arr.filter(function(t){return t.dept===CU.dept;}):arr;
+    CU.role==='technician'?arr.filter(function(t){return t.dept===CU.dept;}):
+    isDeptAdmin()?arr.filter(function(t){return canManageDept(t.dept);}):arr;
+  // Filter totals for dept_admin
+  if(isDeptAdmin()){
+    var myD=myManagedDepts()||[];
+    total=arr.filter(function(t){return canManageDept(t.dept);}).length;
+    pending=arr.filter(function(t){return canManageDept(t.dept)&&t.status==='pending';}).length;
+    inprog=arr.filter(function(t){return canManageDept(t.dept)&&t.status==='inprogress';}).length;
+    done=arr.filter(function(t){return canManageDept(t.dept)&&t.status==='done';}).length;
+    totalCost=arr.filter(function(t){return canManageDept(t.dept);}).reduce(function(s,t){return s+(parseFloat(t.cost)||0);},0);
+  }
   var recent=[].concat(myTickets).sort(function(a,b){return b.createdAt-a.createdAt;}).slice(0,5);
 
   $('mainContent').innerHTML=
@@ -2385,7 +2462,7 @@ function renderDashboard(){
     '<div class="stat-card gold"><div class="stat-label">'+t('stat_pending')+'</div><div class="stat-value">'+pending+'</div></div>'+
     '<div class="stat-card blue"><div class="stat-label">'+t('stat_inprog')+'</div><div class="stat-value">'+inprog+'</div></div>'+
     '<div class="stat-card green"><div class="stat-label">'+t('stat_done')+'</div><div class="stat-value">'+done+'</div></div>'+
-    (CU.role==='admin'?'<div class="stat-card red"><div class="stat-label">'+t('stat_cost')+'</div><div class="stat-value" style="font-size:18px;">'+totalCost.toLocaleString()+'</div><div class="stat-sub">'+t('currency')+'</div></div>':'')+
+    (isAnyAdmin()?'<div class="stat-card red"><div class="stat-label">'+t('stat_cost')+'</div><div class="stat-value" style="font-size:18px;">'+totalCost.toLocaleString()+'</div><div class="stat-sub">'+t('currency')+'</div></div>':'')+
     '</div>'+
     ((CU.role!=='technician')?'<div class="card"><button class="btn btn-primary" onclick="openTicketModal()">'+t('btn_new_ticket')+'</button></div>':'')+
     '<div class="card"><div class="card-title"><span class="icon">🕐</span> '+t('recent_tickets')+'</div>'+
@@ -2423,8 +2500,9 @@ function renderDashboard(){
 // ─── RENDER TICKETS ───
 function renderTickets(){
   var arr=Object.entries(tickets).map(function(e){return Object.assign({id:e[0]},e[1]);});
-  if(CU.role==='teacher') arr=arr.filter(function(t){return t.createdBy===CID;});
+  if(CU.role==='teacher')    arr=arr.filter(function(t){return t.createdBy===CID;});
   if(CU.role==='technician') arr=arr.filter(function(t){return t.dept===CU.dept;});
+  if(isDeptAdmin())          arr=arr.filter(function(t){return canManageDept(t.dept);});
   arr.sort(function(a,b){return b.createdAt-a.createdAt;});
 
   $('mainContent').innerHTML=
@@ -2541,8 +2619,9 @@ function buildTicketsTable(arr){
 }
 window.filterTickets=function(val,field){
   var arr=Object.entries(tickets).map(function(e){return Object.assign({id:e[0]},e[1]);});
-  if(CU.role==='teacher') arr=arr.filter(function(t){return t.createdBy===CID;});
+  if(CU.role==='teacher')    arr=arr.filter(function(t){return t.createdBy===CID;});
   if(CU.role==='technician') arr=arr.filter(function(t){return t.dept===CU.dept;});
+  if(isDeptAdmin())          arr=arr.filter(function(t){return canManageDept(t.dept);});
   if(val) arr=arr.filter(function(t){return t[field]===val;});
   arr.sort(function(a,b){return b.createdAt-a.createdAt;});
   var tbl=$('ticketsTable'); if(tbl) tbl.innerHTML=buildTicketsTable(arr);
@@ -2772,10 +2851,16 @@ window.printBarcode=function(id){
 
 // ─── RENDER USERS ───
 function renderUsers(){
-  if(CU.role!=='admin'){ $('mainContent').innerHTML='<div class="empty"><div class="empty-icon">🔒</div><div class="empty-text">'+ t('not_auth')+'</div></div>'; return; }
+  if(!isAnyAdmin()){ $('mainContent').innerHTML='<div class="empty"><div class="empty-icon">🔒</div><div class="empty-text">'+t('not_auth')+'</div></div>'; return; }
   var arr=Object.entries(users).map(function(e){return Object.assign({id:e[0]},e[1]);});
+  // dept_admin sees only their technicians + themselves
+  if(isDeptAdmin()){
+    arr=arr.filter(function(u){
+      return u.id===CID || (u.role==='technician' && canManageDept(u.dept));
+    });
+  }
   $('mainContent').innerHTML=
-    '<div class="card" style="margin-bottom:16px;"><button class="btn btn-primary" onclick="openModal(\'userModal\')">'+t('btn_add_user')+'</button></div>'+
+    (isSuperAdmin()?'<div class="card" style="margin-bottom:16px;"><button class="btn btn-primary" onclick="openModal(\'userModal\')">'+t('btn_add_user')+'</button></div>':'')+
     '<div class="card"><div class="card-title"><span class="icon">👥</span> '+t('users_list_h')+' ('+arr.length+')</div>'+
     '<div class="tbl-wrap"><table><thead><tr>'+
     ['th_num','lbl_full_name','lbl_email','th_role','th_dept','th_phone','th_online','th_actions'].map(function(k){return'<th>'+t(k)+'</th>';}).join('')+
@@ -2791,15 +2876,46 @@ function renderUsers(){
     }).join('')+'</tbody></table></div></div>';
 }
 
+window.onRoleChange=function(){
+  var role=($('u_role')||{value:''}).value;
+  var wrap=$('u_depts_wrap'), checks=$('u_depts_checks');
+  if(!wrap||!checks) return;
+  if(role==='dept_admin'){
+    wrap.style.display='block';
+    checks.innerHTML=(settings.depts||[]).map(function(d){
+      return '<label style="display:flex;align-items:center;gap:6px;background:#f0f2f7;padding:6px 10px;border-radius:8px;cursor:pointer;">'+
+        '<input type="checkbox" value="'+d.id+'" style="cursor:pointer;"> '+
+        d.icon+' '+d.name+'</label>';
+    }).join('');
+  } else {
+    wrap.style.display='none';
+  }
+};
+
 window.submitUser=function(){
   var name=$('u_name').value,email=$('u_email').value,pass=$('u_pass').value;
   var role=$('u_role').value,dept=$('u_dept').value,phone=$('u_phone').value;
   if(!name||!email||!pass){ alert(t('err_user_req')); return; }
+
+  // Collect depts for dept_admin
+  var managedDepts=[];
+  if(role==='dept_admin'){
+    var checksEl=$('u_depts_checks');
+    if(checksEl){
+      var cbs=checksEl.querySelectorAll('input[type=checkbox]:checked');
+      for(var i=0;i<cbs.length;i++) managedDepts.push(cbs[i].value);
+    }
+    if(!managedDepts.length){ alert('اختر قسماً واحداً على الأقل'); return; }
+  }
+
   createUserWithEmailAndPassword(auth,email,pass)
     .then(function(res){
-      set(ref(db,'users/'+res.user.uid),{name:name,email:email,role:role,dept:dept,phone:phone,online:false,lastSeen:null});
+      var userData={name:name,email:email,role:role,dept:dept,phone:phone,
+        online:false,lastSeen:null,createdAt:Date.now()};
+      if(role==='dept_admin') userData.depts=managedDepts;
+      set(ref(db,'users/'+res.user.uid),userData);
       closeModal('userModal');
-    }).catch(function(e){ alert(t('u_error'||'Error')+': '+e.message); });
+    }).catch(function(e){ alert('Error: '+e.message); });
 };
 window.deleteUser=function(id){ if(confirm(t('del_user_c'))) remove(ref(db,'users/'+id)); };
 
@@ -3314,7 +3430,7 @@ document.addEventListener('click',function(e){
 // Entry: { date, taskName, startTime, endTime, notes, createdAt, uid, userName }
 
 function renderTimesheet(){
-  var isAdmin = CU.role==='admin';
+  var isAdmin = isSuperAdmin() || isDeptAdmin();
 
   $('mainContent').innerHTML=
     '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:18px;flex-wrap:wrap;gap:10px;">'+
@@ -3344,8 +3460,11 @@ function renderTimesheet(){
           '<label style="font-size:12px;font-weight:600;color:var(--text-muted);">الفني:</label>'+
           '<select id="ts_tech" style="padding:6px 10px;border:1px solid #d1d5db;border-radius:7px;font-family:Cairo,sans-serif;font-size:12px;" onchange="loadTimesheetData()">'+
             '<option value="">كل الفنيين</option>'+
-            Object.entries(users).filter(function(e){return e[1].role==='technician';})
-              .map(function(e){return '<option value="'+e[0]+'">'+e[1].name+'</option>';}).join('')+
+            Object.entries(users).filter(function(e){
+              if(e[1].role!=='technician') return false;
+              if(isDeptAdmin()) return canManageDept(e[1].dept);
+              return true;
+            }).map(function(e){return '<option value="'+e[0]+'">'+e[1].name+'</option>';}).join('')+
           '</select>'+
         '</div>':'')+
       '<button class="btn btn-outline btn-sm" onclick="setTsToday()">اليوم</button>'+
@@ -3394,13 +3513,17 @@ function loadTimesheetData(){
 
   // Which users to load
   var uidsToLoad = [];
-  if(!isAdmin){
+  if(!isAdmin && !isDeptAdmin()){
     uidsToLoad = [CID];
   } else if(techFilter){
     uidsToLoad = [techFilter];
   } else {
     uidsToLoad = Object.entries(users)
-      .filter(function(e){ return e[1].role==='technician'; })
+      .filter(function(e){
+        if(e[1].role !== 'technician') return false;
+        if(isDeptAdmin()) return canManageDept(e[1].dept); // only their depts
+        return true; // superadmin sees all
+      })
       .map(function(e){ return e[0]; });
     if(!uidsToLoad.length){ renderTimesheetTable({}); return; }
   }
