@@ -1635,9 +1635,11 @@ function resolveTicket(id){
 
 // ─── REOPEN TICKET ───
 window.reopenTicket=function(id){
+  if(!isAnyAdmin()){ alert('غير مصرح'); return; }
   const reason=prompt('سبب إعادة الفتح (اختياري):','');
-  if(reason===null) return; // cancelled
+  if(reason===null) return;
   const t=tickets[id]; if(!t) return;
+  if(!canManageDept(t.dept)){ alert('غير مصرح لهذا القسم'); return; }
   update(ref(db,'tickets/'+id),{
     status:'pending',
     reopenedAt:Date.now(), reopenedBy:CID, reopenedByName:CU.name||'',
@@ -1661,7 +1663,10 @@ window.openTransferModal=function(ticketId){
   const t=tickets[ticketId]; if(!t) return;
   // Show all technicians in same dept, excluding current assigned
   const techs=Object.entries(users).filter(([uid,u])=>
-    u.role==='technician' && u.dept===t.dept && uid!==t.assignedTo
+    u.role==='technician' &&
+    u.dept===t.dept &&
+    uid!==t.assignedTo &&
+    canManageDept(u.dept)
   );
   $('techList').innerHTML=`
     <div style="background:#fff8e1;border-radius:8px;padding:10px;margin-bottom:12px;font-size:12px;color:#856404;">
@@ -1715,8 +1720,8 @@ window.transferTicket=function(ticketId, newTechId, newTechName){
 window.showTicketDetail=function(id){
   const t=tickets[id]; if(!t) return;
   $('tdTitle').textContent=`🛠️ بلاغ: ${t.type||'صيانة'} — ${t.room||''}`;
-  const canAct=(CU.role==='technician'&&t.dept===CU.dept)||(CU.role==='admin');
-  const isAdmin=CU.role==='admin';
+  const canAct=(CU.role==='technician'&&t.dept===CU.dept)||isAnyAdmin();
+  const isAdmin=isAnyAdmin() && canManageDept(t.dept);
 
   // Build history log
   let historyLog='';
@@ -2590,15 +2595,16 @@ function buildTicketsTable(arr){
         }
       }
 
+      var canActTicket = isAnyAdmin() && canManageDept(tk.dept);
       var actionBtns=
         '<button class="btn btn-sm btn-outline" onclick="showTicketDetail(\''+id+'\')">'+t('btn_details')+'</button>'+
-        (isAdmin&&isPending
+        (canActTicket&&isPending
           ? ' <button class="btn btn-sm btn-accent" title="تعيين فني" onclick="openAssignModal(\''+id+'\')">👷</button>'
           : '')+
-        (isAdmin&&tk.assignedTo&&tk.status!=='done'
+        (canActTicket&&tk.assignedTo&&tk.status!=='done'
           ? ' <button class="btn btn-sm btn-outline" title="تحويل لفني آخر" onclick="openTransferModal(\''+id+'\')">↔️</button>'
           : '')+
-        (isAdmin
+        (isSuperAdmin()
           ? ' <button class="btn btn-sm btn-danger" title="حذف" onclick="deleteTicket(\''+id+'\')">🗑</button>'
           : '');
 
